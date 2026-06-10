@@ -5,6 +5,7 @@ data class ScanSourceFolderSummary(
     val mediaFiles: Int,
     val imageFiles: Int,
     val videoFiles: Int,
+    val capturedDateFiles: Int,
     val unsupportedFiles: Int,
     val totalMediaBytes: Long,
 )

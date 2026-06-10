@@ -157,7 +157,7 @@ private fun ScanPreview(
             )
             if (scanUiState is ScanUiState.Success) {
                 Text(
-                    text = "Пока используем дату изменения файла. Дату съемки из EXIF подключим отдельным шагом.",
+                    text = "Если в JPEG есть EXIF-дата съемки, используем ее. Для остальных файлов берем дату изменения.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

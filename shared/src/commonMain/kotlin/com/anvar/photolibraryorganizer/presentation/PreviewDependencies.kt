@@ -43,6 +43,7 @@ object PreviewPhotoSourceScanner : PhotoSourceScanner {
                     mediaFiles = files.size,
                     imageFiles = 1,
                     videoFiles = 1,
+                    capturedDateFiles = 0,
                     unsupportedFiles = 1,
                     totalMediaBytes = files.sumOf { it.sizeBytes },
                 ),

@@ -228,6 +228,7 @@ class SharedCommonTest {
                         mediaFiles = 0,
                         imageFiles = 0,
                         videoFiles = 0,
+                        capturedDateFiles = 0,
                         unsupportedFiles = 0,
                         totalMediaBytes = 0,
                     ),

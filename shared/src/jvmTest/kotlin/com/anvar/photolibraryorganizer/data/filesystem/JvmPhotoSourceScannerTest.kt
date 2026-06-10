@@ -46,6 +46,7 @@ class JvmPhotoSourceScannerTest {
         val success = assertIs<AppResult.Success<ScanSourceFolderResult>>(result)
         val mediaFile = success.data.mediaFiles.single()
         assertEquals(expectedCapturedAtEpochMillis(), mediaFile.capturedAtEpochMillis)
+        assertEquals(1, success.data.summary.capturedDateFiles)
     }
 
     @Test

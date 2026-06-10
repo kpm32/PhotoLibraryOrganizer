@@ -73,6 +73,7 @@ class JvmPhotoSourceScanner : PhotoSourceScanner {
                         mediaFiles = mediaFiles.size,
                         imageFiles = mediaFiles.count { it.category == MediaFileCategory.Image },
                         videoFiles = mediaFiles.count { it.category == MediaFileCategory.Video },
+                        capturedDateFiles = mediaFiles.count { it.capturedAtEpochMillis != null },
                         unsupportedFiles = unsupportedFiles,
                         totalMediaBytes = mediaFiles.sumOf { it.sizeBytes },
                     ),

@@ -168,6 +168,7 @@ private fun ScanSummaryRows(scanUiState: ScanUiState.Success) {
         SummaryRow("Медиа", scanUiState.summary.mediaFiles.toString())
         SummaryRow("Фото", scanUiState.summary.imageFiles.toString())
         SummaryRow("Видео", scanUiState.summary.videoFiles.toString())
+        SummaryRow("С датой съемки", scanUiState.summary.capturedDateFiles.toString())
         SummaryRow("Неподдерживаемые", scanUiState.summary.unsupportedFiles.toString())
         SummaryRow("Размер медиа", scanUiState.summary.totalMediaBytes.toReadableSize())
     }
