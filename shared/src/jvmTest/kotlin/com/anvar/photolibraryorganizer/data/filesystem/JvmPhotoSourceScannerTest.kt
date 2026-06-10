@@ -13,6 +13,7 @@ import kotlin.io.path.writeText
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNotEquals
 
 class JvmPhotoSourceScannerTest {
     private val scanner = JvmPhotoSourceScanner()
@@ -47,6 +48,21 @@ class JvmPhotoSourceScannerTest {
         val mediaFile = success.data.mediaFiles.single()
         assertEquals(expectedCapturedAtEpochMillis(), mediaFile.capturedAtEpochMillis)
         assertEquals(1, success.data.summary.capturedDateFiles)
+    }
+
+    @Test
+    fun calculatesStableContentHashesForMediaFiles() = runTest {
+        val sourceFolder = Files.createTempDirectory("photo-hash-test")
+        sourceFolder.resolve("same-a.jpg").writeText("same-content")
+        sourceFolder.resolve("same-b.jpg").writeText("same-content")
+        sourceFolder.resolve("different.jpg").writeText("different-content")
+
+        val result = scanner.scanFolder(sourceFolder.toString())
+
+        val success = assertIs<AppResult.Success<ScanSourceFolderResult>>(result)
+        val filesByName = success.data.mediaFiles.associateBy { it.fileName }
+        assertEquals(filesByName.getValue("same-a.jpg").contentHash, filesByName.getValue("same-b.jpg").contentHash)
+        assertNotEquals(filesByName.getValue("same-a.jpg").contentHash, filesByName.getValue("different.jpg").contentHash)
     }
 
     @Test

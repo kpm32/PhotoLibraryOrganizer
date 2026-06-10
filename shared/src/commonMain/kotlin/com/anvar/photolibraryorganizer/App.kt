@@ -273,6 +273,7 @@ private suspend fun refreshLibraryFiles(
                 fileName = mediaFile.fileName,
                 targetRelativePath = mediaFile.path,
                 sizeBytes = mediaFile.sizeBytes,
+                contentHash = mediaFile.contentHash,
             )
         }
 

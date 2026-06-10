@@ -143,6 +143,28 @@ class SharedCommonTest {
     }
 
     @Test
+    fun carriesContentHashIntoImportPlan() {
+        val useCase = BuildMediaFilePlanUseCase()
+
+        val result = useCase(
+            destinationFolder = "/library-root",
+            mediaFiles = listOf(
+                ScannedMediaFile(
+                    path = "/source/IMG_0001.JPG",
+                    fileName = "IMG_0001.JPG",
+                    extension = "jpg",
+                    category = MediaFileCategory.Image,
+                    sizeBytes = 1024,
+                    modifiedAtEpochMillis = 1_735_689_600_000,
+                    contentHash = "abc123",
+                ),
+            ),
+        )
+
+        assertEquals("abc123", result.first().contentHash)
+    }
+
+    @Test
     fun importIsUnavailableBeforeScanPlanExists() {
         val useCase = ResolveImportAvailabilityUseCase()
 

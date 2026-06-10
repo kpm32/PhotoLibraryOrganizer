@@ -9,6 +9,7 @@ import com.anvar.photolibraryorganizer.domain.model.ScannedMediaFile
 import com.anvar.photolibraryorganizer.domain.model.detectMediaFileType
 import com.anvar.photolibraryorganizer.domain.repository.PhotoSourceScanner
 import java.io.IOException
+import java.security.MessageDigest
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.exists
@@ -59,6 +60,7 @@ class JvmPhotoSourceScanner : PhotoSourceScanner {
                                 sizeBytes = file.fileSize(),
                                 modifiedAtEpochMillis = file.getLastModifiedTime().toMillis(),
                                 capturedAtEpochMillis = file.readCapturedAtEpochMillis(mediaType.category),
+                                contentHash = file.sha256(),
                             )
                         }
                     }
@@ -93,6 +95,21 @@ class JvmPhotoSourceScanner : PhotoSourceScanner {
             jpegExifDateReader.readCapturedAtEpochMillis(this)
         } else {
             null
+        }
+    }
+
+    private fun Path.sha256(): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        Files.newInputStream(this).use { input ->
+            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+            while (true) {
+                val read = input.read(buffer)
+                if (read == -1) break
+                digest.update(buffer, 0, read)
+            }
+        }
+        return digest.digest().joinToString(separator = "") { byte ->
+            "%02x".format(byte)
         }
     }
 }

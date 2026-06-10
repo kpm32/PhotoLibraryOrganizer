@@ -8,4 +8,5 @@ data class ScannedMediaFile(
     val sizeBytes: Long,
     val modifiedAtEpochMillis: Long,
     val capturedAtEpochMillis: Long? = null,
+    val contentHash: String? = null,
 )

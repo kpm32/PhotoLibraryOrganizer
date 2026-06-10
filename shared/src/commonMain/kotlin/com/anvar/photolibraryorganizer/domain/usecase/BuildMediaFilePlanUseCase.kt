@@ -33,6 +33,7 @@ class BuildMediaFilePlanUseCase {
                 fileName = mediaFile.fileName,
                 targetRelativePath = "$destination/Library/$year/$year-$month/$targetFileName",
                 sizeBytes = mediaFile.sizeBytes,
+                contentHash = mediaFile.contentHash,
             )
         }
     }

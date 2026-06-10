@@ -119,7 +119,7 @@ private fun WorkspaceHeader(selectedSection: AppSection) {
                 AppSection.Years -> "Библиотека, сгруппированная по годам."
                 AppSection.Months -> "Библиотека, сгруппированная по месяцам."
                 AppSection.WithoutDate -> "Файлы, для которых пока не удалось определить дату."
-                AppSection.Duplicates -> "Поиск дубликатов будет отдельным безопасным сценарием."
+                AppSection.Duplicates -> "Файлы с одинаковым SHA-256 хэшем."
                 AppSection.Errors -> "Ошибки импорта и сканирования будут собираться здесь."
             },
             style = MaterialTheme.typography.bodyMedium,
@@ -361,7 +361,16 @@ private fun LibrarySection(
             modifier = modifier,
         )
 
-        AppSection.Duplicates,
+        AppSection.Duplicates -> GroupedMediaList(
+            title = "Дубликаты",
+            emptyText = "В библиотеке пока нет одинаковых файлов.",
+            groups = libraryFiles.duplicateGroups(),
+            imagePreviewLoader = imagePreviewLoader,
+            selectedFile = selectedFile,
+            onFileSelected = onFileSelected,
+            modifier = modifier,
+        )
+
         AppSection.Errors,
         AppSection.Import,
         -> PlaceholderPanel(
@@ -647,6 +656,17 @@ private val ImportTargetStatus.label: String
         ImportTargetStatus.Ready -> "Будет скопировано"
         ImportTargetStatus.AlreadyExists -> "Уже есть в библиотеке"
     }
+
+private fun List<PlannedMediaFile>.duplicateGroups(): Map<String, List<PlannedMediaFile>> {
+    return asSequence()
+        .filter { it.contentHash != null }
+        .groupBy { it.contentHash }
+        .values
+        .filter { it.size > 1 }
+        .sortedByDescending { it.size }
+        .mapIndexed { index, files -> "Дубликат ${index + 1}" to files.sortedBy { it.targetRelativePath } }
+        .toMap()
+}
 
 private fun scanStatusText(
     plan: PhotoLibraryPlan,
