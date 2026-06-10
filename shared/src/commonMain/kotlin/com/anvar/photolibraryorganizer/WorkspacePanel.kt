@@ -50,6 +50,7 @@ internal fun MainWorkspace(
     scanUiState: ScanUiState,
     importUiState: ImportUiState,
     libraryFiles: List<PlannedMediaFile>,
+    duplicateFiles: List<PlannedMediaFile>,
     selectedSection: AppSection,
     imagePreviewLoader: ImagePreviewLoader,
     duplicateActionMessage: String?,
@@ -97,6 +98,7 @@ internal fun MainWorkspace(
             LibrarySection(
                 selectedSection = selectedSection,
                 libraryFiles = libraryFiles,
+                duplicateFiles = duplicateFiles,
                 imagePreviewLoader = imagePreviewLoader,
                 duplicateActionMessage = duplicateActionMessage,
                 selectedFile = selectedFile,
@@ -313,6 +315,7 @@ private fun ImportAvailabilityHint(importAvailability: ImportAvailability) {
 private fun LibrarySection(
     selectedSection: AppSection,
     libraryFiles: List<PlannedMediaFile>,
+    duplicateFiles: List<PlannedMediaFile>,
     imagePreviewLoader: ImagePreviewLoader,
     duplicateActionMessage: String?,
     selectedFile: PlannedMediaFile?,
@@ -368,13 +371,13 @@ private fun LibrarySection(
         )
 
         AppSection.Duplicates -> GroupedMediaList(
-            title = "Дубликаты",
-            emptyText = "В библиотеке пока нет одинаковых файлов.",
-            groups = libraryFiles.duplicateGroups(),
+            title = if (duplicateFiles.isEmpty()) "Дубликаты" else "Карантин Duplicates",
+            emptyText = "Дубликаты и файлы в карантине пока не найдены.",
+            groups = duplicateFiles.quarantineGroups().ifEmpty { libraryFiles.duplicateGroups() },
             imagePreviewLoader = imagePreviewLoader,
             selectedFile = selectedFile,
             onFileSelected = onFileSelected,
-            actionText = "Перенести дубли в Duplicates",
+            actionText = if (libraryFiles.duplicateGroups().isEmpty()) null else "Перенести дубли в Duplicates",
             actionMessage = duplicateActionMessage,
             onActionClick = onMoveDuplicatesClick,
             modifier = modifier,
@@ -693,6 +696,17 @@ private fun List<PlannedMediaFile>.duplicateGroups(): Map<String, List<PlannedMe
         .sortedByDescending { it.size }
         .mapIndexed { index, files -> "Дубликат ${index + 1}" to files.sortedBy { it.targetRelativePath } }
         .toMap()
+}
+
+private fun List<PlannedMediaFile>.quarantineGroups(): Map<String, List<PlannedMediaFile>> {
+    return groupBy { it.quarantineGroupName() }
+        .toSortedMap()
+}
+
+private fun PlannedMediaFile.quarantineGroupName(): String {
+    val pathParts = targetRelativePath.replace('\\', '/').split('/')
+    val duplicatesIndex = pathParts.indexOfLast { it == "Duplicates" }
+    return pathParts.getOrNull(duplicatesIndex + 1)?.takeIf { it.isNotBlank() } ?: "Без группы"
 }
 
 private fun scanStatusText(

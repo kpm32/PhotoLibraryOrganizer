@@ -68,6 +68,7 @@ fun App(
         var importUiState by remember { mutableStateOf<ImportUiState>(ImportUiState.Idle) }
         var selectedFile by remember { mutableStateOf<PlannedMediaFile?>(null) }
         var libraryFiles by remember { mutableStateOf<List<PlannedMediaFile>>(emptyList()) }
+        var duplicateFiles by remember { mutableStateOf<List<PlannedMediaFile>>(emptyList()) }
         var duplicateActionMessage by remember { mutableStateOf<String?>(null) }
         var imagePreviewUiState by remember { mutableStateOf<ImagePreviewUiState>(ImagePreviewUiState.Empty) }
 
@@ -90,6 +91,10 @@ fun App(
             destinationFolder = settings.destinationFolder
             if (!settings.destinationFolder.isNullOrBlank()) {
                 libraryFiles = refreshLibraryFiles(
+                    destinationFolder = settings.destinationFolder,
+                    photoSourceScanner = photoSourceScanner,
+                )
+                duplicateFiles = refreshDuplicateFiles(
                     destinationFolder = settings.destinationFolder,
                     photoSourceScanner = photoSourceScanner,
                 )
@@ -120,6 +125,7 @@ fun App(
             scanUiState = scanUiState,
             importUiState = importUiState,
             libraryFiles = libraryFiles,
+            duplicateFiles = duplicateFiles,
             selectedSection = selectedSection,
             imagePreviewLoader = cachedImagePreviewLoader,
             duplicateActionMessage = duplicateActionMessage,
@@ -144,6 +150,7 @@ fun App(
                 duplicateActionMessage = null
                 selectedFile = null
                 libraryFiles = emptyList()
+                duplicateFiles = emptyList()
                 imagePreviewUiState = ImagePreviewUiState.Empty
             },
             onDestinationFolderClick = {
@@ -167,6 +174,10 @@ fun App(
                         destinationFolder = destinationFolder,
                         photoSourceScanner = photoSourceScanner,
                     )
+                    duplicateFiles = refreshDuplicateFiles(
+                        destinationFolder = destinationFolder,
+                        photoSourceScanner = photoSourceScanner,
+                    )
                     selectedFile = libraryFiles.firstOrNull()
                 }
                 imagePreviewUiState = ImagePreviewUiState.Empty
@@ -181,6 +192,7 @@ fun App(
                     importUiState = ImportUiState.Idle
                     duplicateActionMessage = null
                     libraryFiles = emptyList()
+                    duplicateFiles = emptyList()
                     scanUiState = try {
                         when (val result = withContext(Dispatchers.Default) { scanSourceFolderUseCase(sourceFolder) }) {
                             is AppResult.Success -> {
@@ -227,6 +239,10 @@ fun App(
                                     destinationFolder = destinationFolder,
                                     photoSourceScanner = photoSourceScanner,
                                 )
+                                duplicateFiles = refreshDuplicateFiles(
+                                    destinationFolder = destinationFolder,
+                                    photoSourceScanner = photoSourceScanner,
+                                )
                                 selectedFile = libraryFiles.firstOrNull() ?: selectedFile
                                 ImportUiState.Success(result.data)
                             }
@@ -241,6 +257,10 @@ fun App(
             onRefreshLibraryClick = {
                 coroutineScope.launch {
                     libraryFiles = refreshLibraryFiles(
+                        destinationFolder = destinationFolder,
+                        photoSourceScanner = photoSourceScanner,
+                    )
+                    duplicateFiles = refreshDuplicateFiles(
                         destinationFolder = destinationFolder,
                         photoSourceScanner = photoSourceScanner,
                     )
@@ -267,6 +287,10 @@ fun App(
                         ) {
                             is AppResult.Success -> {
                                 libraryFiles = refreshLibraryFiles(
+                                    destinationFolder = destinationFolder,
+                                    photoSourceScanner = photoSourceScanner,
+                                )
+                                duplicateFiles = refreshDuplicateFiles(
                                     destinationFolder = destinationFolder,
                                     photoSourceScanner = photoSourceScanner,
                                 )
@@ -308,7 +332,24 @@ private suspend fun refreshLibraryFiles(
     val libraryFolder = destinationFolder?.trim()?.trimEnd('/')?.let { "$it/Library" }
         ?: return emptyList()
 
-    return when (val result = photoSourceScanner.scanFolder(libraryFolder)) {
+    return refreshPlannedFiles(libraryFolder, photoSourceScanner)
+}
+
+private suspend fun refreshDuplicateFiles(
+    destinationFolder: String?,
+    photoSourceScanner: PhotoSourceScanner,
+): List<PlannedMediaFile> {
+    val duplicatesFolder = destinationFolder?.trim()?.trimEnd('/')?.let { "$it/Duplicates" }
+        ?: return emptyList()
+
+    return refreshPlannedFiles(duplicatesFolder, photoSourceScanner)
+}
+
+private suspend fun refreshPlannedFiles(
+    folder: String,
+    photoSourceScanner: PhotoSourceScanner,
+): List<PlannedMediaFile> {
+    return when (val result = photoSourceScanner.scanFolder(folder)) {
         is AppResult.Success -> result.data.mediaFiles.map { mediaFile ->
             PlannedMediaFile(
                 sourcePath = mediaFile.path,
