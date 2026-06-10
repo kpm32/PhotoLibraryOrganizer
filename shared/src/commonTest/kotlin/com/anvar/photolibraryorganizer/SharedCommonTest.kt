@@ -4,13 +4,16 @@ import com.anvar.photolibraryorganizer.domain.AppResult
 import com.anvar.photolibraryorganizer.domain.ImportMode
 import com.anvar.photolibraryorganizer.domain.PhotoLibraryError
 import com.anvar.photolibraryorganizer.domain.PhotoLibraryPlan
+import com.anvar.photolibraryorganizer.domain.model.ImportAvailability
 import com.anvar.photolibraryorganizer.domain.model.MediaFileCategory
+import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
 import com.anvar.photolibraryorganizer.domain.model.ScanSourceFolderResult
 import com.anvar.photolibraryorganizer.domain.model.ScanSourceFolderSummary
 import com.anvar.photolibraryorganizer.domain.model.ScannedMediaFile
 import com.anvar.photolibraryorganizer.domain.model.detectMediaFileType
 import com.anvar.photolibraryorganizer.domain.repository.PhotoSourceScanner
 import com.anvar.photolibraryorganizer.domain.usecase.BuildMediaFilePlanUseCase
+import com.anvar.photolibraryorganizer.domain.usecase.ResolveImportAvailabilityUseCase
 import com.anvar.photolibraryorganizer.domain.usecase.ScanSourceFolderUseCase
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -111,6 +114,51 @@ class SharedCommonTest {
         assertEquals(1, result.size)
         assertTrue(result.first().targetRelativePath.contains("/library-root/Library/2025/2025-01/"))
         assertTrue(result.first().targetRelativePath.endsWith("_IMG_0001.JPG"))
+    }
+
+    @Test
+    fun importIsUnavailableBeforeScanPlanExists() {
+        val useCase = ResolveImportAvailabilityUseCase()
+
+        val result = useCase(
+            importMode = ImportMode.Copy,
+            plannedFiles = emptyList(),
+        )
+
+        assertIs<ImportAvailability.Unavailable>(result)
+    }
+
+    @Test
+    fun importIsUnavailableInScanOnlyMode() {
+        val useCase = ResolveImportAvailabilityUseCase()
+
+        val result = useCase(
+            importMode = ImportMode.ScanOnly,
+            plannedFiles = listOf(fakePlannedMediaFile()),
+        )
+
+        assertIs<ImportAvailability.Unavailable>(result)
+    }
+
+    @Test
+    fun importIsAvailableForCopyModeWhenPlanExists() {
+        val useCase = ResolveImportAvailabilityUseCase()
+
+        val result = useCase(
+            importMode = ImportMode.Copy,
+            plannedFiles = listOf(fakePlannedMediaFile()),
+        )
+
+        assertEquals(ImportAvailability.Available, result)
+    }
+
+    private fun fakePlannedMediaFile(): PlannedMediaFile {
+        return PlannedMediaFile(
+            sourcePath = "/source/IMG_0001.JPG",
+            fileName = "IMG_0001.JPG",
+            targetRelativePath = "/library/Library/2025/2025-01/IMG_0001.JPG",
+            sizeBytes = 1024,
+        )
     }
 
     private class FakePhotoSourceScanner : PhotoSourceScanner {

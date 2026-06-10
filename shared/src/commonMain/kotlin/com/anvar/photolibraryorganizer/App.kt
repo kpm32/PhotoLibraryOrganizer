@@ -42,9 +42,11 @@ import com.anvar.photolibraryorganizer.domain.AppResult
 import com.anvar.photolibraryorganizer.domain.ImportMode
 import com.anvar.photolibraryorganizer.domain.PhotoLibraryError
 import com.anvar.photolibraryorganizer.domain.PhotoLibraryPlan
+import com.anvar.photolibraryorganizer.domain.model.ImportAvailability
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
 import com.anvar.photolibraryorganizer.domain.repository.PhotoSourceScanner
 import com.anvar.photolibraryorganizer.domain.usecase.BuildMediaFilePlanUseCase
+import com.anvar.photolibraryorganizer.domain.usecase.ResolveImportAvailabilityUseCase
 import com.anvar.photolibraryorganizer.domain.usecase.ScanSourceFolderUseCase
 import com.anvar.photolibraryorganizer.presentation.FolderPicker
 import com.anvar.photolibraryorganizer.presentation.PreviewFolderPicker
@@ -72,6 +74,7 @@ fun App(
             ScanSourceFolderUseCase(photoSourceScanner)
         }
         val buildMediaFilePlanUseCase = remember { BuildMediaFilePlanUseCase() }
+        val resolveImportAvailabilityUseCase = remember { ResolveImportAvailabilityUseCase() }
 
         val plan = PhotoLibraryPlan(
             sourceFolder = sourceFolder,
@@ -82,6 +85,10 @@ fun App(
         PhotoLibraryOrganizerApp(
             plan = plan,
             scanUiState = scanUiState,
+            importAvailability = resolveImportAvailabilityUseCase(
+                importMode = importMode,
+                plannedFiles = (scanUiState as? ScanUiState.Success)?.plannedFiles.orEmpty(),
+            ),
             onSourceFolderClick = {
                 folderPicker.chooseFolder("Выбери исходную папку")?.let { sourceFolder = it }
                 scanUiState = ScanUiState.Idle
@@ -118,6 +125,7 @@ fun App(
 private fun PhotoLibraryOrganizerApp(
     plan: PhotoLibraryPlan,
     scanUiState: ScanUiState,
+    importAvailability: ImportAvailability,
     onSourceFolderClick: () -> Unit,
     onDestinationFolderClick: () -> Unit,
     onImportModeSelected: (ImportMode) -> Unit,
@@ -133,7 +141,7 @@ private fun PhotoLibraryOrganizerApp(
                 .safeContentPadding()
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(24.dp),
+                .padding(start = 24.dp, top = 32.dp, end = 24.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             Header()
@@ -163,6 +171,7 @@ private fun PhotoLibraryOrganizerApp(
             ScanPreview(
                 plan = plan,
                 scanUiState = scanUiState,
+                importAvailability = importAvailability,
                 onScanClick = onScanClick,
             )
 
@@ -317,6 +326,7 @@ private fun ModeOption(
 private fun ScanPreview(
     plan: PhotoLibraryPlan,
     scanUiState: ScanUiState,
+    importAvailability: ImportAvailability,
     onScanClick: () -> Unit,
 ) {
     ElevatedCard(
@@ -342,7 +352,13 @@ private fun ScanPreview(
             )
             if (scanUiState is ScanUiState.Success) {
                 ScanSummaryRows(scanUiState)
+                Text(
+                    text = "Пока используем дату изменения файла. Дату съемки из EXIF подключим отдельным шагом.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 PlannedFilesPreview(scanUiState.plannedFiles)
+                ImportAvailabilityHint(importAvailability)
             }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Button(
@@ -353,12 +369,23 @@ private fun ScanPreview(
                 }
                 OutlinedButton(
                     onClick = {},
-                    enabled = false,
+                    enabled = importAvailability is ImportAvailability.Available,
                 ) {
                     Text("Импорт")
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ImportAvailabilityHint(importAvailability: ImportAvailability) {
+    if (importAvailability is ImportAvailability.Unavailable) {
+        Text(
+            text = importAvailability.reason,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
