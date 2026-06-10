@@ -24,9 +24,12 @@ import com.anvar.photolibraryorganizer.domain.usecase.ImportMediaFilesUseCase
 import com.anvar.photolibraryorganizer.domain.usecase.ResolveImportAvailabilityUseCase
 import com.anvar.photolibraryorganizer.domain.usecase.ScanSourceFolderUseCase
 import com.anvar.photolibraryorganizer.presentation.FolderPicker
+import com.anvar.photolibraryorganizer.presentation.AppSettings
+import com.anvar.photolibraryorganizer.presentation.AppSettingsStorage
 import com.anvar.photolibraryorganizer.presentation.ImagePreviewLoader
 import com.anvar.photolibraryorganizer.presentation.ImagePreviewUiState
 import com.anvar.photolibraryorganizer.presentation.ImportUiState
+import com.anvar.photolibraryorganizer.presentation.PreviewAppSettingsStorage
 import com.anvar.photolibraryorganizer.presentation.PreviewFolderPicker
 import com.anvar.photolibraryorganizer.presentation.PreviewImagePreviewLoader
 import com.anvar.photolibraryorganizer.presentation.PreviewMediaFileImporter
@@ -42,6 +45,7 @@ fun App(
     photoSourceScanner: PhotoSourceScanner = PreviewPhotoSourceScanner,
     mediaFileImporter: MediaFileImporter = PreviewMediaFileImporter,
     imagePreviewLoader: ImagePreviewLoader = PreviewImagePreviewLoader,
+    appSettingsStorage: AppSettingsStorage = PreviewAppSettingsStorage,
     folderPicker: FolderPicker = PreviewFolderPicker,
 ) {
     val colorScheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()
@@ -65,6 +69,19 @@ fun App(
         }
         val buildMediaFilePlanUseCase = remember { BuildMediaFilePlanUseCase() }
         val resolveImportAvailabilityUseCase = remember { ResolveImportAvailabilityUseCase() }
+
+        LaunchedEffect(Unit) {
+            val settings = appSettingsStorage.loadSettings()
+            sourceFolder = settings.sourceFolder
+            destinationFolder = settings.destinationFolder
+            if (!settings.destinationFolder.isNullOrBlank()) {
+                libraryFiles = refreshLibraryFiles(
+                    destinationFolder = settings.destinationFolder,
+                    photoSourceScanner = photoSourceScanner,
+                )
+                selectedFile = libraryFiles.firstOrNull()
+            }
+        }
 
         LaunchedEffect(selectedFile) {
             val file = selectedFile
@@ -94,7 +111,17 @@ fun App(
                 plannedFiles = (scanUiState as? ScanUiState.Success)?.plannedFiles.orEmpty(),
             ),
             onSourceFolderClick = {
-                folderPicker.chooseFolder("Выбери исходную папку")?.let { sourceFolder = it }
+                folderPicker.chooseFolder("Выбери исходную папку")?.let {
+                    sourceFolder = it
+                    coroutineScope.launch {
+                        appSettingsStorage.saveSettings(
+                            AppSettings(
+                                sourceFolder = sourceFolder,
+                                destinationFolder = destinationFolder,
+                            ),
+                        )
+                    }
+                }
                 scanUiState = ScanUiState.Idle
                 importUiState = ImportUiState.Idle
                 selectedFile = null
@@ -102,7 +129,17 @@ fun App(
                 imagePreviewUiState = ImagePreviewUiState.Empty
             },
             onDestinationFolderClick = {
-                folderPicker.chooseFolder("Выбери папку библиотеки")?.let { destinationFolder = it }
+                folderPicker.chooseFolder("Выбери папку библиотеки")?.let {
+                    destinationFolder = it
+                    coroutineScope.launch {
+                        appSettingsStorage.saveSettings(
+                            AppSettings(
+                                sourceFolder = sourceFolder,
+                                destinationFolder = destinationFolder,
+                            ),
+                        )
+                    }
+                }
                 scanUiState = ScanUiState.Idle
                 importUiState = ImportUiState.Idle
                 selectedFile = null
