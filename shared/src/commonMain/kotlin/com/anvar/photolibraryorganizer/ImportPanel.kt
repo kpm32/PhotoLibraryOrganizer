@@ -1,0 +1,290 @@
+package com.anvar.photolibraryorganizer
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import com.anvar.photolibraryorganizer.domain.ImportMode
+import com.anvar.photolibraryorganizer.domain.PhotoLibraryPlan
+import com.anvar.photolibraryorganizer.domain.model.ImportAvailability
+import com.anvar.photolibraryorganizer.domain.model.ImportOrganizationRules
+import com.anvar.photolibraryorganizer.presentation.ImportUiState
+import com.anvar.photolibraryorganizer.presentation.ScanUiState
+
+@Composable
+internal fun ImportPanel(
+    plan: PhotoLibraryPlan,
+    scanUiState: ScanUiState,
+    importUiState: ImportUiState,
+    importAvailability: ImportAvailability,
+    selectedMode: ImportMode,
+    onScanClick: () -> Unit,
+    onImportClick: () -> Unit,
+    onConfirmImportClick: () -> Unit,
+    onCancelImportClick: () -> Unit,
+    onImportModeSelected: (ImportMode) -> Unit,
+) {
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Text(
+                text = "Панель импорта",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            HorizontalDivider()
+            Text(
+                text = scanStatusText(plan, scanUiState),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (scanUiState is ScanUiState.Success) {
+                Text(
+                    text = "Если в JPEG есть EXIF-дата съемки, используем ее. Для остальных файлов берем дату изменения.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                ImportAvailabilityHint(importAvailability)
+            }
+            ImportStatus(importUiState)
+            ImportConfirmation(
+                importUiState = importUiState,
+                selectedMode = selectedMode,
+                onConfirmImportClick = onConfirmImportClick,
+                onCancelImportClick = onCancelImportClick,
+            )
+            ImportRulesSummary(plan.importRules)
+            ImportModeChips(
+                selectedMode = selectedMode,
+                onImportModeSelected = onImportModeSelected,
+            )
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = onScanClick,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = plan.canScan && scanUiState !is ScanUiState.Loading,
+                ) {
+                    Text(if (scanUiState is ScanUiState.Loading) "Сканирую..." else "Сканировать")
+                }
+                OutlinedButton(
+                    onClick = onImportClick,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = importAvailability is ImportAvailability.Available &&
+                        importUiState !is ImportUiState.AwaitingConfirmation &&
+                        importUiState !is ImportUiState.Loading,
+                ) {
+                    Text(if (importUiState is ImportUiState.Loading) "Импортирую..." else "Импорт")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ImportModeChips(
+    selectedMode: ImportMode,
+    onImportModeSelected: (ImportMode) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        ImportMode.entries.forEach { mode ->
+            Surface(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { onImportModeSelected(mode) },
+                shape = MaterialTheme.shapes.small,
+                color = if (mode == selectedMode) {
+                    MaterialTheme.colorScheme.primaryContainer
+                } else {
+                    MaterialTheme.colorScheme.surfaceContainer
+                },
+            ) {
+                Text(
+                    text = mode.title,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ImportStatus(importUiState: ImportUiState) {
+    val text = when (importUiState) {
+        ImportUiState.Idle -> return
+        is ImportUiState.AwaitingConfirmation -> return
+        ImportUiState.Loading -> "Выполняю импорт по выбранному режиму."
+        is ImportUiState.Success -> {
+            "Импорт завершен: скопировано ${importUiState.result.copiedFiles}, перенесено ${importUiState.result.movedFiles}, пропущено ${importUiState.result.skippedFiles}, ошибок ${importUiState.result.failedFiles}."
+        }
+        is ImportUiState.Error -> importUiState.message
+    }
+
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+@Composable
+private fun ImportConfirmation(
+    importUiState: ImportUiState,
+    selectedMode: ImportMode,
+    onConfirmImportClick: () -> Unit,
+    onCancelImportClick: () -> Unit,
+) {
+    if (importUiState !is ImportUiState.AwaitingConfirmation) return
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        shape = MaterialTheme.shapes.small,
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                text = importConfirmationText(
+                    importUiState = importUiState,
+                    selectedMode = selectedMode,
+                ),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
+                    onClick = onCancelImportClick,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text("Отмена")
+                }
+                Button(
+                    onClick = onConfirmImportClick,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text("Начать импорт")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ImportRulesSummary(importRules: ImportOrganizationRules) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        shape = MaterialTheme.shapes.small,
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                text = "Правила импорта",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+            CompactRuleRow("Папка", "${importRules.libraryFolderName}/${importRules.folderTemplate}")
+            CompactRuleRow("Имя", importRules.fileNameTemplate)
+        }
+    }
+}
+
+@Composable
+private fun CompactRuleRow(
+    label: String,
+    value: String,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun ImportAvailabilityHint(importAvailability: ImportAvailability) {
+    if (importAvailability is ImportAvailability.Unavailable) {
+        Text(
+            text = importAvailability.reason,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+private fun importConfirmationText(
+    importUiState: ImportUiState.AwaitingConfirmation,
+    selectedMode: ImportMode,
+): String {
+    val action = when (selectedMode) {
+        ImportMode.Copy -> "Будет скопировано"
+        ImportMode.Move -> "Будет перенесено"
+        ImportMode.ScanOnly -> "Будет обработано"
+    }
+    val sourceNote = when (selectedMode) {
+        ImportMode.Copy -> "Исходники останутся на месте."
+        ImportMode.Move -> "Исходники исчезнут из старой папки после успешного переноса."
+        ImportMode.ScanOnly -> "Файлы не изменяются."
+    }
+    return "$action: ${importUiState.readyFileCount}. Уже есть: ${importUiState.existingFileCount}. $sourceNote"
+}
+
+private fun scanStatusText(
+    plan: PhotoLibraryPlan,
+    scanUiState: ScanUiState,
+): String {
+    return when (scanUiState) {
+        ScanUiState.Idle -> if (plan.canScan) {
+            "Готово к безопасному сканированию. На этом шаге приложение еще не будет копировать, переносить или удалять файлы."
+        } else {
+            "Выбери исходную папку и папку библиотеки, чтобы подготовить сканирование."
+        }
+
+        ScanUiState.Loading -> "Сканирую папку и подпапки. Файлы не изменяются."
+        is ScanUiState.Success -> "Сканирование завершено. Это только статистика, импорт пока не запускался."
+        is ScanUiState.Error -> scanUiState.message
+    }
+}
