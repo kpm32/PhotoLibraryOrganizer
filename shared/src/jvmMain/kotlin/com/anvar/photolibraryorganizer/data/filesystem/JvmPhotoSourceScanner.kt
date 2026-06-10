@@ -8,8 +8,6 @@ import com.anvar.photolibraryorganizer.domain.model.ScanSourceFolderSummary
 import com.anvar.photolibraryorganizer.domain.model.ScannedMediaFile
 import com.anvar.photolibraryorganizer.domain.model.detectMediaFileType
 import com.anvar.photolibraryorganizer.domain.repository.PhotoSourceScanner
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
@@ -20,13 +18,17 @@ import kotlin.io.path.isRegularFile
 import kotlin.io.path.name
 
 class JvmPhotoSourceScanner : PhotoSourceScanner {
-    override suspend fun scanFolder(path: String): AppResult<ScanSourceFolderResult> = withContext(Dispatchers.IO) {
-        val sourcePath = Path.of(path)
+    override suspend fun scanFolder(path: String): AppResult<ScanSourceFolderResult> {
+        return try {
+            val sourcePath = Path.of(path)
 
-        when {
-            !sourcePath.exists() -> AppResult.Error(PhotoLibraryError.SourceFolderNotFound(path))
-            !sourcePath.isDirectory() -> AppResult.Error(PhotoLibraryError.SourceFolderIsNotDirectory(path))
-            else -> scanExistingDirectory(sourcePath)
+            when {
+                !sourcePath.exists() -> AppResult.Error(PhotoLibraryError.SourceFolderNotFound(path))
+                !sourcePath.isDirectory() -> AppResult.Error(PhotoLibraryError.SourceFolderIsNotDirectory(path))
+                else -> scanExistingDirectory(sourcePath)
+            }
+        } catch (exception: Throwable) {
+            AppResult.Error(PhotoLibraryError.Unknown(exception.message))
         }
     }
 

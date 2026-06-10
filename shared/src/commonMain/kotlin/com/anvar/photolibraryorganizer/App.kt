@@ -45,7 +45,9 @@ import com.anvar.photolibraryorganizer.presentation.FolderPicker
 import com.anvar.photolibraryorganizer.presentation.PreviewFolderPicker
 import com.anvar.photolibraryorganizer.presentation.PreviewPhotoSourceScanner
 import com.anvar.photolibraryorganizer.presentation.ScanUiState
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 @Preview
@@ -84,9 +86,13 @@ fun App(
             onScanClick = {
                 coroutineScope.launch {
                     scanUiState = ScanUiState.Loading
-                    scanUiState = when (val result = scanSourceFolderUseCase(sourceFolder)) {
-                        is AppResult.Success -> ScanUiState.Success(result.data.summary)
-                        is AppResult.Error -> ScanUiState.Error(result.error.toUserMessage())
+                    scanUiState = try {
+                        when (val result = withContext(Dispatchers.Default) { scanSourceFolderUseCase(sourceFolder) }) {
+                            is AppResult.Success -> ScanUiState.Success(result.data.summary)
+                            is AppResult.Error -> ScanUiState.Error(result.error.toUserMessage())
+                        }
+                    } catch (exception: Throwable) {
+                        ScanUiState.Error("Сканирование прервалось: ${exception.message ?: "без деталей"}")
                     }
                 }
             },
