@@ -26,6 +26,25 @@ class JvmFileRevealHandler : FileRevealHandler {
         }
     }
 
+    override fun open(path: String): Boolean {
+        return try {
+            val file = File(path)
+            if (!file.exists()) return false
+
+            if (Desktop.isDesktopSupported()) {
+                Desktop.getDesktop().open(file)
+                true
+            } else if (isMacOs()) {
+                ProcessBuilder("open", file.absolutePath).start()
+                true
+            } else {
+                false
+            }
+        } catch (exception: Throwable) {
+            false
+        }
+    }
+
     private fun isMacOs(): Boolean {
         return System.getProperty("os.name")
             .lowercase(Locale.ENGLISH)

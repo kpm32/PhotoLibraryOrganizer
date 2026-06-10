@@ -138,6 +138,16 @@ fun App(
             importMode = importMode,
             importRules = importRules,
         )
+        val navigationFiles = navigationFilesForSection(
+            selectedSection = selectedSection,
+            scanUiState = scanUiState,
+            libraryFiles = libraryFiles,
+            duplicateFiles = duplicateFiles,
+        )
+        val selectedFileIndex = selectedFile?.let { selected ->
+            navigationFiles.indexOfFirst { it.sourcePath == selected.sourcePath }
+        } ?: -1
+        val canNavigateSelectedFile = navigationFiles.size > 1 && selectedFileIndex >= 0
 
         PhotoLibraryOrganizerApp(
             plan = plan,
@@ -464,8 +474,33 @@ fun App(
             onClearIssuesClick = { issues = emptyList() },
             onSectionSelected = { selectedSection = it },
             selectedFile = selectedFile,
+            selectedFileIndex = selectedFileIndex,
+            navigationFileCount = navigationFiles.size,
             imagePreviewUiState = imagePreviewUiState,
-            onRevealFileClick = { selectedFile?.sourcePath?.let(fileRevealHandler::reveal) },
+            onOpenFileClick = {
+                selectedFile?.sourcePath?.let { path ->
+                    if (!fileRevealHandler.open(path)) {
+                        addIssue("Просмотр", "Не удалось открыть файл: $path")
+                    }
+                }
+            },
+            onRevealFileClick = {
+                selectedFile?.sourcePath?.let { path ->
+                    if (!fileRevealHandler.reveal(path)) {
+                        addIssue("Просмотр", "Не удалось показать файл в Finder: $path")
+                    }
+                }
+            },
+            onPreviousFileClick = {
+                if (canNavigateSelectedFile) {
+                    selectedFile = navigationFiles.nextFrom(selectedFileIndex, step = -1)
+                }
+            },
+            onNextFileClick = {
+                if (canNavigateSelectedFile) {
+                    selectedFile = navigationFiles.nextFrom(selectedFileIndex, step = 1)
+                }
+            },
             onFileSelected = { selectedFile = it },
         )
     }
@@ -529,4 +564,37 @@ private fun List<PlannedMediaFile>.duplicateQuarantineCandidates(): List<Planned
         .values
         .filter { it.size > 1 }
         .flatMap { files -> files.sortedBy { it.targetRelativePath }.drop(1) }
+}
+
+private fun navigationFilesForSection(
+    selectedSection: AppSection,
+    scanUiState: ScanUiState,
+    libraryFiles: List<PlannedMediaFile>,
+    duplicateFiles: List<PlannedMediaFile>,
+): List<PlannedMediaFile> {
+    return when (selectedSection) {
+        AppSection.Import -> (scanUiState as? ScanUiState.Success)?.plannedFiles.orEmpty()
+        AppSection.AllPhotos,
+        AppSection.Years,
+        AppSection.Months -> libraryFiles
+
+        AppSection.WithoutDate -> libraryFiles.filter { it.libraryDateGroup() == null }
+        AppSection.Duplicates -> buildDuplicateReviewGroups(
+            libraryFiles = libraryFiles,
+            duplicateFiles = duplicateFiles,
+        ).flatMap { group -> group.libraryFiles + group.duplicateFiles }
+        AppSection.Errors -> emptyList()
+    }
+}
+
+private fun List<PlannedMediaFile>.nextFrom(
+    selectedIndex: Int,
+    step: Int,
+): PlannedMediaFile {
+    val nextIndex = (selectedIndex + step).floorMod(size)
+    return this[nextIndex]
+}
+
+private fun Int.floorMod(size: Int): Int {
+    return ((this % size) + size) % size
 }

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -34,8 +35,13 @@ internal fun InspectorPanel(
     plan: PhotoLibraryPlan,
     scanUiState: ScanUiState,
     selectedFile: PlannedMediaFile?,
+    selectedFileIndex: Int,
+    navigationFileCount: Int,
     imagePreviewUiState: ImagePreviewUiState,
+    onOpenFileClick: () -> Unit,
     onRevealFileClick: () -> Unit,
+    onPreviousFileClick: () -> Unit,
+    onNextFileClick: () -> Unit,
     onSourceFolderClick: () -> Unit,
     onDestinationFolderClick: () -> Unit,
     onRefreshLibraryClick: () -> Unit,
@@ -60,8 +66,13 @@ internal fun InspectorPanel(
             )
             SelectedFilePreview(
                 selectedFile = selectedFile,
+                selectedFileIndex = selectedFileIndex,
+                navigationFileCount = navigationFileCount,
                 imagePreviewUiState = imagePreviewUiState,
+                onOpenFileClick = onOpenFileClick,
                 onRevealFileClick = onRevealFileClick,
+                onPreviousFileClick = onPreviousFileClick,
+                onNextFileClick = onNextFileClick,
             )
             HorizontalDivider()
             FolderSelector(
@@ -118,8 +129,13 @@ private fun FolderSelector(
 @Composable
 private fun SelectedFilePreview(
     selectedFile: PlannedMediaFile?,
+    selectedFileIndex: Int,
+    navigationFileCount: Int,
     imagePreviewUiState: ImagePreviewUiState,
+    onOpenFileClick: () -> Unit,
     onRevealFileClick: () -> Unit,
+    onPreviousFileClick: () -> Unit,
+    onNextFileClick: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Box(
@@ -144,6 +160,12 @@ private fun SelectedFilePreview(
             }
         }
         if (selectedFile != null) {
+            FileNavigationControls(
+                selectedFileIndex = selectedFileIndex,
+                navigationFileCount = navigationFileCount,
+                onPreviousFileClick = onPreviousFileClick,
+                onNextFileClick = onNextFileClick,
+            )
             SummaryRow("Файл", selectedFile.fileName)
             SummaryRow("Размер", selectedFile.sizeBytes.toReadableSize())
             SummaryRow("Дата", selectedFile.libraryDateLabel())
@@ -153,11 +175,62 @@ private fun SelectedFilePreview(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            OutlinedButton(
-                onClick = onRevealFileClick,
+            Row(
                 modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text("Показать в Finder")
+                Button(
+                    onClick = onOpenFileClick,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text("Открыть")
+                }
+                OutlinedButton(
+                    onClick = onRevealFileClick,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text("Finder")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FileNavigationControls(
+    selectedFileIndex: Int,
+    navigationFileCount: Int,
+    onPreviousFileClick: () -> Unit,
+    onNextFileClick: () -> Unit,
+) {
+    val canNavigate = navigationFileCount > 1 && selectedFileIndex >= 0
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = if (selectedFileIndex >= 0 && navigationFileCount > 0) {
+                "${selectedFileIndex + 1} из $navigationFileCount"
+            } else {
+                "Файл выбран"
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            OutlinedButton(
+                onClick = onPreviousFileClick,
+                modifier = Modifier.weight(1f),
+                enabled = canNavigate,
+            ) {
+                Text("Назад")
+            }
+            OutlinedButton(
+                onClick = onNextFileClick,
+                modifier = Modifier.weight(1f),
+                enabled = canNavigate,
+            ) {
+                Text("Вперед")
             }
         }
     }
