@@ -22,6 +22,10 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -403,6 +407,11 @@ private fun GroupedMediaList(
     onFileSelected: (PlannedMediaFile) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val groupTitles = groups.keys.toList()
+    var selectedGroup by remember(title, groupTitles) { mutableStateOf(groupTitles.firstOrNull()) }
+    val activeGroup = selectedGroup?.takeIf { groups.containsKey(it) } ?: groupTitles.firstOrNull()
+    val activeFiles = activeGroup?.let { groups.getValue(it) }.orEmpty()
+
     ElevatedCard(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.elevatedCardColors(
@@ -422,28 +431,62 @@ private fun GroupedMediaList(
             if (groups.isEmpty()) {
                 EmptyListText(emptyText)
             } else {
-                LazyColumn(
+                Row(
                     modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    groups.forEach { (groupTitle, files) ->
-                        item(key = "header-$groupTitle") {
-                            Text(
-                                text = "$groupTitle · ${files.size}",
-                                modifier = Modifier.padding(top = 6.dp, bottom = 2.dp),
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        items(files, key = { it.sourcePath }) { plannedFile ->
-                            MediaListRow(
-                                plannedFile = plannedFile,
-                                selected = plannedFile == selectedFile,
-                                onClick = { onFileSelected(plannedFile) },
-                            )
-                        }
-                    }
+                    GroupSelector(
+                        groups = groups,
+                        selectedGroup = activeGroup,
+                        onGroupSelected = { selectedGroup = it },
+                    )
+                    MediaRows(
+                        files = activeFiles,
+                        selectedFile = selectedFile,
+                        onFileSelected = onFileSelected,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GroupSelector(
+    groups: Map<String, List<PlannedMediaFile>>,
+    selectedGroup: String?,
+    onGroupSelected: (String) -> Unit,
+) {
+    LazyColumn(
+        modifier = Modifier
+            .width(150.dp)
+            .fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        items(groups.entries.toList(), key = { it.key }) { group ->
+            val selected = group.key == selectedGroup
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onGroupSelected(group.key) },
+                color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
+                shape = MaterialTheme.shapes.small,
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = group.key,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                    )
+                    Text(
+                        text = group.value.size.toString(),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
         }
