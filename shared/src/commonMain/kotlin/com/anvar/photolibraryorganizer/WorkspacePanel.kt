@@ -56,6 +56,8 @@ internal fun MainWorkspace(
     selectedMode: ImportMode,
     onScanClick: () -> Unit,
     onImportClick: () -> Unit,
+    onConfirmImportClick: () -> Unit,
+    onCancelImportClick: () -> Unit,
     onImportModeSelected: (ImportMode) -> Unit,
     onFileSelected: (PlannedMediaFile) -> Unit,
     modifier: Modifier = Modifier,
@@ -74,6 +76,8 @@ internal fun MainWorkspace(
                 selectedMode = selectedMode,
                 onScanClick = onScanClick,
                 onImportClick = onImportClick,
+                onConfirmImportClick = onConfirmImportClick,
+                onCancelImportClick = onCancelImportClick,
                 onImportModeSelected = onImportModeSelected,
             )
             MediaList(
@@ -132,6 +136,8 @@ private fun ScanPreview(
     selectedMode: ImportMode,
     onScanClick: () -> Unit,
     onImportClick: () -> Unit,
+    onConfirmImportClick: () -> Unit,
+    onCancelImportClick: () -> Unit,
     onImportModeSelected: (ImportMode) -> Unit,
 ) {
     ElevatedCard(
@@ -164,6 +170,11 @@ private fun ScanPreview(
                 ImportAvailabilityHint(importAvailability)
             }
             ImportStatus(importUiState)
+            ImportConfirmation(
+                importUiState = importUiState,
+                onConfirmImportClick = onConfirmImportClick,
+                onCancelImportClick = onCancelImportClick,
+            )
             ImportModeChips(
                 selectedMode = selectedMode,
                 onImportModeSelected = onImportModeSelected,
@@ -180,6 +191,7 @@ private fun ScanPreview(
                     onClick = onImportClick,
                     modifier = Modifier.fillMaxWidth(),
                     enabled = importAvailability is ImportAvailability.Available &&
+                        importUiState !is ImportUiState.AwaitingConfirmation &&
                         importUiState !is ImportUiState.Loading,
                 ) {
                     Text(if (importUiState is ImportUiState.Loading) "Импортирую..." else "Импорт")
@@ -226,6 +238,7 @@ private fun ImportModeChips(
 private fun ImportStatus(importUiState: ImportUiState) {
     val text = when (importUiState) {
         ImportUiState.Idle -> return
+        is ImportUiState.AwaitingConfirmation -> return
         ImportUiState.Loading -> "Копирую файлы в библиотеку. Исходники не удаляются."
         is ImportUiState.Success -> {
             "Импорт завершен: скопировано ${importUiState.result.copiedFiles}, пропущено ${importUiState.result.skippedFiles}, ошибок ${importUiState.result.failedFiles}."
@@ -238,6 +251,46 @@ private fun ImportStatus(importUiState: ImportUiState) {
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
+}
+
+@Composable
+private fun ImportConfirmation(
+    importUiState: ImportUiState,
+    onConfirmImportClick: () -> Unit,
+    onCancelImportClick: () -> Unit,
+) {
+    if (importUiState !is ImportUiState.AwaitingConfirmation) return
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        shape = MaterialTheme.shapes.small,
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                text = "Готово к импорту: ${importUiState.fileCount} файлов. Исходники не удаляются.",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
+                    onClick = onCancelImportClick,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text("Отмена")
+                }
+                Button(
+                    onClick = onConfirmImportClick,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text("Начать импорт")
+                }
+            }
+        }
+    }
 }
 
 @Composable

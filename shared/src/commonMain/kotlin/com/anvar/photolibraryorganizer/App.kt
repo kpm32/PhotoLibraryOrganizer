@@ -187,6 +187,13 @@ fun App(
                 }
             },
             onImportClick = {
+                val plannedFiles = (scanUiState as? ScanUiState.Success)?.plannedFiles.orEmpty()
+                importUiState = ImportUiState.AwaitingConfirmation(plannedFiles.size)
+            },
+            onCancelImportClick = {
+                importUiState = ImportUiState.Idle
+            },
+            onConfirmImportClick = {
                 coroutineScope.launch {
                     val plannedFiles = (scanUiState as? ScanUiState.Success)?.plannedFiles.orEmpty()
                     importUiState = ImportUiState.Loading

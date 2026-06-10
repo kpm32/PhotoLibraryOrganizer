@@ -4,6 +4,7 @@ import com.anvar.photolibraryorganizer.domain.model.ImportMediaFilesResult
 
 sealed interface ImportUiState {
     data object Idle : ImportUiState
+    data class AwaitingConfirmation(val fileCount: Int) : ImportUiState
     data object Loading : ImportUiState
     data class Success(val result: ImportMediaFilesResult) : ImportUiState
     data class Error(val message: String) : ImportUiState
