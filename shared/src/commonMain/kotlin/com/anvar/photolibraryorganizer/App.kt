@@ -2,6 +2,7 @@ package com.anvar.photolibraryorganizer
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,6 +32,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,6 +40,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -54,7 +57,10 @@ import com.anvar.photolibraryorganizer.domain.usecase.ImportMediaFilesUseCase
 import com.anvar.photolibraryorganizer.domain.usecase.ResolveImportAvailabilityUseCase
 import com.anvar.photolibraryorganizer.domain.usecase.ScanSourceFolderUseCase
 import com.anvar.photolibraryorganizer.presentation.FolderPicker
+import com.anvar.photolibraryorganizer.presentation.ImagePreviewLoader
+import com.anvar.photolibraryorganizer.presentation.ImagePreviewUiState
 import com.anvar.photolibraryorganizer.presentation.ImportUiState
+import com.anvar.photolibraryorganizer.presentation.PreviewImagePreviewLoader
 import com.anvar.photolibraryorganizer.presentation.PreviewFolderPicker
 import com.anvar.photolibraryorganizer.presentation.PreviewMediaFileImporter
 import com.anvar.photolibraryorganizer.presentation.PreviewPhotoSourceScanner
@@ -68,6 +74,7 @@ import kotlinx.coroutines.withContext
 fun App(
     photoSourceScanner: PhotoSourceScanner = PreviewPhotoSourceScanner,
     mediaFileImporter: MediaFileImporter = PreviewMediaFileImporter,
+    imagePreviewLoader: ImagePreviewLoader = PreviewImagePreviewLoader,
     folderPicker: FolderPicker = PreviewFolderPicker,
 ) {
     val colorScheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()
@@ -79,6 +86,7 @@ fun App(
         var scanUiState by remember { mutableStateOf<ScanUiState>(ScanUiState.Idle) }
         var importUiState by remember { mutableStateOf<ImportUiState>(ImportUiState.Idle) }
         var selectedFile by remember { mutableStateOf<PlannedMediaFile?>(null) }
+        var imagePreviewUiState by remember { mutableStateOf<ImagePreviewUiState>(ImagePreviewUiState.Empty) }
         val coroutineScope = rememberCoroutineScope()
         val scanSourceFolderUseCase = remember(photoSourceScanner) {
             ScanSourceFolderUseCase(photoSourceScanner)
@@ -88,6 +96,18 @@ fun App(
         }
         val buildMediaFilePlanUseCase = remember { BuildMediaFilePlanUseCase() }
         val resolveImportAvailabilityUseCase = remember { ResolveImportAvailabilityUseCase() }
+
+        LaunchedEffect(selectedFile) {
+            val file = selectedFile
+            imagePreviewUiState = if (file == null) {
+                ImagePreviewUiState.Empty
+            } else {
+                imagePreviewUiState = ImagePreviewUiState.Loading
+                imagePreviewLoader.loadImage(file.sourcePath)?.let { image ->
+                    ImagePreviewUiState.Success(image)
+                } ?: ImagePreviewUiState.Unsupported
+            }
+        }
 
         val plan = PhotoLibraryPlan(
             sourceFolder = sourceFolder,
@@ -108,12 +128,14 @@ fun App(
                 scanUiState = ScanUiState.Idle
                 importUiState = ImportUiState.Idle
                 selectedFile = null
+                imagePreviewUiState = ImagePreviewUiState.Empty
             },
             onDestinationFolderClick = {
                 folderPicker.chooseFolder("Выбери папку библиотеки")?.let { destinationFolder = it }
                 scanUiState = ScanUiState.Idle
                 importUiState = ImportUiState.Idle
                 selectedFile = null
+                imagePreviewUiState = ImagePreviewUiState.Empty
             },
             onImportModeSelected = {
                 importMode = it
@@ -158,6 +180,7 @@ fun App(
                 }
             },
             selectedFile = selectedFile,
+            imagePreviewUiState = imagePreviewUiState,
             onFileSelected = { selectedFile = it },
         )
     }
@@ -175,6 +198,7 @@ private fun PhotoLibraryOrganizerApp(
     onScanClick: () -> Unit,
     onImportClick: () -> Unit,
     selectedFile: PlannedMediaFile?,
+    imagePreviewUiState: ImagePreviewUiState,
     onFileSelected: (PlannedMediaFile) -> Unit,
 ) {
     Surface(
@@ -205,6 +229,7 @@ private fun PhotoLibraryOrganizerApp(
                 plan = plan,
                 scanUiState = scanUiState,
                 selectedFile = selectedFile,
+                imagePreviewUiState = imagePreviewUiState,
                 onSourceFolderClick = onSourceFolderClick,
                 onDestinationFolderClick = onDestinationFolderClick,
                 selectedMode = plan.importMode,
@@ -323,6 +348,7 @@ private fun InspectorPanel(
     plan: PhotoLibraryPlan,
     scanUiState: ScanUiState,
     selectedFile: PlannedMediaFile?,
+    imagePreviewUiState: ImagePreviewUiState,
     onSourceFolderClick: () -> Unit,
     onDestinationFolderClick: () -> Unit,
     selectedMode: ImportMode,
@@ -346,7 +372,10 @@ private fun InspectorPanel(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )
-            SelectedFilePreview(selectedFile)
+            SelectedFilePreview(
+                selectedFile = selectedFile,
+                imagePreviewUiState = imagePreviewUiState,
+            )
             HorizontalDivider()
             FolderSelector(
                 title = "Источник",
@@ -631,7 +660,10 @@ private fun MediaListRow(
 }
 
 @Composable
-private fun SelectedFilePreview(selectedFile: PlannedMediaFile?) {
+private fun SelectedFilePreview(
+    selectedFile: PlannedMediaFile?,
+    imagePreviewUiState: ImagePreviewUiState,
+) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Box(
             modifier = Modifier
@@ -640,11 +672,19 @@ private fun SelectedFilePreview(selectedFile: PlannedMediaFile?) {
                 .background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.medium),
             contentAlignment = Alignment.Center,
         ) {
-            Text(
-                text = selectedFile?.fileName ?: "Фото не выбрано",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            when (imagePreviewUiState) {
+                ImagePreviewUiState.Empty -> PreviewPlaceholder("Фото не выбрано")
+                ImagePreviewUiState.Loading -> PreviewPlaceholder("Загружаю превью...")
+                ImagePreviewUiState.Unsupported -> PreviewPlaceholder("Превью пока недоступно")
+                is ImagePreviewUiState.Success -> {
+                    Image(
+                        bitmap = imagePreviewUiState.image,
+                        contentDescription = selectedFile?.fileName,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit,
+                    )
+                }
+            }
         }
         if (selectedFile != null) {
             SummaryRow("Файл", selectedFile.fileName)
@@ -656,6 +696,15 @@ private fun SelectedFilePreview(selectedFile: PlannedMediaFile?) {
             )
         }
     }
+}
+
+@Composable
+private fun PreviewPlaceholder(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
 
 @Composable
