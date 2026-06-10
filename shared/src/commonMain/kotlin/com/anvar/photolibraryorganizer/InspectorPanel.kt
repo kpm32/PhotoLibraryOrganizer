@@ -35,6 +35,7 @@ internal fun InspectorPanel(
     scanUiState: ScanUiState,
     selectedFile: PlannedMediaFile?,
     imagePreviewUiState: ImagePreviewUiState,
+    onRevealFileClick: () -> Unit,
     onSourceFolderClick: () -> Unit,
     onDestinationFolderClick: () -> Unit,
     onRefreshLibraryClick: () -> Unit,
@@ -60,6 +61,7 @@ internal fun InspectorPanel(
             SelectedFilePreview(
                 selectedFile = selectedFile,
                 imagePreviewUiState = imagePreviewUiState,
+                onRevealFileClick = onRevealFileClick,
             )
             HorizontalDivider()
             FolderSelector(
@@ -117,6 +119,7 @@ private fun FolderSelector(
 private fun SelectedFilePreview(
     selectedFile: PlannedMediaFile?,
     imagePreviewUiState: ImagePreviewUiState,
+    onRevealFileClick: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Box(
@@ -143,11 +146,19 @@ private fun SelectedFilePreview(
         if (selectedFile != null) {
             SummaryRow("Файл", selectedFile.fileName)
             SummaryRow("Размер", selectedFile.sizeBytes.toReadableSize())
+            SummaryRow("Дата", selectedFile.libraryDateLabel())
+            SummaryRow("SHA-256", selectedFile.contentHash?.take(12) ?: "Нет")
             Text(
                 text = selectedFile.targetRelativePath,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            OutlinedButton(
+                onClick = onRevealFileClick,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Показать в Finder")
+            }
         }
     }
 }
@@ -194,4 +205,12 @@ private fun SummaryRow(
             fontWeight = FontWeight.SemiBold,
         )
     }
+}
+
+private fun PlannedMediaFile.libraryDateLabel(): String {
+    val normalizedPath = targetRelativePath.replace('\\', '/')
+    val libraryPart = normalizedPath.substringAfter("Library/", missingDelimiterValue = "")
+    val parts = libraryPart.split('/')
+    val month = parts.getOrNull(1)
+    return month?.takeIf { it.length == 7 } ?: "Не определена"
 }

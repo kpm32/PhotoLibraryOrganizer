@@ -6,6 +6,7 @@ import com.anvar.photolibraryorganizer.data.filesystem.JvmImportPlanTargetResolv
 import com.anvar.photolibraryorganizer.data.filesystem.JvmMediaFileImporter
 import com.anvar.photolibraryorganizer.data.filesystem.JvmPhotoSourceScanner
 import com.anvar.photolibraryorganizer.presentation.JvmAppSettingsStorage
+import com.anvar.photolibraryorganizer.presentation.JvmFileRevealHandler
 import com.anvar.photolibraryorganizer.presentation.JvmImagePreviewLoader
 import com.anvar.photolibraryorganizer.presentation.NativeFolderPicker
 import androidx.compose.ui.window.Window
@@ -29,6 +30,7 @@ fun main() {
                 imagePreviewLoader = JvmImagePreviewLoader(),
                 appSettingsStorage = JvmAppSettingsStorage(),
                 folderPicker = NativeFolderPicker(),
+                fileRevealHandler = JvmFileRevealHandler(),
             )
         }
     }

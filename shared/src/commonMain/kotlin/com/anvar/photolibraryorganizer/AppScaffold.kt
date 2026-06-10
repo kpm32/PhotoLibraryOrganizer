@@ -54,6 +54,7 @@ internal fun PhotoLibraryOrganizerApp(
     onCancelImportClick: () -> Unit,
     selectedFile: PlannedMediaFile?,
     imagePreviewUiState: ImagePreviewUiState,
+    onRevealFileClick: () -> Unit,
     onFileSelected: (PlannedMediaFile) -> Unit,
 ) {
     Surface(
@@ -102,6 +103,7 @@ internal fun PhotoLibraryOrganizerApp(
                 scanUiState = scanUiState,
                 selectedFile = selectedFile,
                 imagePreviewUiState = imagePreviewUiState,
+                onRevealFileClick = onRevealFileClick,
                 onSourceFolderClick = onSourceFolderClick,
                 onDestinationFolderClick = onDestinationFolderClick,
                 onRefreshLibraryClick = onRefreshLibraryClick,

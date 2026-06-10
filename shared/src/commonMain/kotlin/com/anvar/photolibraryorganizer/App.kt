@@ -31,11 +31,13 @@ import com.anvar.photolibraryorganizer.presentation.AppSettings
 import com.anvar.photolibraryorganizer.presentation.AppSettingsStorage
 import com.anvar.photolibraryorganizer.presentation.AppSection
 import com.anvar.photolibraryorganizer.presentation.CachingImagePreviewLoader
+import com.anvar.photolibraryorganizer.presentation.FileRevealHandler
 import com.anvar.photolibraryorganizer.presentation.ImagePreviewLoader
 import com.anvar.photolibraryorganizer.presentation.ImagePreviewUiState
 import com.anvar.photolibraryorganizer.presentation.ImportUiState
 import com.anvar.photolibraryorganizer.presentation.PreviewDuplicateQuarantineRepository
 import com.anvar.photolibraryorganizer.presentation.PreviewAppSettingsStorage
+import com.anvar.photolibraryorganizer.presentation.PreviewFileRevealHandler
 import com.anvar.photolibraryorganizer.presentation.PreviewFolderPicker
 import com.anvar.photolibraryorganizer.presentation.PreviewImportPlanTargetResolver
 import com.anvar.photolibraryorganizer.presentation.PreviewImagePreviewLoader
@@ -56,6 +58,7 @@ fun App(
     imagePreviewLoader: ImagePreviewLoader = PreviewImagePreviewLoader,
     appSettingsStorage: AppSettingsStorage = PreviewAppSettingsStorage,
     folderPicker: FolderPicker = PreviewFolderPicker,
+    fileRevealHandler: FileRevealHandler = PreviewFileRevealHandler,
 ) {
     val colorScheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()
 
@@ -370,6 +373,7 @@ fun App(
             onSectionSelected = { selectedSection = it },
             selectedFile = selectedFile,
             imagePreviewUiState = imagePreviewUiState,
+            onRevealFileClick = { selectedFile?.sourcePath?.let(fileRevealHandler::reveal) },
             onFileSelected = { selectedFile = it },
         )
     }
