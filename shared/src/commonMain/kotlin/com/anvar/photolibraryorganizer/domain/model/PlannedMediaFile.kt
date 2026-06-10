@@ -5,4 +5,5 @@ data class PlannedMediaFile(
     val fileName: String,
     val targetRelativePath: String,
     val sizeBytes: Long,
+    val targetStatus: ImportTargetStatus = ImportTargetStatus.NotChecked,
 )

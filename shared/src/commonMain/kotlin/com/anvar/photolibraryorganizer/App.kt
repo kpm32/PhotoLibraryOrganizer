@@ -16,8 +16,10 @@ import com.anvar.photolibraryorganizer.domain.AppResult
 import com.anvar.photolibraryorganizer.domain.ImportMode
 import com.anvar.photolibraryorganizer.domain.PhotoLibraryError
 import com.anvar.photolibraryorganizer.domain.PhotoLibraryPlan
+import com.anvar.photolibraryorganizer.domain.model.ImportTargetStatus
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
 import com.anvar.photolibraryorganizer.domain.repository.MediaFileImporter
+import com.anvar.photolibraryorganizer.domain.repository.ImportPlanTargetResolver
 import com.anvar.photolibraryorganizer.domain.repository.PhotoSourceScanner
 import com.anvar.photolibraryorganizer.domain.usecase.BuildMediaFilePlanUseCase
 import com.anvar.photolibraryorganizer.domain.usecase.ImportMediaFilesUseCase
@@ -33,6 +35,7 @@ import com.anvar.photolibraryorganizer.presentation.ImagePreviewUiState
 import com.anvar.photolibraryorganizer.presentation.ImportUiState
 import com.anvar.photolibraryorganizer.presentation.PreviewAppSettingsStorage
 import com.anvar.photolibraryorganizer.presentation.PreviewFolderPicker
+import com.anvar.photolibraryorganizer.presentation.PreviewImportPlanTargetResolver
 import com.anvar.photolibraryorganizer.presentation.PreviewImagePreviewLoader
 import com.anvar.photolibraryorganizer.presentation.PreviewMediaFileImporter
 import com.anvar.photolibraryorganizer.presentation.PreviewPhotoSourceScanner
@@ -46,6 +49,7 @@ import kotlinx.coroutines.withContext
 fun App(
     photoSourceScanner: PhotoSourceScanner = PreviewPhotoSourceScanner,
     mediaFileImporter: MediaFileImporter = PreviewMediaFileImporter,
+    importPlanTargetResolver: ImportPlanTargetResolver = PreviewImportPlanTargetResolver,
     imagePreviewLoader: ImagePreviewLoader = PreviewImagePreviewLoader,
     appSettingsStorage: AppSettingsStorage = PreviewAppSettingsStorage,
     folderPicker: FolderPicker = PreviewFolderPicker,
@@ -171,13 +175,17 @@ fun App(
                     libraryFiles = emptyList()
                     scanUiState = try {
                         when (val result = withContext(Dispatchers.Default) { scanSourceFolderUseCase(sourceFolder) }) {
-                            is AppResult.Success -> ScanUiState.Success(
-                                summary = result.data.summary,
-                                plannedFiles = buildMediaFilePlanUseCase(
+                            is AppResult.Success -> {
+                                val plannedFiles = buildMediaFilePlanUseCase(
                                     destinationFolder = destinationFolder,
                                     mediaFiles = result.data.mediaFiles,
-                                ),
-                            ).also { selectedFile = it.plannedFiles.firstOrNull() }
+                                )
+                                val resolvedFiles = importPlanTargetResolver.resolve(plannedFiles)
+                                ScanUiState.Success(
+                                    summary = result.data.summary,
+                                    plannedFiles = resolvedFiles,
+                                ).also { selectedFile = it.plannedFiles.firstOrNull() }
+                            }
 
                             is AppResult.Error -> ScanUiState.Error(result.error.toUserMessage())
                         }
@@ -188,7 +196,10 @@ fun App(
             },
             onImportClick = {
                 val plannedFiles = (scanUiState as? ScanUiState.Success)?.plannedFiles.orEmpty()
-                importUiState = ImportUiState.AwaitingConfirmation(plannedFiles.size)
+                importUiState = ImportUiState.AwaitingConfirmation(
+                    readyFileCount = plannedFiles.count { it.targetStatus != ImportTargetStatus.AlreadyExists },
+                    existingFileCount = plannedFiles.count { it.targetStatus == ImportTargetStatus.AlreadyExists },
+                )
             },
             onCancelImportClick = {
                 importUiState = ImportUiState.Idle

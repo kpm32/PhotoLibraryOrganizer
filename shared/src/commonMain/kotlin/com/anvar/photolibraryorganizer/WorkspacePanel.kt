@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import com.anvar.photolibraryorganizer.domain.ImportMode
 import com.anvar.photolibraryorganizer.domain.PhotoLibraryPlan
 import com.anvar.photolibraryorganizer.domain.model.ImportAvailability
+import com.anvar.photolibraryorganizer.domain.model.ImportTargetStatus
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
 import com.anvar.photolibraryorganizer.presentation.ImportUiState
 import com.anvar.photolibraryorganizer.presentation.AppSection
@@ -271,7 +272,7 @@ private fun ImportConfirmation(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Text(
-                text = "Готово к импорту: ${importUiState.fileCount} файлов. Исходники не удаляются.",
+                text = "Будет скопировано: ${importUiState.readyFileCount}. Уже есть: ${importUiState.existingFileCount}. Исходники не удаляются.",
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
             )
@@ -624,6 +625,12 @@ private fun MediaListRow(
                     maxLines = 1,
                 )
                 Text(
+                    text = plannedFile.targetStatus.label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
+                Text(
                     text = plannedFile.targetRelativePath,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -633,6 +640,13 @@ private fun MediaListRow(
         }
     }
 }
+
+private val ImportTargetStatus.label: String
+    get() = when (this) {
+        ImportTargetStatus.NotChecked -> "Цель не проверена"
+        ImportTargetStatus.Ready -> "Будет скопировано"
+        ImportTargetStatus.AlreadyExists -> "Уже есть в библиотеке"
+    }
 
 private fun scanStatusText(
     plan: PhotoLibraryPlan,
