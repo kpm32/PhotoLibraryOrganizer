@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
@@ -110,6 +112,7 @@ private fun PhotoLibraryOrganizerApp(
                 .background(MaterialTheme.colorScheme.surface)
                 .safeContentPadding()
                 .fillMaxSize()
+                .verticalScroll(rememberScrollState())
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
@@ -137,15 +140,15 @@ private fun PhotoLibraryOrganizerApp(
                 )
             }
 
-            ImportModeSelector(
-                selectedMode = plan.importMode,
-                onImportModeSelected = onImportModeSelected,
-            )
-
             ScanPreview(
                 plan = plan,
                 scanUiState = scanUiState,
                 onScanClick = onScanClick,
+            )
+
+            ImportModeSelector(
+                selectedMode = plan.importMode,
+                onImportModeSelected = onImportModeSelected,
             )
         }
     }
