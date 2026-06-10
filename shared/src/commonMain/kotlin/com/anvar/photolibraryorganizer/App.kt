@@ -35,6 +35,7 @@ import com.anvar.photolibraryorganizer.presentation.CachingImagePreviewLoader
 import com.anvar.photolibraryorganizer.presentation.FileRevealHandler
 import com.anvar.photolibraryorganizer.presentation.ImagePreviewLoader
 import com.anvar.photolibraryorganizer.presentation.ImagePreviewUiState
+import com.anvar.photolibraryorganizer.presentation.ImportReport
 import com.anvar.photolibraryorganizer.presentation.ImportUiState
 import com.anvar.photolibraryorganizer.presentation.PreviewDuplicateQuarantineRepository
 import com.anvar.photolibraryorganizer.presentation.PreviewAppSettingsStorage
@@ -48,6 +49,7 @@ import com.anvar.photolibraryorganizer.presentation.ScanUiState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.time.Clock
 
 @Composable
 @Preview
@@ -70,6 +72,7 @@ fun App(
         var selectedSection by remember { mutableStateOf(AppSection.AllPhotos) }
         var scanUiState by remember { mutableStateOf<ScanUiState>(ScanUiState.Idle) }
         var importUiState by remember { mutableStateOf<ImportUiState>(ImportUiState.Idle) }
+        var lastImportReport by remember { mutableStateOf<ImportReport?>(null) }
         var selectedFile by remember { mutableStateOf<PlannedMediaFile?>(null) }
         var libraryFiles by remember { mutableStateOf<List<PlannedMediaFile>>(emptyList()) }
         var duplicateFiles by remember { mutableStateOf<List<PlannedMediaFile>>(emptyList()) }
@@ -136,6 +139,7 @@ fun App(
             plan = plan,
             scanUiState = scanUiState,
             importUiState = importUiState,
+            lastImportReport = lastImportReport,
             libraryFiles = libraryFiles,
             duplicateFiles = duplicateFiles,
             selectedSection = selectedSection,
@@ -161,6 +165,7 @@ fun App(
                 }
                 scanUiState = ScanUiState.Idle
                 importUiState = ImportUiState.Idle
+                lastImportReport = null
                 duplicateActionMessage = null
                 duplicateDeleteAwaitingConfirmation = false
                 selectedFile = null
@@ -182,6 +187,7 @@ fun App(
                 }
                 scanUiState = ScanUiState.Idle
                 importUiState = ImportUiState.Idle
+                lastImportReport = null
                 duplicateActionMessage = null
                 duplicateDeleteAwaitingConfirmation = false
                 selectedFile = null
@@ -206,6 +212,7 @@ fun App(
                 coroutineScope.launch {
                     scanUiState = ScanUiState.Loading
                     importUiState = ImportUiState.Idle
+                    lastImportReport = null
                     duplicateActionMessage = null
                     duplicateDeleteAwaitingConfirmation = false
                     libraryFiles = emptyList()
@@ -251,6 +258,8 @@ fun App(
             onConfirmImportClick = {
                 coroutineScope.launch {
                     val plannedFiles = (scanUiState as? ScanUiState.Success)?.plannedFiles.orEmpty()
+                    val readyFileCount = plannedFiles.count { it.targetStatus != ImportTargetStatus.AlreadyExists }
+                    val existingFileCount = plannedFiles.count { it.targetStatus == ImportTargetStatus.AlreadyExists }
                     importUiState = ImportUiState.Loading
                     importUiState = try {
                         when (
@@ -259,6 +268,17 @@ fun App(
                             }
                         ) {
                             is AppResult.Success -> {
+                                lastImportReport = ImportReport(
+                                    importMode = importMode,
+                                    plannedFiles = plannedFiles.size,
+                                    readyFiles = readyFileCount,
+                                    existingFiles = existingFileCount,
+                                    copiedFiles = result.data.copiedFiles,
+                                    movedFiles = result.data.movedFiles,
+                                    skippedFiles = result.data.skippedFiles,
+                                    failedFiles = result.data.failedFiles,
+                                    createdAtEpochMillis = Clock.System.now().toEpochMilliseconds(),
+                                )
                                 libraryFiles = refreshLibraryFiles(
                                     destinationFolder = destinationFolder,
                                     photoSourceScanner = photoSourceScanner,

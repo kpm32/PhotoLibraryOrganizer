@@ -23,14 +23,19 @@ import com.anvar.photolibraryorganizer.domain.ImportMode
 import com.anvar.photolibraryorganizer.domain.PhotoLibraryPlan
 import com.anvar.photolibraryorganizer.domain.model.ImportAvailability
 import com.anvar.photolibraryorganizer.domain.model.ImportOrganizationRules
+import com.anvar.photolibraryorganizer.presentation.ImportReport
 import com.anvar.photolibraryorganizer.presentation.ImportUiState
 import com.anvar.photolibraryorganizer.presentation.ScanUiState
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Instant
 
 @Composable
 internal fun ImportPanel(
     plan: PhotoLibraryPlan,
     scanUiState: ScanUiState,
     importUiState: ImportUiState,
+    lastImportReport: ImportReport?,
     importAvailability: ImportAvailability,
     selectedMode: ImportMode,
     onScanClick: () -> Unit,
@@ -75,6 +80,7 @@ internal fun ImportPanel(
                 onConfirmImportClick = onConfirmImportClick,
                 onCancelImportClick = onCancelImportClick,
             )
+            ImportReportSummary(lastImportReport)
             ImportRulesSummary(plan.importRules)
             ImportModeChips(
                 selectedMode = selectedMode,
@@ -98,6 +104,39 @@ internal fun ImportPanel(
                     Text(if (importUiState is ImportUiState.Loading) "Импортирую..." else "Импорт")
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ImportReportSummary(lastImportReport: ImportReport?) {
+    if (lastImportReport == null) return
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        shape = MaterialTheme.shapes.small,
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                text = "Последний импорт",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+            CompactRuleRow("Режим", lastImportReport.importMode.title)
+            CompactRuleRow(
+                label = "План",
+                value = "${lastImportReport.readyFiles} к импорту, ${lastImportReport.existingFiles} уже есть",
+            )
+            CompactRuleRow(
+                label = "Итог",
+                value = "копий ${lastImportReport.copiedFiles}, переносов ${lastImportReport.movedFiles}, пропусков ${lastImportReport.skippedFiles}, ошибок ${lastImportReport.failedFiles}",
+            )
+            CompactRuleRow("Всего найдено", lastImportReport.plannedFiles.toString())
+            CompactRuleRow("Время", lastImportReport.createdAtEpochMillis.toReadableDateTime())
         }
     }
 }
@@ -287,4 +326,15 @@ private fun scanStatusText(
         is ScanUiState.Success -> "Сканирование завершено. Это только статистика, импорт пока не запускался."
         is ScanUiState.Error -> scanUiState.message
     }
+}
+
+private fun Long.toReadableDateTime(): String {
+    val dateTime = Instant.fromEpochMilliseconds(this)
+        .toLocalDateTime(TimeZone.currentSystemDefault())
+    val month = (dateTime.month.ordinal + 1).toString().padStart(2, '0')
+    val day = dateTime.day.toString().padStart(2, '0')
+    val hour = dateTime.hour.toString().padStart(2, '0')
+    val minute = dateTime.minute.toString().padStart(2, '0')
+    val second = dateTime.second.toString().padStart(2, '0')
+    return "${dateTime.year}-$month-$day $hour:$minute:$second"
 }

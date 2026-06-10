@@ -23,6 +23,7 @@ import com.anvar.photolibraryorganizer.domain.model.ImportAvailability
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
 import com.anvar.photolibraryorganizer.presentation.AppIssue
 import com.anvar.photolibraryorganizer.presentation.ImagePreviewUiState
+import com.anvar.photolibraryorganizer.presentation.ImportReport
 import com.anvar.photolibraryorganizer.presentation.ImportUiState
 import com.anvar.photolibraryorganizer.presentation.AppSection
 import com.anvar.photolibraryorganizer.presentation.ImagePreviewLoader
@@ -33,6 +34,7 @@ internal fun PhotoLibraryOrganizerApp(
     plan: PhotoLibraryPlan,
     scanUiState: ScanUiState,
     importUiState: ImportUiState,
+    lastImportReport: ImportReport?,
     libraryFiles: List<PlannedMediaFile>,
     duplicateFiles: List<PlannedMediaFile>,
     selectedSection: AppSection,
@@ -80,6 +82,7 @@ internal fun PhotoLibraryOrganizerApp(
                 plan = plan,
                 scanUiState = scanUiState,
                 importUiState = importUiState,
+                lastImportReport = lastImportReport,
                 libraryFiles = libraryFiles,
                 duplicateFiles = duplicateFiles,
                 selectedSection = selectedSection,

@@ -31,6 +31,7 @@ import com.anvar.photolibraryorganizer.domain.model.detectMediaFileType
 import com.anvar.photolibraryorganizer.presentation.AppIssue
 import com.anvar.photolibraryorganizer.presentation.AppSection
 import com.anvar.photolibraryorganizer.presentation.ImagePreviewLoader
+import com.anvar.photolibraryorganizer.presentation.ImportReport
 import com.anvar.photolibraryorganizer.presentation.ImportUiState
 import com.anvar.photolibraryorganizer.presentation.ScanUiState
 
@@ -39,6 +40,7 @@ internal fun MainWorkspace(
     plan: PhotoLibraryPlan,
     scanUiState: ScanUiState,
     importUiState: ImportUiState,
+    lastImportReport: ImportReport?,
     libraryFiles: List<PlannedMediaFile>,
     duplicateFiles: List<PlannedMediaFile>,
     selectedSection: AppSection,
@@ -86,6 +88,7 @@ internal fun MainWorkspace(
                 plan = plan,
                 scanUiState = scanUiState,
                 importUiState = importUiState,
+                lastImportReport = lastImportReport,
                 importAvailability = importAvailability,
                 selectedMode = selectedMode,
                 onScanClick = onScanClick,
