@@ -6,4 +6,5 @@ data class ScannedMediaFile(
     val extension: String,
     val category: MediaFileCategory,
     val sizeBytes: Long,
+    val modifiedAtEpochMillis: Long,
 )

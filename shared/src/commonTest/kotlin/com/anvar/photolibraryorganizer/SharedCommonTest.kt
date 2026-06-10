@@ -7,8 +7,10 @@ import com.anvar.photolibraryorganizer.domain.PhotoLibraryPlan
 import com.anvar.photolibraryorganizer.domain.model.MediaFileCategory
 import com.anvar.photolibraryorganizer.domain.model.ScanSourceFolderResult
 import com.anvar.photolibraryorganizer.domain.model.ScanSourceFolderSummary
+import com.anvar.photolibraryorganizer.domain.model.ScannedMediaFile
 import com.anvar.photolibraryorganizer.domain.model.detectMediaFileType
 import com.anvar.photolibraryorganizer.domain.repository.PhotoSourceScanner
+import com.anvar.photolibraryorganizer.domain.usecase.BuildMediaFilePlanUseCase
 import com.anvar.photolibraryorganizer.domain.usecase.ScanSourceFolderUseCase
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -43,7 +45,7 @@ class SharedCommonTest {
 
     @Test
     fun scanOnlyIsDefaultSafeMode() {
-        assertEquals("Scan only", ImportMode.ScanOnly.title)
+        assertEquals("Только сканировать", ImportMode.ScanOnly.title)
     }
 
     @Test
@@ -86,6 +88,29 @@ class SharedCommonTest {
 
         assertIs<AppResult.Success<ScanSourceFolderResult>>(result)
         assertEquals("/source", scanner.lastScannedPath)
+    }
+
+    @Test
+    fun buildsTargetPathFromFileModifiedDate() {
+        val useCase = BuildMediaFilePlanUseCase()
+
+        val result = useCase(
+            destinationFolder = "/library-root",
+            mediaFiles = listOf(
+                ScannedMediaFile(
+                    path = "/source/IMG_0001.JPG",
+                    fileName = "IMG_0001.JPG",
+                    extension = "jpg",
+                    category = MediaFileCategory.Image,
+                    sizeBytes = 1024,
+                    modifiedAtEpochMillis = 1_735_689_600_000,
+                ),
+            ),
+        )
+
+        assertEquals(1, result.size)
+        assertTrue(result.first().targetRelativePath.contains("/library-root/Library/2025/2025-01/"))
+        assertTrue(result.first().targetRelativePath.endsWith("_IMG_0001.JPG"))
     }
 
     private class FakePhotoSourceScanner : PhotoSourceScanner {

@@ -23,6 +23,7 @@ object PreviewPhotoSourceScanner : PhotoSourceScanner {
                 extension = "jpg",
                 category = MediaFileCategory.Image,
                 sizeBytes = 2_400_000,
+                modifiedAtEpochMillis = 1_735_689_600_000,
             ),
             ScannedMediaFile(
                 path = "$path/VID_0001.mov",
@@ -30,6 +31,7 @@ object PreviewPhotoSourceScanner : PhotoSourceScanner {
                 extension = "mov",
                 category = MediaFileCategory.Video,
                 sizeBytes = 18_000_000,
+                modifiedAtEpochMillis = 1_735_693_200_000,
             ),
         )
         return AppResult.Success(

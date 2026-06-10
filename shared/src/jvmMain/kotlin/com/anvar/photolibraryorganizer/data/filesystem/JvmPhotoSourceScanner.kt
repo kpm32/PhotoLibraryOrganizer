@@ -15,6 +15,7 @@ import kotlin.io.path.exists
 import kotlin.io.path.fileSize
 import kotlin.io.path.isDirectory
 import kotlin.io.path.isRegularFile
+import kotlin.io.path.getLastModifiedTime
 import kotlin.io.path.name
 
 class JvmPhotoSourceScanner : PhotoSourceScanner {
@@ -54,6 +55,7 @@ class JvmPhotoSourceScanner : PhotoSourceScanner {
                                 extension = mediaType.extension,
                                 category = mediaType.category,
                                 sizeBytes = file.fileSize(),
+                                modifiedAtEpochMillis = file.getLastModifiedTime().toMillis(),
                             )
                         }
                     }

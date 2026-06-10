@@ -1,6 +1,7 @@
 package com.anvar.photolibraryorganizer
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,8 +18,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
@@ -39,7 +42,9 @@ import com.anvar.photolibraryorganizer.domain.AppResult
 import com.anvar.photolibraryorganizer.domain.ImportMode
 import com.anvar.photolibraryorganizer.domain.PhotoLibraryError
 import com.anvar.photolibraryorganizer.domain.PhotoLibraryPlan
+import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
 import com.anvar.photolibraryorganizer.domain.repository.PhotoSourceScanner
+import com.anvar.photolibraryorganizer.domain.usecase.BuildMediaFilePlanUseCase
 import com.anvar.photolibraryorganizer.domain.usecase.ScanSourceFolderUseCase
 import com.anvar.photolibraryorganizer.presentation.FolderPicker
 import com.anvar.photolibraryorganizer.presentation.PreviewFolderPicker
@@ -55,7 +60,9 @@ fun App(
     photoSourceScanner: PhotoSourceScanner = PreviewPhotoSourceScanner,
     folderPicker: FolderPicker = PreviewFolderPicker,
 ) {
-    MaterialTheme {
+    val colorScheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()
+
+    MaterialTheme(colorScheme = colorScheme) {
         var sourceFolder by remember { mutableStateOf<String?>(null) }
         var destinationFolder by remember { mutableStateOf<String?>(null) }
         var importMode by remember { mutableStateOf(ImportMode.ScanOnly) }
@@ -64,6 +71,7 @@ fun App(
         val scanSourceFolderUseCase = remember(photoSourceScanner) {
             ScanSourceFolderUseCase(photoSourceScanner)
         }
+        val buildMediaFilePlanUseCase = remember { BuildMediaFilePlanUseCase() }
 
         val plan = PhotoLibraryPlan(
             sourceFolder = sourceFolder,
@@ -88,7 +96,13 @@ fun App(
                     scanUiState = ScanUiState.Loading
                     scanUiState = try {
                         when (val result = withContext(Dispatchers.Default) { scanSourceFolderUseCase(sourceFolder) }) {
-                            is AppResult.Success -> ScanUiState.Success(result.data.summary)
+                            is AppResult.Success -> ScanUiState.Success(
+                                summary = result.data.summary,
+                                plannedFiles = buildMediaFilePlanUseCase(
+                                    destinationFolder = destinationFolder,
+                                    mediaFiles = result.data.mediaFiles,
+                                ),
+                            )
                             is AppResult.Error -> ScanUiState.Error(result.error.toUserMessage())
                         }
                     } catch (exception: Throwable) {
@@ -328,22 +342,64 @@ private fun ScanPreview(
             )
             if (scanUiState is ScanUiState.Success) {
                 ScanSummaryRows(scanUiState)
+                PlannedFilesPreview(scanUiState.plannedFiles)
             }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Button(
                     onClick = onScanClick,
                     enabled = plan.canScan && scanUiState !is ScanUiState.Loading,
                 ) {
-                    Text(if (scanUiState is ScanUiState.Loading) "Scanning..." else "Scan")
+                    Text(if (scanUiState is ScanUiState.Loading) "Сканирую..." else "Сканировать")
                 }
                 OutlinedButton(
                     onClick = {},
                     enabled = false,
                 ) {
-                    Text("Import")
+                    Text("Импорт")
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun PlannedFilesPreview(plannedFiles: List<PlannedMediaFile>) {
+    if (plannedFiles.isEmpty()) return
+
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        HorizontalDivider()
+        Text(
+            text = "Первые файлы и будущие пути",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+        )
+        plannedFiles.take(5).forEach { plannedFile ->
+            PlannedFileRow(plannedFile)
+        }
+        if (plannedFiles.size > 5) {
+            Text(
+                text = "И еще ${plannedFiles.size - 5} файлов.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun PlannedFileRow(plannedFile: PlannedMediaFile) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            text = plannedFile.fileName,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Text(
+            text = plannedFile.targetRelativePath,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 2,
+        )
     }
 }
 

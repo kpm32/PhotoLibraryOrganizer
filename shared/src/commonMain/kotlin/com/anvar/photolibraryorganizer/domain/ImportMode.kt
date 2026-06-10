@@ -5,15 +5,15 @@ enum class ImportMode(
     val description: String,
 ) {
     ScanOnly(
-        title = "Scan only",
+        title = "Только сканировать",
         description = "Ничего не меняет на диске, только показывает план разбора.",
     ),
     Copy(
-        title = "Copy",
+        title = "Копировать",
         description = "Копирует файлы в новую библиотеку и оставляет исходники на месте.",
     ),
     Move(
-        title = "Move",
+        title = "Переносить",
         description = "Переносит файлы после проверки, чтобы не занимать место копиями.",
     ),
 }
