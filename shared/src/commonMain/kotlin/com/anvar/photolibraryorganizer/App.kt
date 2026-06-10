@@ -363,7 +363,7 @@ fun App(
                         return@launch
                     }
 
-                    duplicateActionMessage = "Переношу дубликаты в папку Duplicates..."
+                    duplicateActionMessage = "Переношу дубликаты в папку дублей..."
                     duplicateActionMessage = try {
                         when (
                             val result = withContext(Dispatchers.Default) {
@@ -386,10 +386,10 @@ fun App(
                                 if (result.data.failedFiles > 0) {
                                     addIssue(
                                         title = "Дубликаты",
-                                        detail = "Часть дублей не удалось перенести в Duplicates: ${result.data.failedFiles}.",
+                                        detail = "Часть дублей не удалось перенести в папку дублей: ${result.data.failedFiles}.",
                                     )
                                 }
-                                "Перенесено в Duplicates: ${result.data.movedFiles}, ошибок: ${result.data.failedFiles}."
+                                "Перенесено в папку дублей: ${result.data.movedFiles}, ошибок: ${result.data.failedFiles}."
                             }
 
                             is AppResult.Error -> {
@@ -407,11 +407,11 @@ fun App(
             },
             onRequestDeleteQuarantineClick = {
                 if (duplicateFiles.isEmpty()) {
-                    duplicateActionMessage = "В Duplicates пока нет файлов для удаления."
+                    duplicateActionMessage = "В папке дублей пока нет файлов для удаления."
                     duplicateDeleteAwaitingConfirmation = false
                 } else {
                     duplicateDeleteAwaitingConfirmation = true
-                    duplicateActionMessage = "Будет удалено из Duplicates: ${duplicateFiles.size}. Библиотеку не трогаем."
+                    duplicateActionMessage = "Будет удалено из папки дублей: ${duplicateFiles.size}. Библиотеку не трогаем."
                 }
             },
             onCancelDeleteQuarantineClick = {
@@ -422,11 +422,11 @@ fun App(
                 coroutineScope.launch {
                     if (duplicateFiles.isEmpty()) {
                         duplicateDeleteAwaitingConfirmation = false
-                        duplicateActionMessage = "В Duplicates пока нет файлов для удаления."
+                        duplicateActionMessage = "В папке дублей пока нет файлов для удаления."
                         return@launch
                     }
 
-                    duplicateActionMessage = "Удаляю файлы из Duplicates..."
+                    duplicateActionMessage = "Удаляю файлы из папки дублей..."
                     duplicateActionMessage = try {
                         when (
                             val result = withContext(Dispatchers.Default) {
@@ -450,10 +450,10 @@ fun App(
                                 if (result.data.failedFiles > 0) {
                                     addIssue(
                                         title = "Дубликаты",
-                                        detail = "Часть файлов из Duplicates не удалось удалить: ${result.data.failedFiles}.",
+                                        detail = "Часть файлов из папки дублей не удалось удалить: ${result.data.failedFiles}.",
                                     )
                                 }
-                                "Удалено из Duplicates: ${result.data.deletedFiles}, ошибок: ${result.data.failedFiles}."
+                                "Удалено из папки дублей: ${result.data.deletedFiles}, ошибок: ${result.data.failedFiles}."
                             }
 
                             is AppResult.Error -> {
@@ -465,7 +465,7 @@ fun App(
                         }
                     } catch (exception: Throwable) {
                         duplicateDeleteAwaitingConfirmation = false
-                        val message = "Не удалось удалить файлы из Duplicates: ${exception.message ?: "без деталей"}"
+                        val message = "Не удалось удалить файлы из папки дублей: ${exception.message ?: "без деталей"}"
                         addIssue("Дубликаты", message)
                         message
                     }
@@ -487,7 +487,7 @@ fun App(
             onRevealFileClick = {
                 selectedFile?.sourcePath?.let { path ->
                     if (!fileRevealHandler.reveal(path)) {
-                        addIssue("Просмотр", "Не удалось показать файл в Finder: $path")
+                        addIssue("Просмотр", "Не удалось показать файл в папке: $path")
                     }
                 }
             },

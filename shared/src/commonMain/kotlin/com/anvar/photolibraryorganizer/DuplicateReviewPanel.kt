@@ -96,16 +96,16 @@ internal fun DuplicateReviewPanel(
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         DuplicateBucket(
-                            title = "Оставляем в Library",
+                            title = "Оставляем в библиотеке",
                             files = activeGroup.libraryFiles,
-                            emptyText = "Оригинал в Library не найден.",
+                            emptyText = "Оригинал в библиотеке не найден.",
                             imagePreviewLoader = imagePreviewLoader,
                             selectedFile = selectedFile,
                             onFileSelected = onFileSelected,
                             modifier = Modifier.weight(1f),
                         )
                         DuplicateBucket(
-                            title = if (quarantineMode) "В Duplicates" else "Кандидаты к переносу",
+                            title = if (quarantineMode) "В папке дублей" else "Кандидаты к переносу",
                             files = activeGroup.duplicateFiles,
                             emptyText = if (quarantineMode) {
                                 "В карантине нет файлов этой группы."

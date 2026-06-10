@@ -225,7 +225,7 @@ private fun WorkspaceHeader(selectedSection: AppSection) {
         )
         Text(
             text = when (selectedSection) {
-                AppSection.Import -> "Сначала показываем план, потом копируем. Исходники не удаляются."
+                AppSection.Import -> "Сначала показываем план, потом выполняем выбранное действие: сканирование, копирование или перенос."
                 AppSection.AllPhotos -> "Просмотр уже разложенной библиотеки."
                 AppSection.Years -> "Библиотека, сгруппированная по годам."
                 AppSection.Months -> "Библиотека, сгруппированная по месяцам."
@@ -305,7 +305,7 @@ private fun LibrarySection(
         )
 
         AppSection.Duplicates -> DuplicateReviewPanel(
-            title = if (duplicateFiles.isEmpty()) "Дубликаты" else "Карантин Duplicates",
+            title = if (duplicateFiles.isEmpty()) "Дубликаты" else "Папка дублей",
             emptyText = "Дубликаты и файлы в карантине пока не найдены.",
             groups = buildDuplicateReviewGroups(
                 libraryFiles = libraryFiles,
@@ -383,8 +383,8 @@ private fun duplicateActionText(
 ): String? {
     return when {
         duplicateDeleteAwaitingConfirmation && duplicateFiles.isNotEmpty() -> "Подтвердить удаление"
-        duplicateFiles.isNotEmpty() -> "Удалить файлы из Duplicates"
-        libraryFiles.hasDuplicateGroups() -> "Перенести дубли в Duplicates"
+        duplicateFiles.isNotEmpty() -> "Удалить файлы из папки дублей"
+        libraryFiles.hasDuplicateGroups() -> "Перенести дубли в папку дублей"
         else -> null
     }
 }

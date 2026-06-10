@@ -311,8 +311,8 @@ private fun ImportRulesSummary(importRules: ImportOrganizationRules) {
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
             )
-            CompactRuleRow("Папка", "${importRules.libraryFolderName}/${importRules.folderTemplate}")
-            CompactRuleRow("Имя", importRules.fileNameTemplate)
+            CompactRuleRow("Папки", importRules.folderTemplate.toReadableFolderRule())
+            CompactRuleRow("Имена", importRules.fileNameTemplate.toReadableFileNameRule())
         }
     }
 }
@@ -383,6 +383,23 @@ private fun scanStatusText(
         ScanUiState.Loading -> "Сканирую папку и подпапки. Файлы не изменяются."
         is ScanUiState.Success -> "Сканирование завершено. Это только статистика, импорт пока не запускался."
         is ScanUiState.Error -> scanUiState.message
+    }
+}
+
+private fun String.toReadableFolderRule(): String {
+    return when (this) {
+        "YYYY/YYYY-MM" -> "Библиотека / год / месяц"
+        "YYYY/YYYY-MM/YYYY-MM-DD" -> "Библиотека / год / месяц / день"
+        "YYYY" -> "Библиотека / год"
+        else -> "Пользовательская структура"
+    }
+}
+
+private fun String.toReadableFileNameRule(): String {
+    return when (this) {
+        "YYYY-MM-DD_HH-mm-ss_original-name.ext" -> "Дата, время и исходное имя"
+        "HH-mm-ss_original-name.ext" -> "Время и исходное имя"
+        else -> "Пользовательские имена"
     }
 }
 

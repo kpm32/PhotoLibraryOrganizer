@@ -133,6 +133,6 @@ private fun PlannedMediaFile.shortLibraryCaption(): String {
 private val ImportTargetStatus.label: String
     get() = when (this) {
         ImportTargetStatus.NotChecked -> "Цель не проверена"
-        ImportTargetStatus.Ready -> "Будет скопировано"
+        ImportTargetStatus.Ready -> "Готово к импорту"
         ImportTargetStatus.AlreadyExists -> "Уже есть в библиотеке"
     }
