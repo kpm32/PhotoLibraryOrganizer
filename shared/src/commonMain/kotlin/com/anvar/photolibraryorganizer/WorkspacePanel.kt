@@ -387,10 +387,14 @@ private fun LibrarySection(
             modifier = modifier,
         )
 
-        AppSection.Duplicates -> GroupedMediaList(
+        AppSection.Duplicates -> DuplicateReviewPanel(
             title = if (duplicateFiles.isEmpty()) "Дубликаты" else "Карантин Duplicates",
             emptyText = "Дубликаты и файлы в карантине пока не найдены.",
-            groups = duplicateFiles.quarantineGroups().ifEmpty { libraryFiles.duplicateGroups() },
+            groups = buildDuplicateReviewGroups(
+                libraryFiles = libraryFiles,
+                duplicateFiles = duplicateFiles,
+            ),
+            quarantineMode = duplicateFiles.isNotEmpty(),
             imagePreviewLoader = imagePreviewLoader,
             selectedFile = selectedFile,
             onFileSelected = onFileSelected,
@@ -506,10 +510,11 @@ private fun MediaGrid(
     imagePreviewLoader: ImagePreviewLoader,
     selectedFile: PlannedMediaFile?,
     onFileSelected: (PlannedMediaFile) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 150.dp),
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(10.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -520,6 +525,239 @@ private fun MediaGrid(
                 selected = plannedFile == selectedFile,
                 onClick = { onFileSelected(plannedFile) },
             )
+        }
+    }
+}
+
+@Composable
+private fun DuplicateReviewPanel(
+    title: String,
+    emptyText: String,
+    groups: List<DuplicateReviewGroup>,
+    quarantineMode: Boolean,
+    imagePreviewLoader: ImagePreviewLoader,
+    selectedFile: PlannedMediaFile?,
+    onFileSelected: (PlannedMediaFile) -> Unit,
+    actionText: String? = null,
+    secondaryActionText: String? = null,
+    actionMessage: String? = null,
+    onActionClick: (() -> Unit)? = null,
+    onSecondaryActionClick: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
+) {
+    val groupIds = groups.map { it.id }
+    var selectedGroupId by remember(title, groupIds) { mutableStateOf(groupIds.firstOrNull()) }
+    val activeGroup = groups.firstOrNull { it.id == selectedGroupId } ?: groups.firstOrNull()
+
+    ElevatedCard(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            PanelActions(
+                visible = groups.isNotEmpty(),
+                actionText = actionText,
+                secondaryActionText = secondaryActionText,
+                onActionClick = onActionClick,
+                onSecondaryActionClick = onSecondaryActionClick,
+            )
+            if (actionMessage != null) {
+                Text(
+                    text = actionMessage,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            HorizontalDivider()
+            if (groups.isEmpty() || activeGroup == null) {
+                EmptyListText(emptyText)
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    DuplicateGroupSelector(
+                        groups = groups,
+                        selectedGroupId = activeGroup.id,
+                        onGroupSelected = { selectedGroupId = it },
+                    )
+                    Row(
+                        modifier = Modifier.weight(1f).fillMaxSize(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        DuplicateBucket(
+                            title = "Оставляем в Library",
+                            files = activeGroup.libraryFiles,
+                            emptyText = "Оригинал в Library не найден.",
+                            imagePreviewLoader = imagePreviewLoader,
+                            selectedFile = selectedFile,
+                            onFileSelected = onFileSelected,
+                            modifier = Modifier.weight(1f),
+                        )
+                        DuplicateBucket(
+                            title = if (quarantineMode) "В Duplicates" else "Кандидаты к переносу",
+                            files = activeGroup.duplicateFiles,
+                            emptyText = if (quarantineMode) {
+                                "В карантине нет файлов этой группы."
+                            } else {
+                                "Кандидатов к переносу нет."
+                            },
+                            imagePreviewLoader = imagePreviewLoader,
+                            selectedFile = selectedFile,
+                            onFileSelected = onFileSelected,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DuplicateGroupSelector(
+    groups: List<DuplicateReviewGroup>,
+    selectedGroupId: String?,
+    onGroupSelected: (String) -> Unit,
+) {
+    LazyColumn(
+        modifier = Modifier
+            .width(170.dp)
+            .fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        items(groups, key = { it.id }) { group ->
+            val selected = group.id == selectedGroupId
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onGroupSelected(group.id) },
+                color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
+                shape = MaterialTheme.shapes.small,
+            ) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
+                    verticalArrangement = Arrangement.spacedBy(3.dp),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = group.title,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            text = group.totalCount.toString(),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Text(
+                        text = group.hashLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DuplicateBucket(
+    title: String,
+    files: List<PlannedMediaFile>,
+    emptyText: String,
+    imagePreviewLoader: ImagePreviewLoader,
+    selectedFile: PlannedMediaFile?,
+    onFileSelected: (PlannedMediaFile) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        shape = MaterialTheme.shapes.small,
+    ) {
+        Column(
+            modifier = Modifier.padding(10.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    text = files.size.toString(),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            HorizontalDivider()
+            if (files.isEmpty()) {
+                EmptyListText(emptyText)
+            } else {
+                MediaGrid(
+                    files = files,
+                    imagePreviewLoader = imagePreviewLoader,
+                    selectedFile = selectedFile,
+                    onFileSelected = onFileSelected,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PanelActions(
+    visible: Boolean,
+    actionText: String?,
+    secondaryActionText: String?,
+    onActionClick: (() -> Unit)?,
+    onSecondaryActionClick: (() -> Unit)?,
+) {
+    if (!visible || actionText == null || onActionClick == null) return
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Button(
+            onClick = onActionClick,
+            modifier = Modifier.weight(1f),
+        ) {
+            Text(actionText)
+        }
+        if (secondaryActionText != null && onSecondaryActionClick != null) {
+            OutlinedButton(
+                onClick = onSecondaryActionClick,
+                modifier = Modifier.weight(1f),
+            ) {
+                Text(secondaryActionText)
+            }
         }
     }
 }
@@ -559,27 +797,13 @@ private fun GroupedMediaList(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )
-            if (groups.isNotEmpty() && actionText != null && onActionClick != null) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Button(
-                        onClick = onActionClick,
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Text(actionText)
-                    }
-                    if (secondaryActionText != null && onSecondaryActionClick != null) {
-                        OutlinedButton(
-                            onClick = onSecondaryActionClick,
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            Text(secondaryActionText)
-                        }
-                    }
-                }
-            }
+            PanelActions(
+                visible = groups.isNotEmpty(),
+                actionText = actionText,
+                secondaryActionText = secondaryActionText,
+                onActionClick = onActionClick,
+                onSecondaryActionClick = onSecondaryActionClick,
+            )
             if (actionMessage != null) {
                 Text(
                     text = actionMessage,
@@ -733,6 +957,59 @@ private val ImportTargetStatus.label: String
         ImportTargetStatus.AlreadyExists -> "Уже есть в библиотеке"
     }
 
+private data class DuplicateReviewGroup(
+    val id: String,
+    val title: String,
+    val hashLabel: String,
+    val libraryFiles: List<PlannedMediaFile>,
+    val duplicateFiles: List<PlannedMediaFile>,
+) {
+    val totalCount: Int = libraryFiles.size + duplicateFiles.size
+}
+
+private fun buildDuplicateReviewGroups(
+    libraryFiles: List<PlannedMediaFile>,
+    duplicateFiles: List<PlannedMediaFile>,
+): List<DuplicateReviewGroup> {
+    return if (duplicateFiles.isNotEmpty()) {
+        duplicateFiles
+            .groupBy { it.contentHash ?: it.quarantineGroupName() }
+            .entries
+            .sortedByDescending { it.value.size }
+            .mapIndexed { index, entry ->
+                val hash = entry.key
+                DuplicateReviewGroup(
+                    id = hash,
+                    title = "Группа ${index + 1}",
+                    hashLabel = hash.take(12),
+                    libraryFiles = libraryFiles
+                        .filter { it.contentHash == hash }
+                        .sortedBy { it.targetRelativePath },
+                    duplicateFiles = entry.value.sortedBy { it.targetRelativePath },
+                )
+            }
+    } else {
+        libraryFiles
+            .asSequence()
+            .filter { it.contentHash != null }
+            .groupBy { it.contentHash.orEmpty() }
+            .values
+            .filter { it.size > 1 }
+            .sortedByDescending { it.size }
+            .mapIndexed { index, files ->
+                val sortedFiles = files.sortedBy { it.targetRelativePath }
+                val hash = sortedFiles.firstNotNullOfOrNull { it.contentHash }.orEmpty()
+                DuplicateReviewGroup(
+                    id = hash.ifBlank { "duplicate-$index" },
+                    title = "Дубликат ${index + 1}",
+                    hashLabel = hash.take(12),
+                    libraryFiles = sortedFiles.take(1),
+                    duplicateFiles = sortedFiles.drop(1),
+                )
+            }
+    }
+}
+
 private fun duplicateActionText(
     libraryFiles: List<PlannedMediaFile>,
     duplicateFiles: List<PlannedMediaFile>,
@@ -755,11 +1032,6 @@ private fun List<PlannedMediaFile>.duplicateGroups(): Map<String, List<PlannedMe
         .sortedByDescending { it.size }
         .mapIndexed { index, files -> "Дубликат ${index + 1}" to files.sortedBy { it.targetRelativePath } }
         .toMap()
-}
-
-private fun List<PlannedMediaFile>.quarantineGroups(): Map<String, List<PlannedMediaFile>> {
-    return groupBy { it.quarantineGroupName() }
-        .toSortedMap()
 }
 
 private fun PlannedMediaFile.quarantineGroupName(): String {
