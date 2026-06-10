@@ -27,6 +27,7 @@ import com.anvar.photolibraryorganizer.presentation.FolderPicker
 import com.anvar.photolibraryorganizer.presentation.AppSettings
 import com.anvar.photolibraryorganizer.presentation.AppSettingsStorage
 import com.anvar.photolibraryorganizer.presentation.AppSection
+import com.anvar.photolibraryorganizer.presentation.CachingImagePreviewLoader
 import com.anvar.photolibraryorganizer.presentation.ImagePreviewLoader
 import com.anvar.photolibraryorganizer.presentation.ImagePreviewUiState
 import com.anvar.photolibraryorganizer.presentation.ImportUiState
@@ -71,6 +72,9 @@ fun App(
         }
         val buildMediaFilePlanUseCase = remember { BuildMediaFilePlanUseCase() }
         val resolveImportAvailabilityUseCase = remember { ResolveImportAvailabilityUseCase() }
+        val cachedImagePreviewLoader = remember(imagePreviewLoader) {
+            CachingImagePreviewLoader(imagePreviewLoader)
+        }
 
         LaunchedEffect(Unit) {
             val settings = appSettingsStorage.loadSettings()
@@ -91,7 +95,7 @@ fun App(
                 ImagePreviewUiState.Empty
             } else {
                 imagePreviewUiState = ImagePreviewUiState.Loading
-                imagePreviewLoader.loadImage(file.sourcePath)?.let { image ->
+                cachedImagePreviewLoader.loadImage(file.sourcePath)?.let { image ->
                     ImagePreviewUiState.Success(image)
                 } ?: ImagePreviewUiState.Unsupported
             }
@@ -109,7 +113,7 @@ fun App(
             importUiState = importUiState,
             libraryFiles = libraryFiles,
             selectedSection = selectedSection,
-            imagePreviewLoader = imagePreviewLoader,
+            imagePreviewLoader = cachedImagePreviewLoader,
             importAvailability = resolveImportAvailabilityUseCase(
                 importMode = importMode,
                 plannedFiles = (scanUiState as? ScanUiState.Success)?.plannedFiles.orEmpty(),
