@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -17,7 +16,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,7 +24,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.anvar.photolibraryorganizer.domain.ImportMode
 import com.anvar.photolibraryorganizer.domain.PhotoLibraryPlan
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
 import com.anvar.photolibraryorganizer.presentation.ImagePreviewUiState
@@ -40,8 +37,6 @@ internal fun InspectorPanel(
     imagePreviewUiState: ImagePreviewUiState,
     onSourceFolderClick: () -> Unit,
     onDestinationFolderClick: () -> Unit,
-    selectedMode: ImportMode,
-    onImportModeSelected: (ImportMode) -> Unit,
 ) {
     Surface(
         modifier = Modifier
@@ -78,10 +73,6 @@ internal fun InspectorPanel(
                 actionText = "Выбрать",
                 onClick = onDestinationFolderClick,
             )
-            ImportModeSelector(
-                selectedMode = selectedMode,
-                onImportModeSelected = onImportModeSelected,
-            )
             if (scanUiState is ScanUiState.Success) {
                 HorizontalDivider()
                 ScanSummaryRows(scanUiState)
@@ -111,77 +102,6 @@ private fun FolderSelector(
         )
         OutlinedButton(onClick = onClick) {
             Text(actionText)
-        }
-    }
-}
-
-@Composable
-private fun ImportModeSelector(
-    selectedMode: ImportMode,
-    onImportModeSelected: (ImportMode) -> Unit,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            text = "Режим",
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.SemiBold,
-        )
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            ImportMode.entries.forEach { mode ->
-                ModeOption(
-                    mode = mode,
-                    selected = mode == selectedMode,
-                    onClick = { onImportModeSelected(mode) },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ModeOption(
-    mode: ImportMode,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Surface(
-        modifier = modifier,
-        onClick = onClick,
-        shape = MaterialTheme.shapes.medium,
-        color = if (selected) {
-            MaterialTheme.colorScheme.primaryContainer
-        } else {
-            MaterialTheme.colorScheme.surfaceContainer
-        },
-        tonalElevation = if (selected) 2.dp else 0.dp,
-    ) {
-        Row(
-            modifier = Modifier.padding(10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            RadioButton(
-                selected = selected,
-                onClick = onClick,
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    text = mode.title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    text = mode.description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                )
-            }
         }
     }
 }

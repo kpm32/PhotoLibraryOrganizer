@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.anvar.photolibraryorganizer.domain.ImportMode
 import com.anvar.photolibraryorganizer.domain.PhotoLibraryPlan
 import com.anvar.photolibraryorganizer.domain.model.ImportAvailability
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
@@ -40,8 +41,10 @@ internal fun MainWorkspace(
     libraryFiles: List<PlannedMediaFile>,
     importAvailability: ImportAvailability,
     selectedFile: PlannedMediaFile?,
+    selectedMode: ImportMode,
     onScanClick: () -> Unit,
     onImportClick: () -> Unit,
+    onImportModeSelected: (ImportMode) -> Unit,
     onFileSelected: (PlannedMediaFile) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -55,8 +58,10 @@ internal fun MainWorkspace(
             scanUiState = scanUiState,
             importUiState = importUiState,
             importAvailability = importAvailability,
+            selectedMode = selectedMode,
             onScanClick = onScanClick,
             onImportClick = onImportClick,
+            onImportModeSelected = onImportModeSelected,
         )
         MediaList(
             scanUiState = scanUiState,
@@ -90,8 +95,10 @@ private fun ScanPreview(
     scanUiState: ScanUiState,
     importUiState: ImportUiState,
     importAvailability: ImportAvailability,
+    selectedMode: ImportMode,
     onScanClick: () -> Unit,
     onImportClick: () -> Unit,
+    onImportModeSelected: (ImportMode) -> Unit,
 ) {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
@@ -123,6 +130,10 @@ private fun ScanPreview(
                 ImportAvailabilityHint(importAvailability)
             }
             ImportStatus(importUiState)
+            ImportModeChips(
+                selectedMode = selectedMode,
+                onImportModeSelected = onImportModeSelected,
+            )
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
                     onClick = onScanClick,
@@ -139,6 +150,39 @@ private fun ScanPreview(
                 ) {
                     Text(if (importUiState is ImportUiState.Loading) "Импортирую..." else "Импорт")
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ImportModeChips(
+    selectedMode: ImportMode,
+    onImportModeSelected: (ImportMode) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        ImportMode.entries.forEach { mode ->
+            Surface(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { onImportModeSelected(mode) },
+                shape = MaterialTheme.shapes.small,
+                color = if (mode == selectedMode) {
+                    MaterialTheme.colorScheme.primaryContainer
+                } else {
+                    MaterialTheme.colorScheme.surfaceContainer
+                },
+            ) {
+                Text(
+                    text = mode.title,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                )
             }
         }
     }

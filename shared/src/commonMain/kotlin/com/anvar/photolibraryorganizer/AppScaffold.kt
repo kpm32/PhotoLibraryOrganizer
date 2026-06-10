@@ -60,8 +60,10 @@ internal fun PhotoLibraryOrganizerApp(
                 libraryFiles = libraryFiles,
                 importAvailability = importAvailability,
                 selectedFile = selectedFile,
+                selectedMode = plan.importMode,
                 onScanClick = onScanClick,
                 onImportClick = onImportClick,
+                onImportModeSelected = onImportModeSelected,
                 onFileSelected = onFileSelected,
                 modifier = Modifier.weight(1f),
             )
@@ -72,8 +74,6 @@ internal fun PhotoLibraryOrganizerApp(
                 imagePreviewUiState = imagePreviewUiState,
                 onSourceFolderClick = onSourceFolderClick,
                 onDestinationFolderClick = onDestinationFolderClick,
-                selectedMode = plan.importMode,
-                onImportModeSelected = onImportModeSelected,
             )
         }
     }
