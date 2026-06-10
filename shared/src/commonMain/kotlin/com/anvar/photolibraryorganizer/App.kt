@@ -1,6 +1,7 @@
 package com.anvar.photolibraryorganizer
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,6 +17,8 @@ import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.darkColorScheme
@@ -75,6 +78,7 @@ fun App(
         var importMode by remember { mutableStateOf(ImportMode.ScanOnly) }
         var scanUiState by remember { mutableStateOf<ScanUiState>(ScanUiState.Idle) }
         var importUiState by remember { mutableStateOf<ImportUiState>(ImportUiState.Idle) }
+        var selectedFile by remember { mutableStateOf<PlannedMediaFile?>(null) }
         val coroutineScope = rememberCoroutineScope()
         val scanSourceFolderUseCase = remember(photoSourceScanner) {
             ScanSourceFolderUseCase(photoSourceScanner)
@@ -103,11 +107,13 @@ fun App(
                 folderPicker.chooseFolder("Выбери исходную папку")?.let { sourceFolder = it }
                 scanUiState = ScanUiState.Idle
                 importUiState = ImportUiState.Idle
+                selectedFile = null
             },
             onDestinationFolderClick = {
                 folderPicker.chooseFolder("Выбери папку библиотеки")?.let { destinationFolder = it }
                 scanUiState = ScanUiState.Idle
                 importUiState = ImportUiState.Idle
+                selectedFile = null
             },
             onImportModeSelected = {
                 importMode = it
@@ -125,7 +131,7 @@ fun App(
                                     destinationFolder = destinationFolder,
                                     mediaFiles = result.data.mediaFiles,
                                 ),
-                            )
+                            ).also { selectedFile = it.plannedFiles.firstOrNull() }
                             is AppResult.Error -> ScanUiState.Error(result.error.toUserMessage())
                         }
                     } catch (exception: Throwable) {
@@ -151,6 +157,8 @@ fun App(
                     }
                 }
             },
+            selectedFile = selectedFile,
+            onFileSelected = { selectedFile = it },
         )
     }
 }
@@ -166,54 +174,39 @@ private fun PhotoLibraryOrganizerApp(
     onImportModeSelected: (ImportMode) -> Unit,
     onScanClick: () -> Unit,
     onImportClick: () -> Unit,
+    selectedFile: PlannedMediaFile?,
+    onFileSelected: (PlannedMediaFile) -> Unit,
 ) {
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background,
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .background(MaterialTheme.colorScheme.surface)
                 .safeContentPadding()
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(start = 24.dp, top = 32.dp, end = 24.dp, bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
+                .padding(start = 20.dp, top = 24.dp, end = 20.dp, bottom = 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Header()
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                FolderSelector(
-                    title = "Исходная папка",
-                    description = "Большая папка с подпапками, которую надо разобрать.",
-                    path = plan.sourceFolder,
-                    actionText = "Выбрать источник",
-                    onClick = onSourceFolderClick,
-                    modifier = Modifier.weight(1f),
-                )
-                FolderSelector(
-                    title = "Папка библиотеки",
-                    description = "Новая или существующая папка, куда ляжет порядок.",
-                    path = plan.destinationFolder,
-                    actionText = "Выбрать назначение",
-                    onClick = onDestinationFolderClick,
-                    modifier = Modifier.weight(1f),
-                )
-            }
-
-            ScanPreview(
+            LibrarySidebar()
+            MainWorkspace(
                 plan = plan,
                 scanUiState = scanUiState,
                 importUiState = importUiState,
                 importAvailability = importAvailability,
+                selectedFile = selectedFile,
                 onScanClick = onScanClick,
                 onImportClick = onImportClick,
+                onFileSelected = onFileSelected,
+                modifier = Modifier.weight(1f),
             )
-
-            ImportModeSelector(
+            InspectorPanel(
+                plan = plan,
+                scanUiState = scanUiState,
+                selectedFile = selectedFile,
+                onSourceFolderClick = onSourceFolderClick,
+                onDestinationFolderClick = onDestinationFolderClick,
                 selectedMode = plan.importMode,
                 onImportModeSelected = onImportModeSelected,
             )
@@ -222,70 +215,184 @@ private fun PhotoLibraryOrganizerApp(
 }
 
 @Composable
-private fun Header() {
+private fun LibrarySidebar() {
+    Surface(
+        modifier = Modifier
+            .width(220.dp)
+            .fillMaxSize(),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        shape = MaterialTheme.shapes.medium,
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp),
+        ) {
+            Text(
+                text = "Фотоархив",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
+            SidebarSection(
+                title = "Библиотека",
+                items = listOf("Все фото", "Годы", "Месяцы", "Без даты"),
+            )
+            SidebarSection(
+                title = "Работа",
+                items = listOf("Импорт", "Дубликаты", "Ошибки"),
+            )
+        }
+    }
+}
+
+@Composable
+private fun SidebarSection(
+    title: String,
+    items: List<String>,
+) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-            text = "Photo Library Organizer",
-            style = MaterialTheme.typography.headlineMedium,
+            text = title,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        items.forEach { item ->
+            Text(
+                text = item,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 6.dp, horizontal = 8.dp),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+    }
+}
+
+@Composable
+private fun MainWorkspace(
+    plan: PhotoLibraryPlan,
+    scanUiState: ScanUiState,
+    importUiState: ImportUiState,
+    importAvailability: ImportAvailability,
+    selectedFile: PlannedMediaFile?,
+    onScanClick: () -> Unit,
+    onImportClick: () -> Unit,
+    onFileSelected: (PlannedMediaFile) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        WorkspaceHeader()
+        ScanPreview(
+            plan = plan,
+            scanUiState = scanUiState,
+            importUiState = importUiState,
+            importAvailability = importAvailability,
+            onScanClick = onScanClick,
+            onImportClick = onImportClick,
+        )
+        MediaList(
+            scanUiState = scanUiState,
+            selectedFile = selectedFile,
+            onFileSelected = onFileSelected,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+private fun WorkspaceHeader() {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            text = "Импорт и каталог",
+            style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.SemiBold,
         )
         Text(
-            text = "Сначала сканируем архив без изменений, потом копируем или переносим только после подтверждения.",
-            style = MaterialTheme.typography.bodyLarge,
+            text = "Сначала показываем план, потом копируем. Исходники не удаляются.",
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
 
 @Composable
-private fun FolderSelector(
-    title: String,
-    description: String,
-    path: String?,
-    actionText: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
+private fun InspectorPanel(
+    plan: PhotoLibraryPlan,
+    scanUiState: ScanUiState,
+    selectedFile: PlannedMediaFile?,
+    onSourceFolderClick: () -> Unit,
+    onDestinationFolderClick: () -> Unit,
+    selectedMode: ImportMode,
+    onImportModeSelected: (ImportMode) -> Unit,
 ) {
-    ElevatedCard(
-        modifier = modifier.defaultMinSize(minHeight = 172.dp),
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        ),
+    Surface(
+        modifier = Modifier
+            .width(360.dp)
+            .fillMaxSize(),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        shape = MaterialTheme.shapes.medium,
     ) {
         Column(
-            modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(
-                text = title,
+                text = "Инспектор",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            SelectedFilePreview(selectedFile)
+            HorizontalDivider()
+            FolderSelector(
+                title = "Источник",
+                path = plan.sourceFolder,
+                actionText = "Выбрать",
+                onClick = onSourceFolderClick,
             )
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(40.dp),
-                contentAlignment = Alignment.CenterStart,
-            ) {
-                Text(
-                    text = path ?: "Папка пока не выбрана",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (path == null) {
-                        MaterialTheme.colorScheme.outline
-                    } else {
-                        MaterialTheme.colorScheme.onSurface
-                    },
-                    maxLines = 2,
-                )
+            FolderSelector(
+                title = "Библиотека",
+                path = plan.destinationFolder,
+                actionText = "Выбрать",
+                onClick = onDestinationFolderClick,
+            )
+            ImportModeSelector(
+                selectedMode = selectedMode,
+                onImportModeSelected = onImportModeSelected,
+            )
+            if (scanUiState is ScanUiState.Success) {
+                HorizontalDivider()
+                ScanSummaryRows(scanUiState)
             }
-            OutlinedButton(onClick = onClick) {
-                Text(actionText)
-            }
+        }
+    }
+}
+
+@Composable
+private fun FolderSelector(
+    title: String,
+    path: String?,
+    actionText: String,
+    onClick: () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Text(
+            text = path ?: "Папка пока не выбрана",
+            style = MaterialTheme.typography.bodySmall,
+            color = if (path == null) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 3,
+        )
+        OutlinedButton(onClick = onClick) {
+            Text(actionText)
         }
     }
 }
@@ -295,22 +402,22 @@ private fun ImportModeSelector(
     selectedMode: ImportMode,
     onImportModeSelected: (ImportMode) -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-            text = "Режим обработки",
-            style = MaterialTheme.typography.titleMedium,
+            text = "Режим",
+            style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
         )
-        Row(
+        Column(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             ImportMode.entries.forEach { mode ->
                 ModeOption(
                     mode = mode,
                     selected = mode == selectedMode,
                     onClick = { onImportModeSelected(mode) },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
         }
@@ -336,7 +443,7 @@ private fun ModeOption(
         tonalElevation = if (selected) 2.dp else 0.dp,
     ) {
         Row(
-            modifier = Modifier.padding(14.dp),
+            modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.Top,
         ) {
             RadioButton(
@@ -354,6 +461,7 @@ private fun ModeOption(
                     text = mode.description,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
                 )
             }
         }
@@ -380,7 +488,7 @@ private fun ScanPreview(
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Text(
-                text = "Предпросмотр сканирования",
+                text = "Панель импорта",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )
@@ -391,13 +499,11 @@ private fun ScanPreview(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             if (scanUiState is ScanUiState.Success) {
-                ScanSummaryRows(scanUiState)
                 Text(
                     text = "Пока используем дату изменения файла. Дату съемки из EXIF подключим отдельным шагом.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                PlannedFilesPreview(scanUiState.plannedFiles)
                 ImportAvailabilityHint(importAvailability)
             }
             ImportStatus(importUiState)
@@ -416,6 +522,138 @@ private fun ScanPreview(
                     Text(if (importUiState is ImportUiState.Loading) "Импортирую..." else "Импорт")
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun MediaList(
+    scanUiState: ScanUiState,
+    selectedFile: PlannedMediaFile?,
+    onFileSelected: (PlannedMediaFile) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    ElevatedCard(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = "Файлы",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            HorizontalDivider()
+            when (scanUiState) {
+                ScanUiState.Idle -> EmptyListText("После сканирования здесь появится список найденных фото.")
+                ScanUiState.Loading -> EmptyListText("Сканирую папку...")
+                is ScanUiState.Error -> EmptyListText(scanUiState.message)
+                is ScanUiState.Success -> {
+                    if (scanUiState.plannedFiles.isEmpty()) {
+                        EmptyListText("Медиафайлы не найдены.")
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            items(scanUiState.plannedFiles) { plannedFile ->
+                                MediaListRow(
+                                    plannedFile = plannedFile,
+                                    selected = plannedFile == selectedFile,
+                                    onClick = { onFileSelected(plannedFile) },
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmptyListText(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+@Composable
+private fun MediaListRow(
+    plannedFile: PlannedMediaFile,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
+        shape = MaterialTheme.shapes.small,
+    ) {
+        Row(
+            modifier = Modifier.padding(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(44.dp)
+                    .height(34.dp)
+                    .background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.small),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("Фото", style = MaterialTheme.typography.labelSmall)
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(
+                    text = plannedFile.fileName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                )
+                Text(
+                    text = plannedFile.targetRelativePath,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SelectedFilePreview(selectedFile: PlannedMediaFile?) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(180.dp)
+                .background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.medium),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = selectedFile?.fileName ?: "Фото не выбрано",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (selectedFile != null) {
+            SummaryRow("Файл", selectedFile.fileName)
+            SummaryRow("Размер", selectedFile.sizeBytes.toReadableSize())
+            Text(
+                text = selectedFile.targetRelativePath,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
