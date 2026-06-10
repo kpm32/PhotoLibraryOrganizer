@@ -9,10 +9,16 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.anvar.photolibraryorganizer.domain.ImportMode
 import com.anvar.photolibraryorganizer.domain.PhotoLibraryPlan
@@ -52,6 +58,14 @@ internal fun MainWorkspace(
     onFileSelected: (PlannedMediaFile) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var librarySearchQuery by remember { mutableStateOf("") }
+    val searchEnabled = selectedSection.supportsLibrarySearch()
+    val visibleLibraryFiles = if (searchEnabled) {
+        libraryFiles.filterByMediaSearch(librarySearchQuery)
+    } else {
+        libraryFiles
+    }
+
     Column(
         modifier = modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -81,9 +95,17 @@ internal fun MainWorkspace(
                 modifier = Modifier.weight(1f),
             )
         } else {
+            if (searchEnabled) {
+                LibrarySearchBar(
+                    query = librarySearchQuery,
+                    onQueryChange = { librarySearchQuery = it },
+                    totalFiles = libraryFiles.size,
+                    visibleFiles = visibleLibraryFiles.size,
+                )
+            }
             LibrarySection(
                 selectedSection = selectedSection,
-                libraryFiles = libraryFiles,
+                libraryFiles = visibleLibraryFiles,
                 duplicateFiles = duplicateFiles,
                 imagePreviewLoader = imagePreviewLoader,
                 duplicateActionMessage = duplicateActionMessage,
@@ -97,6 +119,41 @@ internal fun MainWorkspace(
                 onCancelDeleteQuarantineClick = onCancelDeleteQuarantineClick,
                 onClearIssuesClick = onClearIssuesClick,
                 modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun LibrarySearchBar(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    totalFiles: Int,
+    visibleFiles: Int,
+) {
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            OutlinedTextField(
+                value = query,
+                onValueChange = onQueryChange,
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                label = { Text("Поиск по имени, пути или SHA-256") },
+            )
+            Text(
+                text = "Показано $visibleFiles из $totalFiles",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }
@@ -282,4 +339,22 @@ private fun List<PlannedMediaFile>.hasDuplicateGroups(): Boolean {
         .groupBy { it.contentHash }
         .values
         .any { it.size > 1 }
+}
+
+private fun AppSection.supportsLibrarySearch(): Boolean {
+    return this == AppSection.AllPhotos ||
+        this == AppSection.Years ||
+        this == AppSection.Months ||
+        this == AppSection.WithoutDate
+}
+
+private fun List<PlannedMediaFile>.filterByMediaSearch(query: String): List<PlannedMediaFile> {
+    val normalizedQuery = query.trim()
+    if (normalizedQuery.isBlank()) return this
+
+    return filter { file ->
+        file.fileName.contains(normalizedQuery, ignoreCase = true) ||
+            file.targetRelativePath.contains(normalizedQuery, ignoreCase = true) ||
+            file.contentHash?.contains(normalizedQuery, ignoreCase = true) == true
+    }
 }
