@@ -99,9 +99,9 @@ private fun WorkspaceHeader(selectedSection: AppSection) {
             text = when (selectedSection) {
                 AppSection.Import -> "Сначала показываем план, потом копируем. Исходники не удаляются."
                 AppSection.AllPhotos -> "Просмотр уже разложенной библиотеки."
-                AppSection.Years -> "Группировка по годам появится следующим шагом."
-                AppSection.Months -> "Группировка по месяцам появится следующим шагом."
-                AppSection.WithoutDate -> "Файлы без даты появятся после EXIF-анализа."
+                AppSection.Years -> "Библиотека, сгруппированная по годам."
+                AppSection.Months -> "Библиотека, сгруппированная по месяцам."
+                AppSection.WithoutDate -> "Файлы, для которых пока не удалось определить дату."
                 AppSection.Duplicates -> "Поиск дубликатов будет отдельным безопасным сценарием."
                 AppSection.Errors -> "Ошибки импорта и сканирования будут собираться здесь."
             },
@@ -247,8 +247,8 @@ private fun LibrarySection(
     onFileSelected: (PlannedMediaFile) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    if (selectedSection == AppSection.AllPhotos) {
-        MediaList(
+    when (selectedSection) {
+        AppSection.AllPhotos -> MediaList(
             title = "Библиотека",
             emptyText = "Выбери папку библиотеки или нажми «Обновить библиотеку».",
             scanUiState = ScanUiState.Idle,
@@ -257,8 +257,43 @@ private fun LibrarySection(
             onFileSelected = onFileSelected,
             modifier = modifier,
         )
-    } else {
-        PlaceholderPanel(
+
+        AppSection.Years -> GroupedMediaList(
+            title = "Годы",
+            emptyText = "В библиотеке пока нет файлов с годом.",
+            groups = libraryFiles
+                .groupBy { it.libraryDateGroup()?.year ?: "Без даты" }
+                .toSortedMap(compareByDescending { it }),
+            selectedFile = selectedFile,
+            onFileSelected = onFileSelected,
+            modifier = modifier,
+        )
+
+        AppSection.Months -> GroupedMediaList(
+            title = "Месяцы",
+            emptyText = "В библиотеке пока нет файлов с месяцем.",
+            groups = libraryFiles
+                .groupBy { it.libraryDateGroup()?.month ?: "Без даты" }
+                .toSortedMap(compareByDescending { it }),
+            selectedFile = selectedFile,
+            onFileSelected = onFileSelected,
+            modifier = modifier,
+        )
+
+        AppSection.WithoutDate -> MediaList(
+            title = "Без даты",
+            emptyText = "Файлов без даты пока нет.",
+            scanUiState = ScanUiState.Idle,
+            files = libraryFiles.filter { it.libraryDateGroup() == null },
+            selectedFile = selectedFile,
+            onFileSelected = onFileSelected,
+            modifier = modifier,
+        )
+
+        AppSection.Duplicates,
+        AppSection.Errors,
+        AppSection.Import,
+        -> PlaceholderPanel(
             title = selectedSection.title,
             text = "Этот раздел уже есть в навигации, но его логика будет добавлена отдельным шагом.",
             modifier = modifier,
@@ -360,6 +395,62 @@ private fun MediaRows(
 }
 
 @Composable
+private fun GroupedMediaList(
+    title: String,
+    emptyText: String,
+    groups: Map<String, List<PlannedMediaFile>>,
+    selectedFile: PlannedMediaFile?,
+    onFileSelected: (PlannedMediaFile) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    ElevatedCard(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            HorizontalDivider()
+            if (groups.isEmpty()) {
+                EmptyListText(emptyText)
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    groups.forEach { (groupTitle, files) ->
+                        item(key = "header-$groupTitle") {
+                            Text(
+                                text = "$groupTitle · ${files.size}",
+                                modifier = Modifier.padding(top = 6.dp, bottom = 2.dp),
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        items(files, key = { it.sourcePath }) { plannedFile ->
+                            MediaListRow(
+                                plannedFile = plannedFile,
+                                selected = plannedFile == selectedFile,
+                                onClick = { onFileSelected(plannedFile) },
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun EmptyListText(text: String) {
     Text(
         text = text,
@@ -427,5 +518,29 @@ private fun scanStatusText(
         ScanUiState.Loading -> "Сканирую папку и подпапки. Файлы не изменяются."
         is ScanUiState.Success -> "Сканирование завершено. Это только статистика, импорт пока не запускался."
         is ScanUiState.Error -> scanUiState.message
+    }
+}
+
+private data class LibraryDateGroup(
+    val year: String,
+    val month: String,
+)
+
+private fun PlannedMediaFile.libraryDateGroup(): LibraryDateGroup? {
+    val pathParts = targetRelativePath.replace('\\', '/').split('/')
+    val libraryIndex = pathParts.indexOfLast { it == "Library" }
+    val year = pathParts.getOrNull(libraryIndex + 1)
+    val month = pathParts.getOrNull(libraryIndex + 2)
+
+    return if (
+        year != null &&
+        month != null &&
+        year.length == 4 &&
+        month.length == 7 &&
+        month.startsWith("$year-")
+    ) {
+        LibraryDateGroup(year = year, month = month)
+    } else {
+        null
     }
 }
