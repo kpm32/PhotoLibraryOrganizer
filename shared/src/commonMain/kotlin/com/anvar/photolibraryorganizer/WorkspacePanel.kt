@@ -1,0 +1,313 @@
+package com.anvar.photolibraryorganizer
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Button
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import com.anvar.photolibraryorganizer.domain.PhotoLibraryPlan
+import com.anvar.photolibraryorganizer.domain.model.ImportAvailability
+import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
+import com.anvar.photolibraryorganizer.presentation.ImportUiState
+import com.anvar.photolibraryorganizer.presentation.ScanUiState
+
+@Composable
+internal fun MainWorkspace(
+    plan: PhotoLibraryPlan,
+    scanUiState: ScanUiState,
+    importUiState: ImportUiState,
+    libraryFiles: List<PlannedMediaFile>,
+    importAvailability: ImportAvailability,
+    selectedFile: PlannedMediaFile?,
+    onScanClick: () -> Unit,
+    onImportClick: () -> Unit,
+    onFileSelected: (PlannedMediaFile) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        WorkspaceHeader()
+        ScanPreview(
+            plan = plan,
+            scanUiState = scanUiState,
+            importUiState = importUiState,
+            importAvailability = importAvailability,
+            onScanClick = onScanClick,
+            onImportClick = onImportClick,
+        )
+        MediaList(
+            scanUiState = scanUiState,
+            libraryFiles = libraryFiles,
+            selectedFile = selectedFile,
+            onFileSelected = onFileSelected,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+private fun WorkspaceHeader() {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            text = "Импорт и каталог",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Text(
+            text = "Сначала показываем план, потом копируем. Исходники не удаляются.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun ScanPreview(
+    plan: PhotoLibraryPlan,
+    scanUiState: ScanUiState,
+    importUiState: ImportUiState,
+    importAvailability: ImportAvailability,
+    onScanClick: () -> Unit,
+    onImportClick: () -> Unit,
+) {
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Text(
+                text = "Панель импорта",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            HorizontalDivider()
+            Text(
+                text = scanStatusText(plan, scanUiState),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (scanUiState is ScanUiState.Success) {
+                Text(
+                    text = "Пока используем дату изменения файла. Дату съемки из EXIF подключим отдельным шагом.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                ImportAvailabilityHint(importAvailability)
+            }
+            ImportStatus(importUiState)
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = onScanClick,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = plan.canScan && scanUiState !is ScanUiState.Loading,
+                ) {
+                    Text(if (scanUiState is ScanUiState.Loading) "Сканирую..." else "Сканировать")
+                }
+                OutlinedButton(
+                    onClick = onImportClick,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = importAvailability is ImportAvailability.Available &&
+                        importUiState !is ImportUiState.Loading,
+                ) {
+                    Text(if (importUiState is ImportUiState.Loading) "Импортирую..." else "Импорт")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ImportStatus(importUiState: ImportUiState) {
+    val text = when (importUiState) {
+        ImportUiState.Idle -> return
+        ImportUiState.Loading -> "Копирую файлы в библиотеку. Исходники не удаляются."
+        is ImportUiState.Success -> {
+            "Импорт завершен: скопировано ${importUiState.result.copiedFiles}, пропущено ${importUiState.result.skippedFiles}, ошибок ${importUiState.result.failedFiles}."
+        }
+        is ImportUiState.Error -> importUiState.message
+    }
+
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+@Composable
+private fun ImportAvailabilityHint(importAvailability: ImportAvailability) {
+    if (importAvailability is ImportAvailability.Unavailable) {
+        Text(
+            text = importAvailability.reason,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun MediaList(
+    scanUiState: ScanUiState,
+    libraryFiles: List<PlannedMediaFile>,
+    selectedFile: PlannedMediaFile?,
+    onFileSelected: (PlannedMediaFile) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    ElevatedCard(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = if (libraryFiles.isEmpty()) "Файлы к импорту" else "Библиотека",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            HorizontalDivider()
+            val files = libraryFiles.ifEmpty {
+                (scanUiState as? ScanUiState.Success)?.plannedFiles.orEmpty()
+            }
+
+            when {
+                libraryFiles.isNotEmpty() -> MediaRows(
+                    files = files,
+                    selectedFile = selectedFile,
+                    onFileSelected = onFileSelected,
+                )
+                scanUiState == ScanUiState.Idle -> EmptyListText("После сканирования здесь появится список найденных фото.")
+                scanUiState == ScanUiState.Loading -> EmptyListText("Сканирую папку...")
+                scanUiState is ScanUiState.Error -> EmptyListText(scanUiState.message)
+                files.isEmpty() -> EmptyListText("Медиафайлы не найдены.")
+                else -> MediaRows(
+                    files = files,
+                    selectedFile = selectedFile,
+                    onFileSelected = onFileSelected,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MediaRows(
+    files: List<PlannedMediaFile>,
+    selectedFile: PlannedMediaFile?,
+    onFileSelected: (PlannedMediaFile) -> Unit,
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        items(files) { plannedFile ->
+            MediaListRow(
+                plannedFile = plannedFile,
+                selected = plannedFile == selectedFile,
+                onClick = { onFileSelected(plannedFile) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun EmptyListText(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+@Composable
+private fun MediaListRow(
+    plannedFile: PlannedMediaFile,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
+        shape = MaterialTheme.shapes.small,
+    ) {
+        Row(
+            modifier = Modifier.padding(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(44.dp)
+                    .height(32.dp)
+                    .background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.small),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("Фото", style = MaterialTheme.typography.labelSmall)
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(
+                    text = plannedFile.fileName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                )
+                Text(
+                    text = plannedFile.targetRelativePath,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
+            }
+        }
+    }
+}
+
+private fun scanStatusText(
+    plan: PhotoLibraryPlan,
+    scanUiState: ScanUiState,
+): String {
+    return when (scanUiState) {
+        ScanUiState.Idle -> if (plan.canScan) {
+            "Готово к безопасному сканированию. На этом шаге приложение еще не будет копировать, переносить или удалять файлы."
+        } else {
+            "Выбери исходную папку и папку библиотеки, чтобы подготовить сканирование."
+        }
+
+        ScanUiState.Loading -> "Сканирую папку и подпапки. Файлы не изменяются."
+        is ScanUiState.Success -> "Сканирование завершено. Это только статистика, импорт пока не запускался."
+        is ScanUiState.Error -> scanUiState.message
+    }
+}
