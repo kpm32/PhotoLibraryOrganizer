@@ -41,13 +41,17 @@ internal fun MediaList(
     modifier: Modifier = Modifier,
 ) {
     ElevatedCard(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .fillMaxSize(),
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
         ),
     ) {
         Column(
-            modifier = Modifier.padding(14.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
@@ -62,6 +66,7 @@ internal fun MediaList(
                     imagePreviewLoader = imagePreviewLoader,
                     selectedFile = selectedFile,
                     onFileSelected = onFileSelected,
+                    modifier = Modifier.weight(1f),
                 )
                 scanUiState == ScanUiState.Idle -> EmptyListText(emptyText)
                 scanUiState == ScanUiState.Loading -> EmptyListText("Сканирую папку...")
@@ -72,6 +77,7 @@ internal fun MediaList(
                     imagePreviewLoader = imagePreviewLoader,
                     selectedFile = selectedFile,
                     onFileSelected = onFileSelected,
+                    modifier = Modifier.weight(1f),
                 )
             }
         }
