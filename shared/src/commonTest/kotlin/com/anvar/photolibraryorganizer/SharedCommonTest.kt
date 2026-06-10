@@ -5,14 +5,17 @@ import com.anvar.photolibraryorganizer.domain.ImportMode
 import com.anvar.photolibraryorganizer.domain.PhotoLibraryError
 import com.anvar.photolibraryorganizer.domain.PhotoLibraryPlan
 import com.anvar.photolibraryorganizer.domain.model.ImportAvailability
+import com.anvar.photolibraryorganizer.domain.model.ImportMediaFilesResult
 import com.anvar.photolibraryorganizer.domain.model.MediaFileCategory
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
 import com.anvar.photolibraryorganizer.domain.model.ScanSourceFolderResult
 import com.anvar.photolibraryorganizer.domain.model.ScanSourceFolderSummary
 import com.anvar.photolibraryorganizer.domain.model.ScannedMediaFile
 import com.anvar.photolibraryorganizer.domain.model.detectMediaFileType
+import com.anvar.photolibraryorganizer.domain.repository.MediaFileImporter
 import com.anvar.photolibraryorganizer.domain.repository.PhotoSourceScanner
 import com.anvar.photolibraryorganizer.domain.usecase.BuildMediaFilePlanUseCase
+import com.anvar.photolibraryorganizer.domain.usecase.ImportMediaFilesUseCase
 import com.anvar.photolibraryorganizer.domain.usecase.ResolveImportAvailabilityUseCase
 import com.anvar.photolibraryorganizer.domain.usecase.ScanSourceFolderUseCase
 import kotlinx.coroutines.test.runTest
@@ -152,6 +155,33 @@ class SharedCommonTest {
         assertEquals(ImportAvailability.Available, result)
     }
 
+    @Test
+    fun importUseCaseDelegatesCopyModeToImporter() = runTest {
+        val importer = FakeMediaFileImporter()
+        val useCase = ImportMediaFilesUseCase(importer)
+
+        val result = useCase(
+            importMode = ImportMode.Copy,
+            plannedFiles = listOf(fakePlannedMediaFile()),
+        )
+
+        assertIs<AppResult.Success<ImportMediaFilesResult>>(result)
+        assertEquals(1, importer.lastPlannedFiles.size)
+    }
+
+    @Test
+    fun importUseCaseRejectsMoveModeForNow() = runTest {
+        val useCase = ImportMediaFilesUseCase(FakeMediaFileImporter())
+
+        val result = useCase(
+            importMode = ImportMode.Move,
+            plannedFiles = listOf(fakePlannedMediaFile()),
+        )
+
+        val error = assertIs<AppResult.Error>(result)
+        assertEquals(PhotoLibraryError.UnsupportedImportMode, error.error)
+    }
+
     private fun fakePlannedMediaFile(): PlannedMediaFile {
         return PlannedMediaFile(
             sourcePath = "/source/IMG_0001.JPG",
@@ -178,6 +208,21 @@ class SharedCommonTest {
                         unsupportedFiles = 0,
                         totalMediaBytes = 0,
                     ),
+                ),
+            )
+        }
+    }
+
+    private class FakeMediaFileImporter : MediaFileImporter {
+        var lastPlannedFiles: List<PlannedMediaFile> = emptyList()
+
+        override suspend fun copyFiles(plannedFiles: List<PlannedMediaFile>): AppResult<ImportMediaFilesResult> {
+            lastPlannedFiles = plannedFiles
+            return AppResult.Success(
+                ImportMediaFilesResult(
+                    copiedFiles = plannedFiles.size,
+                    skippedFiles = 0,
+                    failedFiles = 0,
                 ),
             )
         }

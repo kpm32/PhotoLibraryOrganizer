@@ -44,12 +44,16 @@ import com.anvar.photolibraryorganizer.domain.PhotoLibraryError
 import com.anvar.photolibraryorganizer.domain.PhotoLibraryPlan
 import com.anvar.photolibraryorganizer.domain.model.ImportAvailability
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
+import com.anvar.photolibraryorganizer.domain.repository.MediaFileImporter
 import com.anvar.photolibraryorganizer.domain.repository.PhotoSourceScanner
 import com.anvar.photolibraryorganizer.domain.usecase.BuildMediaFilePlanUseCase
+import com.anvar.photolibraryorganizer.domain.usecase.ImportMediaFilesUseCase
 import com.anvar.photolibraryorganizer.domain.usecase.ResolveImportAvailabilityUseCase
 import com.anvar.photolibraryorganizer.domain.usecase.ScanSourceFolderUseCase
 import com.anvar.photolibraryorganizer.presentation.FolderPicker
+import com.anvar.photolibraryorganizer.presentation.ImportUiState
 import com.anvar.photolibraryorganizer.presentation.PreviewFolderPicker
+import com.anvar.photolibraryorganizer.presentation.PreviewMediaFileImporter
 import com.anvar.photolibraryorganizer.presentation.PreviewPhotoSourceScanner
 import com.anvar.photolibraryorganizer.presentation.ScanUiState
 import kotlinx.coroutines.Dispatchers
@@ -60,6 +64,7 @@ import kotlinx.coroutines.withContext
 @Preview
 fun App(
     photoSourceScanner: PhotoSourceScanner = PreviewPhotoSourceScanner,
+    mediaFileImporter: MediaFileImporter = PreviewMediaFileImporter,
     folderPicker: FolderPicker = PreviewFolderPicker,
 ) {
     val colorScheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()
@@ -69,9 +74,13 @@ fun App(
         var destinationFolder by remember { mutableStateOf<String?>(null) }
         var importMode by remember { mutableStateOf(ImportMode.ScanOnly) }
         var scanUiState by remember { mutableStateOf<ScanUiState>(ScanUiState.Idle) }
+        var importUiState by remember { mutableStateOf<ImportUiState>(ImportUiState.Idle) }
         val coroutineScope = rememberCoroutineScope()
         val scanSourceFolderUseCase = remember(photoSourceScanner) {
             ScanSourceFolderUseCase(photoSourceScanner)
+        }
+        val importMediaFilesUseCase = remember(mediaFileImporter) {
+            ImportMediaFilesUseCase(mediaFileImporter)
         }
         val buildMediaFilePlanUseCase = remember { BuildMediaFilePlanUseCase() }
         val resolveImportAvailabilityUseCase = remember { ResolveImportAvailabilityUseCase() }
@@ -85,6 +94,7 @@ fun App(
         PhotoLibraryOrganizerApp(
             plan = plan,
             scanUiState = scanUiState,
+            importUiState = importUiState,
             importAvailability = resolveImportAvailabilityUseCase(
                 importMode = importMode,
                 plannedFiles = (scanUiState as? ScanUiState.Success)?.plannedFiles.orEmpty(),
@@ -92,15 +102,21 @@ fun App(
             onSourceFolderClick = {
                 folderPicker.chooseFolder("Выбери исходную папку")?.let { sourceFolder = it }
                 scanUiState = ScanUiState.Idle
+                importUiState = ImportUiState.Idle
             },
             onDestinationFolderClick = {
                 folderPicker.chooseFolder("Выбери папку библиотеки")?.let { destinationFolder = it }
                 scanUiState = ScanUiState.Idle
+                importUiState = ImportUiState.Idle
             },
-            onImportModeSelected = { importMode = it },
+            onImportModeSelected = {
+                importMode = it
+                importUiState = ImportUiState.Idle
+            },
             onScanClick = {
                 coroutineScope.launch {
                     scanUiState = ScanUiState.Loading
+                    importUiState = ImportUiState.Idle
                     scanUiState = try {
                         when (val result = withContext(Dispatchers.Default) { scanSourceFolderUseCase(sourceFolder) }) {
                             is AppResult.Success -> ScanUiState.Success(
@@ -117,6 +133,24 @@ fun App(
                     }
                 }
             },
+            onImportClick = {
+                coroutineScope.launch {
+                    val plannedFiles = (scanUiState as? ScanUiState.Success)?.plannedFiles.orEmpty()
+                    importUiState = ImportUiState.Loading
+                    importUiState = try {
+                        when (
+                            val result = withContext(Dispatchers.Default) {
+                                importMediaFilesUseCase(importMode, plannedFiles)
+                            }
+                        ) {
+                            is AppResult.Success -> ImportUiState.Success(result.data)
+                            is AppResult.Error -> ImportUiState.Error(result.error.toUserMessage())
+                        }
+                    } catch (exception: Throwable) {
+                        ImportUiState.Error("Импорт прервался: ${exception.message ?: "без деталей"}")
+                    }
+                }
+            },
         )
     }
 }
@@ -125,11 +159,13 @@ fun App(
 private fun PhotoLibraryOrganizerApp(
     plan: PhotoLibraryPlan,
     scanUiState: ScanUiState,
+    importUiState: ImportUiState,
     importAvailability: ImportAvailability,
     onSourceFolderClick: () -> Unit,
     onDestinationFolderClick: () -> Unit,
     onImportModeSelected: (ImportMode) -> Unit,
     onScanClick: () -> Unit,
+    onImportClick: () -> Unit,
 ) {
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -171,8 +207,10 @@ private fun PhotoLibraryOrganizerApp(
             ScanPreview(
                 plan = plan,
                 scanUiState = scanUiState,
+                importUiState = importUiState,
                 importAvailability = importAvailability,
                 onScanClick = onScanClick,
+                onImportClick = onImportClick,
             )
 
             ImportModeSelector(
@@ -326,8 +364,10 @@ private fun ModeOption(
 private fun ScanPreview(
     plan: PhotoLibraryPlan,
     scanUiState: ScanUiState,
+    importUiState: ImportUiState,
     importAvailability: ImportAvailability,
     onScanClick: () -> Unit,
+    onImportClick: () -> Unit,
 ) {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
@@ -360,6 +400,7 @@ private fun ScanPreview(
                 PlannedFilesPreview(scanUiState.plannedFiles)
                 ImportAvailabilityHint(importAvailability)
             }
+            ImportStatus(importUiState)
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Button(
                     onClick = onScanClick,
@@ -368,14 +409,33 @@ private fun ScanPreview(
                     Text(if (scanUiState is ScanUiState.Loading) "Сканирую..." else "Сканировать")
                 }
                 OutlinedButton(
-                    onClick = {},
-                    enabled = importAvailability is ImportAvailability.Available,
+                    onClick = onImportClick,
+                    enabled = importAvailability is ImportAvailability.Available &&
+                        importUiState !is ImportUiState.Loading,
                 ) {
-                    Text("Импорт")
+                    Text(if (importUiState is ImportUiState.Loading) "Импортирую..." else "Импорт")
                 }
             }
         }
     }
+}
+
+@Composable
+private fun ImportStatus(importUiState: ImportUiState) {
+    val text = when (importUiState) {
+        ImportUiState.Idle -> return
+        ImportUiState.Loading -> "Копирую файлы в библиотеку. Исходники не удаляются."
+        is ImportUiState.Success -> {
+            "Импорт завершен: скопировано ${importUiState.result.copiedFiles}, пропущено ${importUiState.result.skippedFiles}, ошибок ${importUiState.result.failedFiles}."
+        }
+        is ImportUiState.Error -> importUiState.message
+    }
+
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
 
 @Composable
@@ -486,6 +546,8 @@ private fun PhotoLibraryError.toUserMessage(): String {
         PhotoLibraryError.InvalidSourceFolder -> "Исходная папка не выбрана."
         is PhotoLibraryError.SourceFolderNotFound -> "Исходная папка не найдена: $path"
         is PhotoLibraryError.SourceFolderIsNotDirectory -> "Выбранный путь не является папкой: $path"
+        PhotoLibraryError.ImportPlanIsEmpty -> "Нет плана импорта. Сначала выполни сканирование."
+        PhotoLibraryError.UnsupportedImportMode -> "Этот режим импорта пока не поддерживается."
         is PhotoLibraryError.FileSystem -> "Не удалось просканировать папку: $message"
         is PhotoLibraryError.Unknown -> "Неизвестная ошибка сканирования: ${message ?: "без деталей"}"
     }
