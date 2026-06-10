@@ -13,8 +13,20 @@ import kotlin.io.path.exists
 
 class JvmMediaFileImporter : MediaFileImporter {
     override suspend fun copyFiles(plannedFiles: List<PlannedMediaFile>): AppResult<ImportMediaFilesResult> {
+        return importFiles(plannedFiles, moveSource = false)
+    }
+
+    override suspend fun moveFiles(plannedFiles: List<PlannedMediaFile>): AppResult<ImportMediaFilesResult> {
+        return importFiles(plannedFiles, moveSource = true)
+    }
+
+    private fun importFiles(
+        plannedFiles: List<PlannedMediaFile>,
+        moveSource: Boolean,
+    ): AppResult<ImportMediaFilesResult> {
         return try {
             var copiedFiles = 0
+            var movedFiles = 0
             var skippedFiles = 0
             var failedFiles = 0
 
@@ -30,8 +42,13 @@ class JvmMediaFileImporter : MediaFileImporter {
                         if (targetParent != null) {
                             targetParent.createDirectories()
                         }
-                        Files.copy(sourcePath, targetPath, StandardCopyOption.COPY_ATTRIBUTES)
-                        copiedFiles += 1
+                        if (moveSource) {
+                            Files.move(sourcePath, targetPath)
+                            movedFiles += 1
+                        } else {
+                            Files.copy(sourcePath, targetPath, StandardCopyOption.COPY_ATTRIBUTES)
+                            copiedFiles += 1
+                        }
                     }
                 }
             }
@@ -39,12 +56,13 @@ class JvmMediaFileImporter : MediaFileImporter {
             AppResult.Success(
                 ImportMediaFilesResult(
                     copiedFiles = copiedFiles,
+                    movedFiles = movedFiles,
                     skippedFiles = skippedFiles,
                     failedFiles = failedFiles,
                 ),
             )
         } catch (exception: Throwable) {
-            AppResult.Error(PhotoLibraryError.FileSystem(exception.message ?: "Copy import failed"))
+            AppResult.Error(PhotoLibraryError.FileSystem(exception.message ?: "File import failed"))
         }
     }
 }

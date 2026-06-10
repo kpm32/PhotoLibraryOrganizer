@@ -207,6 +207,7 @@ fun App(
                                 val plannedFiles = buildMediaFilePlanUseCase(
                                     destinationFolder = destinationFolder,
                                     mediaFiles = result.data.mediaFiles,
+                                    importRules = plan.importRules,
                                 )
                                 val resolvedFiles = importPlanTargetResolver.resolve(plannedFiles)
                                 ScanUiState.Success(

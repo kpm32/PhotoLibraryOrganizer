@@ -1,5 +1,6 @@
 package com.anvar.photolibraryorganizer.domain.usecase
 
+import com.anvar.photolibraryorganizer.domain.model.ImportOrganizationRules
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
 import com.anvar.photolibraryorganizer.domain.model.ScannedMediaFile
 import kotlinx.datetime.TimeZone
@@ -10,6 +11,7 @@ class BuildMediaFilePlanUseCase {
     operator fun invoke(
         destinationFolder: String?,
         mediaFiles: List<ScannedMediaFile>,
+        importRules: ImportOrganizationRules = ImportOrganizationRules.Default,
     ): List<PlannedMediaFile> {
         val destination = destinationFolder?.trim()?.trimEnd('/')
             ?: return emptyList()
@@ -26,15 +28,31 @@ class BuildMediaFilePlanUseCase {
             val minute = dateTime.minute.toString().padStart(2, '0')
             val second = dateTime.second.toString().padStart(2, '0')
             val safeFileName = mediaFile.fileName.replace('/', '_')
-            val targetFileName = "${year}-${month}-${day}_${hour}-${minute}-${second}_$safeFileName"
+            val tokens = mapOf(
+                "YYYY" to year,
+                "MM" to month,
+                "DD" to day,
+                "HH" to hour,
+                "mm" to minute,
+                "ss" to second,
+                "original-name.ext" to safeFileName,
+            )
+            val targetFolder = "${importRules.libraryFolderName}/${importRules.folderTemplate.applyTokens(tokens)}"
+            val targetFileName = importRules.fileNameTemplate.applyTokens(tokens)
 
             PlannedMediaFile(
                 sourcePath = mediaFile.path,
                 fileName = mediaFile.fileName,
-                targetRelativePath = "$destination/Library/$year/$year-$month/$targetFileName",
+                targetRelativePath = "$destination/$targetFolder/$targetFileName",
                 sizeBytes = mediaFile.sizeBytes,
                 contentHash = mediaFile.contentHash,
             )
+        }
+    }
+
+    private fun String.applyTokens(tokens: Map<String, String>): String {
+        return tokens.entries.fold(this) { result, token ->
+            result.replace(token.key, token.value)
         }
     }
 }

@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import com.anvar.photolibraryorganizer.domain.ImportMode
 import com.anvar.photolibraryorganizer.domain.PhotoLibraryPlan
 import com.anvar.photolibraryorganizer.domain.model.ImportAvailability
+import com.anvar.photolibraryorganizer.domain.model.ImportOrganizationRules
 import com.anvar.photolibraryorganizer.domain.model.ImportTargetStatus
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
 import com.anvar.photolibraryorganizer.presentation.ImportUiState
@@ -192,9 +193,11 @@ private fun ScanPreview(
             ImportStatus(importUiState)
             ImportConfirmation(
                 importUiState = importUiState,
+                selectedMode = selectedMode,
                 onConfirmImportClick = onConfirmImportClick,
                 onCancelImportClick = onCancelImportClick,
             )
+            ImportRulesSummary(plan.importRules)
             ImportModeChips(
                 selectedMode = selectedMode,
                 onImportModeSelected = onImportModeSelected,
@@ -259,9 +262,9 @@ private fun ImportStatus(importUiState: ImportUiState) {
     val text = when (importUiState) {
         ImportUiState.Idle -> return
         is ImportUiState.AwaitingConfirmation -> return
-        ImportUiState.Loading -> "Копирую файлы в библиотеку. Исходники не удаляются."
+        ImportUiState.Loading -> "Выполняю импорт по выбранному режиму."
         is ImportUiState.Success -> {
-            "Импорт завершен: скопировано ${importUiState.result.copiedFiles}, пропущено ${importUiState.result.skippedFiles}, ошибок ${importUiState.result.failedFiles}."
+            "Импорт завершен: скопировано ${importUiState.result.copiedFiles}, перенесено ${importUiState.result.movedFiles}, пропущено ${importUiState.result.skippedFiles}, ошибок ${importUiState.result.failedFiles}."
         }
         is ImportUiState.Error -> importUiState.message
     }
@@ -276,6 +279,7 @@ private fun ImportStatus(importUiState: ImportUiState) {
 @Composable
 private fun ImportConfirmation(
     importUiState: ImportUiState,
+    selectedMode: ImportMode,
     onConfirmImportClick: () -> Unit,
     onCancelImportClick: () -> Unit,
 ) {
@@ -291,7 +295,10 @@ private fun ImportConfirmation(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Text(
-                text = "Будет скопировано: ${importUiState.readyFileCount}. Уже есть: ${importUiState.existingFileCount}. Исходники не удаляются.",
+                text = importConfirmationText(
+                    importUiState = importUiState,
+                    selectedMode = selectedMode,
+                ),
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
             )
@@ -314,6 +321,52 @@ private fun ImportConfirmation(
 }
 
 @Composable
+private fun ImportRulesSummary(importRules: ImportOrganizationRules) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        shape = MaterialTheme.shapes.small,
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                text = "Правила импорта",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+            CompactRuleRow("Папка", "${importRules.libraryFolderName}/${importRules.folderTemplate}")
+            CompactRuleRow("Имя", importRules.fileNameTemplate)
+        }
+    }
+}
+
+@Composable
+private fun CompactRuleRow(
+    label: String,
+    value: String,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
 private fun ImportAvailabilityHint(importAvailability: ImportAvailability) {
     if (importAvailability is ImportAvailability.Unavailable) {
         Text(
@@ -322,6 +375,23 @@ private fun ImportAvailabilityHint(importAvailability: ImportAvailability) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
+}
+
+private fun importConfirmationText(
+    importUiState: ImportUiState.AwaitingConfirmation,
+    selectedMode: ImportMode,
+): String {
+    val action = when (selectedMode) {
+        ImportMode.Copy -> "Будет скопировано"
+        ImportMode.Move -> "Будет перенесено"
+        ImportMode.ScanOnly -> "Будет обработано"
+    }
+    val sourceNote = when (selectedMode) {
+        ImportMode.Copy -> "Исходники останутся на месте."
+        ImportMode.Move -> "Исходники исчезнут из старой папки после успешного переноса."
+        ImportMode.ScanOnly -> "Файлы не изменяются."
+    }
+    return "$action: ${importUiState.readyFileCount}. Уже есть: ${importUiState.existingFileCount}. $sourceNote"
 }
 
 @Composable

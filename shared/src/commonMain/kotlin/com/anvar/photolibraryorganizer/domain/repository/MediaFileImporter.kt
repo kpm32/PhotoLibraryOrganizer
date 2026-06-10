@@ -6,4 +6,6 @@ import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
 
 interface MediaFileImporter {
     suspend fun copyFiles(plannedFiles: List<PlannedMediaFile>): AppResult<ImportMediaFilesResult>
+
+    suspend fun moveFiles(plannedFiles: List<PlannedMediaFile>): AppResult<ImportMediaFilesResult>
 }

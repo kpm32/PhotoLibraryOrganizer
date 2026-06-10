@@ -10,6 +10,7 @@ import kotlin.io.path.readText
 import kotlin.io.path.writeText
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
@@ -65,5 +66,33 @@ class JvmMediaFileImporterTest {
         assertEquals(0, success.data.copiedFiles)
         assertEquals(1, success.data.skippedFiles)
         assertEquals("existing", targetFile.readText())
+    }
+
+    @Test
+    fun movesFilesAndRemovesSource() = runTest {
+        val tempFolder = Files.createTempDirectory("photo-move-test")
+        val sourceFile = tempFolder.resolve("source.jpg")
+        val targetFile = tempFolder.resolve("library/Library/2025/2025-01/source.jpg")
+        sourceFile.writeText("photo")
+
+        val result = importer.moveFiles(
+            listOf(
+                PlannedMediaFile(
+                    sourcePath = sourceFile.toString(),
+                    fileName = "source.jpg",
+                    targetRelativePath = targetFile.toString(),
+                    sizeBytes = 5,
+                ),
+            ),
+        )
+
+        val success = assertIs<AppResult.Success<ImportMediaFilesResult>>(result)
+        assertEquals(0, success.data.copiedFiles)
+        assertEquals(1, success.data.movedFiles)
+        assertEquals(0, success.data.skippedFiles)
+        assertEquals(0, success.data.failedFiles)
+        assertFalse(sourceFile.exists())
+        assertTrue(targetFile.exists())
+        assertEquals("photo", targetFile.readText())
     }
 }

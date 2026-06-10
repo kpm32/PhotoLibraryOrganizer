@@ -20,8 +20,8 @@ class ImportMediaFilesUseCase(
 
         return when (importMode) {
             ImportMode.Copy -> mediaFileImporter.copyFiles(plannedFiles)
-            ImportMode.ScanOnly,
-            ImportMode.Move -> AppResult.Error(PhotoLibraryError.UnsupportedImportMode)
+            ImportMode.Move -> mediaFileImporter.moveFiles(plannedFiles)
+            ImportMode.ScanOnly -> AppResult.Error(PhotoLibraryError.UnsupportedImportMode)
         }
     }
 }
