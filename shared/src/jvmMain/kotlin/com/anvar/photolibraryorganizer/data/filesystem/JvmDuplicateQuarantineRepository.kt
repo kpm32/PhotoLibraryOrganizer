@@ -2,6 +2,7 @@ package com.anvar.photolibraryorganizer.data.filesystem
 
 import com.anvar.photolibraryorganizer.domain.AppResult
 import com.anvar.photolibraryorganizer.domain.PhotoLibraryError
+import com.anvar.photolibraryorganizer.domain.model.DuplicateQuarantineDeleteResult
 import com.anvar.photolibraryorganizer.domain.model.DuplicateQuarantineResult
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
 import com.anvar.photolibraryorganizer.domain.repository.DuplicateQuarantineRepository
@@ -46,6 +47,40 @@ class JvmDuplicateQuarantineRepository : DuplicateQuarantineRepository {
             )
         } catch (exception: Throwable) {
             AppResult.Error(PhotoLibraryError.FileSystem(exception.message ?: "Duplicate quarantine failed"))
+        }
+    }
+
+    override suspend fun deleteFromQuarantine(
+        destinationFolder: String?,
+        quarantineFiles: List<PlannedMediaFile>,
+    ): AppResult<DuplicateQuarantineDeleteResult> {
+        val destination = destinationFolder?.trim()?.trimEnd('/')
+            ?: return AppResult.Error(PhotoLibraryError.FileSystem("Папка библиотеки не выбрана."))
+
+        return try {
+            val quarantineRoot = Path.of(destination, "Duplicates").toAbsolutePath().normalize()
+            var deletedFiles = 0
+            var failedFiles = 0
+
+            quarantineFiles.forEach { quarantineFile ->
+                val sourcePath = Path.of(quarantineFile.sourcePath).toAbsolutePath().normalize()
+                if (!sourcePath.startsWith(quarantineRoot) || !sourcePath.exists() || !Files.isRegularFile(sourcePath)) {
+                    failedFiles += 1
+                    return@forEach
+                }
+
+                Files.delete(sourcePath)
+                deletedFiles += 1
+            }
+
+            AppResult.Success(
+                DuplicateQuarantineDeleteResult(
+                    deletedFiles = deletedFiles,
+                    failedFiles = failedFiles,
+                ),
+            )
+        } catch (exception: Throwable) {
+            AppResult.Error(PhotoLibraryError.FileSystem(exception.message ?: "Duplicate quarantine delete failed"))
         }
     }
 

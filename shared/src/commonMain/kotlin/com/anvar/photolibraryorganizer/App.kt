@@ -70,6 +70,7 @@ fun App(
         var libraryFiles by remember { mutableStateOf<List<PlannedMediaFile>>(emptyList()) }
         var duplicateFiles by remember { mutableStateOf<List<PlannedMediaFile>>(emptyList()) }
         var duplicateActionMessage by remember { mutableStateOf<String?>(null) }
+        var duplicateDeleteAwaitingConfirmation by remember { mutableStateOf(false) }
         var imagePreviewUiState by remember { mutableStateOf<ImagePreviewUiState>(ImagePreviewUiState.Empty) }
 
         val coroutineScope = rememberCoroutineScope()
@@ -129,6 +130,7 @@ fun App(
             selectedSection = selectedSection,
             imagePreviewLoader = cachedImagePreviewLoader,
             duplicateActionMessage = duplicateActionMessage,
+            duplicateDeleteAwaitingConfirmation = duplicateDeleteAwaitingConfirmation,
             importAvailability = resolveImportAvailabilityUseCase(
                 importMode = importMode,
                 plannedFiles = (scanUiState as? ScanUiState.Success)?.plannedFiles.orEmpty(),
@@ -148,6 +150,7 @@ fun App(
                 scanUiState = ScanUiState.Idle
                 importUiState = ImportUiState.Idle
                 duplicateActionMessage = null
+                duplicateDeleteAwaitingConfirmation = false
                 selectedFile = null
                 libraryFiles = emptyList()
                 duplicateFiles = emptyList()
@@ -168,6 +171,7 @@ fun App(
                 scanUiState = ScanUiState.Idle
                 importUiState = ImportUiState.Idle
                 duplicateActionMessage = null
+                duplicateDeleteAwaitingConfirmation = false
                 selectedFile = null
                 coroutineScope.launch {
                     libraryFiles = refreshLibraryFiles(
@@ -191,6 +195,7 @@ fun App(
                     scanUiState = ScanUiState.Loading
                     importUiState = ImportUiState.Idle
                     duplicateActionMessage = null
+                    duplicateDeleteAwaitingConfirmation = false
                     libraryFiles = emptyList()
                     duplicateFiles = emptyList()
                     scanUiState = try {
@@ -269,6 +274,7 @@ fun App(
             },
             onMoveDuplicatesClick = {
                 coroutineScope.launch {
+                    duplicateDeleteAwaitingConfirmation = false
                     val duplicatesToMove = libraryFiles.duplicateQuarantineCandidates()
                     if (duplicatesToMove.isEmpty()) {
                         duplicateActionMessage = "Дубликаты для переноса не найдены."
@@ -302,6 +308,62 @@ fun App(
                         }
                     } catch (exception: Throwable) {
                         "Не удалось перенести дубликаты: ${exception.message ?: "без деталей"}"
+                    }
+                }
+            },
+            onRequestDeleteQuarantineClick = {
+                if (duplicateFiles.isEmpty()) {
+                    duplicateActionMessage = "В Duplicates пока нет файлов для удаления."
+                    duplicateDeleteAwaitingConfirmation = false
+                } else {
+                    duplicateDeleteAwaitingConfirmation = true
+                    duplicateActionMessage = "Будет удалено из Duplicates: ${duplicateFiles.size}. Библиотеку не трогаем."
+                }
+            },
+            onCancelDeleteQuarantineClick = {
+                duplicateDeleteAwaitingConfirmation = false
+                duplicateActionMessage = "Удаление отменено."
+            },
+            onConfirmDeleteQuarantineClick = {
+                coroutineScope.launch {
+                    if (duplicateFiles.isEmpty()) {
+                        duplicateDeleteAwaitingConfirmation = false
+                        duplicateActionMessage = "В Duplicates пока нет файлов для удаления."
+                        return@launch
+                    }
+
+                    duplicateActionMessage = "Удаляю файлы из Duplicates..."
+                    duplicateActionMessage = try {
+                        when (
+                            val result = withContext(Dispatchers.Default) {
+                                duplicateQuarantineRepository.deleteFromQuarantine(
+                                    destinationFolder = destinationFolder,
+                                    quarantineFiles = duplicateFiles,
+                                )
+                            }
+                        ) {
+                            is AppResult.Success -> {
+                                duplicateDeleteAwaitingConfirmation = false
+                                libraryFiles = refreshLibraryFiles(
+                                    destinationFolder = destinationFolder,
+                                    photoSourceScanner = photoSourceScanner,
+                                )
+                                duplicateFiles = refreshDuplicateFiles(
+                                    destinationFolder = destinationFolder,
+                                    photoSourceScanner = photoSourceScanner,
+                                )
+                                selectedFile = libraryFiles.firstOrNull()
+                                "Удалено из Duplicates: ${result.data.deletedFiles}, ошибок: ${result.data.failedFiles}."
+                            }
+
+                            is AppResult.Error -> {
+                                duplicateDeleteAwaitingConfirmation = false
+                                result.error.toUserMessage()
+                            }
+                        }
+                    } catch (exception: Throwable) {
+                        duplicateDeleteAwaitingConfirmation = false
+                        "Не удалось удалить файлы из Duplicates: ${exception.message ?: "без деталей"}"
                     }
                 }
             },

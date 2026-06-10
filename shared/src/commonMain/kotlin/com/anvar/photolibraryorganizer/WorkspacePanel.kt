@@ -54,6 +54,7 @@ internal fun MainWorkspace(
     selectedSection: AppSection,
     imagePreviewLoader: ImagePreviewLoader,
     duplicateActionMessage: String?,
+    duplicateDeleteAwaitingConfirmation: Boolean,
     importAvailability: ImportAvailability,
     selectedFile: PlannedMediaFile?,
     selectedMode: ImportMode,
@@ -62,6 +63,9 @@ internal fun MainWorkspace(
     onConfirmImportClick: () -> Unit,
     onCancelImportClick: () -> Unit,
     onMoveDuplicatesClick: () -> Unit,
+    onRequestDeleteQuarantineClick: () -> Unit,
+    onConfirmDeleteQuarantineClick: () -> Unit,
+    onCancelDeleteQuarantineClick: () -> Unit,
     onImportModeSelected: (ImportMode) -> Unit,
     onFileSelected: (PlannedMediaFile) -> Unit,
     modifier: Modifier = Modifier,
@@ -101,9 +105,13 @@ internal fun MainWorkspace(
                 duplicateFiles = duplicateFiles,
                 imagePreviewLoader = imagePreviewLoader,
                 duplicateActionMessage = duplicateActionMessage,
+                duplicateDeleteAwaitingConfirmation = duplicateDeleteAwaitingConfirmation,
                 selectedFile = selectedFile,
                 onFileSelected = onFileSelected,
                 onMoveDuplicatesClick = onMoveDuplicatesClick,
+                onRequestDeleteQuarantineClick = onRequestDeleteQuarantineClick,
+                onConfirmDeleteQuarantineClick = onConfirmDeleteQuarantineClick,
+                onCancelDeleteQuarantineClick = onCancelDeleteQuarantineClick,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -318,9 +326,13 @@ private fun LibrarySection(
     duplicateFiles: List<PlannedMediaFile>,
     imagePreviewLoader: ImagePreviewLoader,
     duplicateActionMessage: String?,
+    duplicateDeleteAwaitingConfirmation: Boolean,
     selectedFile: PlannedMediaFile?,
     onFileSelected: (PlannedMediaFile) -> Unit,
     onMoveDuplicatesClick: () -> Unit,
+    onRequestDeleteQuarantineClick: () -> Unit,
+    onConfirmDeleteQuarantineClick: () -> Unit,
+    onCancelDeleteQuarantineClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     when (selectedSection) {
@@ -377,9 +389,23 @@ private fun LibrarySection(
             imagePreviewLoader = imagePreviewLoader,
             selectedFile = selectedFile,
             onFileSelected = onFileSelected,
-            actionText = if (libraryFiles.duplicateGroups().isEmpty()) null else "Перенести дубли в Duplicates",
+            actionText = duplicateActionText(
+                libraryFiles = libraryFiles,
+                duplicateFiles = duplicateFiles,
+                duplicateDeleteAwaitingConfirmation = duplicateDeleteAwaitingConfirmation,
+            ),
+            secondaryActionText = if (duplicateDeleteAwaitingConfirmation && duplicateFiles.isNotEmpty()) {
+                "Отмена"
+            } else {
+                null
+            },
             actionMessage = duplicateActionMessage,
-            onActionClick = onMoveDuplicatesClick,
+            onActionClick = when {
+                duplicateDeleteAwaitingConfirmation && duplicateFiles.isNotEmpty() -> onConfirmDeleteQuarantineClick
+                duplicateFiles.isNotEmpty() -> onRequestDeleteQuarantineClick
+                else -> onMoveDuplicatesClick
+            },
+            onSecondaryActionClick = onCancelDeleteQuarantineClick,
             modifier = modifier,
         )
 
@@ -500,8 +526,10 @@ private fun GroupedMediaList(
     selectedFile: PlannedMediaFile?,
     onFileSelected: (PlannedMediaFile) -> Unit,
     actionText: String? = null,
+    secondaryActionText: String? = null,
     actionMessage: String? = null,
     onActionClick: (() -> Unit)? = null,
+    onSecondaryActionClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val groupTitles = groups.keys.toList()
@@ -525,11 +553,24 @@ private fun GroupedMediaList(
                 fontWeight = FontWeight.SemiBold,
             )
             if (groups.isNotEmpty() && actionText != null && onActionClick != null) {
-                Button(
-                    onClick = onActionClick,
+                Row(
                     modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Text(actionText)
+                    Button(
+                        onClick = onActionClick,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text(actionText)
+                    }
+                    if (secondaryActionText != null && onSecondaryActionClick != null) {
+                        OutlinedButton(
+                            onClick = onSecondaryActionClick,
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Text(secondaryActionText)
+                        }
+                    }
                 }
             }
             if (actionMessage != null) {
@@ -686,6 +727,19 @@ private val ImportTargetStatus.label: String
         ImportTargetStatus.Ready -> "Будет скопировано"
         ImportTargetStatus.AlreadyExists -> "Уже есть в библиотеке"
     }
+
+private fun duplicateActionText(
+    libraryFiles: List<PlannedMediaFile>,
+    duplicateFiles: List<PlannedMediaFile>,
+    duplicateDeleteAwaitingConfirmation: Boolean,
+): String? {
+    return when {
+        duplicateDeleteAwaitingConfirmation && duplicateFiles.isNotEmpty() -> "Подтвердить удаление"
+        duplicateFiles.isNotEmpty() -> "Удалить файлы из Duplicates"
+        libraryFiles.duplicateGroups().isNotEmpty() -> "Перенести дубли в Duplicates"
+        else -> null
+    }
+}
 
 private fun List<PlannedMediaFile>.duplicateGroups(): Map<String, List<PlannedMediaFile>> {
     return asSequence()
