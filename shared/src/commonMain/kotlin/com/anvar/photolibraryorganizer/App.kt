@@ -109,6 +109,7 @@ fun App(
             importUiState = importUiState,
             libraryFiles = libraryFiles,
             selectedSection = selectedSection,
+            imagePreviewLoader = imagePreviewLoader,
             importAvailability = resolveImportAvailabilityUseCase(
                 importMode = importMode,
                 plannedFiles = (scanUiState as? ScanUiState.Success)?.plannedFiles.orEmpty(),

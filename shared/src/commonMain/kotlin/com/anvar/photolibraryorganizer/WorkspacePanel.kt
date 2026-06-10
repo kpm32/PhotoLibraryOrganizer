@@ -1,5 +1,6 @@
 package com.anvar.photolibraryorganizer
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -24,10 +25,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.anvar.photolibraryorganizer.domain.ImportMode
@@ -36,6 +40,7 @@ import com.anvar.photolibraryorganizer.domain.model.ImportAvailability
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
 import com.anvar.photolibraryorganizer.presentation.ImportUiState
 import com.anvar.photolibraryorganizer.presentation.AppSection
+import com.anvar.photolibraryorganizer.presentation.ImagePreviewLoader
 import com.anvar.photolibraryorganizer.presentation.ScanUiState
 
 @Composable
@@ -45,6 +50,7 @@ internal fun MainWorkspace(
     importUiState: ImportUiState,
     libraryFiles: List<PlannedMediaFile>,
     selectedSection: AppSection,
+    imagePreviewLoader: ImagePreviewLoader,
     importAvailability: ImportAvailability,
     selectedFile: PlannedMediaFile?,
     selectedMode: ImportMode,
@@ -75,6 +81,7 @@ internal fun MainWorkspace(
                 emptyText = "После сканирования здесь появится список найденных фото.",
                 scanUiState = scanUiState,
                 files = (scanUiState as? ScanUiState.Success)?.plannedFiles.orEmpty(),
+                imagePreviewLoader = imagePreviewLoader,
                 selectedFile = selectedFile,
                 onFileSelected = onFileSelected,
                 modifier = Modifier.weight(1f),
@@ -83,6 +90,7 @@ internal fun MainWorkspace(
             LibrarySection(
                 selectedSection = selectedSection,
                 libraryFiles = libraryFiles,
+                imagePreviewLoader = imagePreviewLoader,
                 selectedFile = selectedFile,
                 onFileSelected = onFileSelected,
                 modifier = Modifier.weight(1f),
@@ -247,6 +255,7 @@ private fun ImportAvailabilityHint(importAvailability: ImportAvailability) {
 private fun LibrarySection(
     selectedSection: AppSection,
     libraryFiles: List<PlannedMediaFile>,
+    imagePreviewLoader: ImagePreviewLoader,
     selectedFile: PlannedMediaFile?,
     onFileSelected: (PlannedMediaFile) -> Unit,
     modifier: Modifier = Modifier,
@@ -257,6 +266,7 @@ private fun LibrarySection(
             emptyText = "Выбери папку библиотеки или нажми «Обновить библиотеку».",
             scanUiState = ScanUiState.Idle,
             files = libraryFiles,
+            imagePreviewLoader = imagePreviewLoader,
             selectedFile = selectedFile,
             onFileSelected = onFileSelected,
             modifier = modifier,
@@ -268,6 +278,7 @@ private fun LibrarySection(
             groups = libraryFiles
                 .groupBy { it.libraryDateGroup()?.year ?: "Без даты" }
                 .toSortedMap(compareByDescending { it }),
+            imagePreviewLoader = imagePreviewLoader,
             selectedFile = selectedFile,
             onFileSelected = onFileSelected,
             modifier = modifier,
@@ -279,6 +290,7 @@ private fun LibrarySection(
             groups = libraryFiles
                 .groupBy { it.libraryDateGroup()?.month ?: "Без даты" }
                 .toSortedMap(compareByDescending { it }),
+            imagePreviewLoader = imagePreviewLoader,
             selectedFile = selectedFile,
             onFileSelected = onFileSelected,
             modifier = modifier,
@@ -289,6 +301,7 @@ private fun LibrarySection(
             emptyText = "Файлов без даты пока нет.",
             scanUiState = ScanUiState.Idle,
             files = libraryFiles.filter { it.libraryDateGroup() == null },
+            imagePreviewLoader = imagePreviewLoader,
             selectedFile = selectedFile,
             onFileSelected = onFileSelected,
             modifier = modifier,
@@ -338,6 +351,7 @@ private fun MediaList(
     emptyText: String,
     scanUiState: ScanUiState,
     files: List<PlannedMediaFile>,
+    imagePreviewLoader: ImagePreviewLoader,
     selectedFile: PlannedMediaFile?,
     onFileSelected: (PlannedMediaFile) -> Unit,
     modifier: Modifier = Modifier,
@@ -361,6 +375,7 @@ private fun MediaList(
             when {
                 files.isNotEmpty() -> MediaRows(
                     files = files,
+                    imagePreviewLoader = imagePreviewLoader,
                     selectedFile = selectedFile,
                     onFileSelected = onFileSelected,
                 )
@@ -370,6 +385,7 @@ private fun MediaList(
                 files.isEmpty() -> EmptyListText("Медиафайлы не найдены.")
                 else -> MediaRows(
                     files = files,
+                    imagePreviewLoader = imagePreviewLoader,
                     selectedFile = selectedFile,
                     onFileSelected = onFileSelected,
                 )
@@ -381,6 +397,7 @@ private fun MediaList(
 @Composable
 private fun MediaRows(
     files: List<PlannedMediaFile>,
+    imagePreviewLoader: ImagePreviewLoader,
     selectedFile: PlannedMediaFile?,
     onFileSelected: (PlannedMediaFile) -> Unit,
 ) {
@@ -388,9 +405,10 @@ private fun MediaRows(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        items(files) { plannedFile ->
+        items(files, key = { it.sourcePath }) { plannedFile ->
             MediaListRow(
                 plannedFile = plannedFile,
+                imagePreviewLoader = imagePreviewLoader,
                 selected = plannedFile == selectedFile,
                 onClick = { onFileSelected(plannedFile) },
             )
@@ -403,6 +421,7 @@ private fun GroupedMediaList(
     title: String,
     emptyText: String,
     groups: Map<String, List<PlannedMediaFile>>,
+    imagePreviewLoader: ImagePreviewLoader,
     selectedFile: PlannedMediaFile?,
     onFileSelected: (PlannedMediaFile) -> Unit,
     modifier: Modifier = Modifier,
@@ -442,6 +461,7 @@ private fun GroupedMediaList(
                     )
                     MediaRows(
                         files = activeFiles,
+                        imagePreviewLoader = imagePreviewLoader,
                         selectedFile = selectedFile,
                         onFileSelected = onFileSelected,
                     )
@@ -505,9 +525,14 @@ private fun EmptyListText(text: String) {
 @Composable
 private fun MediaListRow(
     plannedFile: PlannedMediaFile,
+    imagePreviewLoader: ImagePreviewLoader,
     selected: Boolean,
     onClick: () -> Unit,
 ) {
+    val thumbnail by produceState<ImageBitmap?>(initialValue = null, plannedFile.sourcePath) {
+        value = imagePreviewLoader.loadImage(plannedFile.sourcePath)
+    }
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -522,12 +547,21 @@ private fun MediaListRow(
         ) {
             Box(
                 modifier = Modifier
-                    .width(44.dp)
-                    .height(32.dp)
+                    .width(52.dp)
+                    .height(38.dp)
                     .background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.small),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("Фото", style = MaterialTheme.typography.labelSmall)
+                thumbnail?.let { image ->
+                    Image(
+                        bitmap = image,
+                        contentDescription = plannedFile.fileName,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                    )
+                } ?: run {
+                    Text("Фото", style = MaterialTheme.typography.labelSmall)
+                }
             }
             Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(

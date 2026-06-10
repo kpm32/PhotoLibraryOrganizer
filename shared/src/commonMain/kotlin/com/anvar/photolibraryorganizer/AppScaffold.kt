@@ -24,6 +24,7 @@ import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
 import com.anvar.photolibraryorganizer.presentation.ImagePreviewUiState
 import com.anvar.photolibraryorganizer.presentation.ImportUiState
 import com.anvar.photolibraryorganizer.presentation.AppSection
+import com.anvar.photolibraryorganizer.presentation.ImagePreviewLoader
 import com.anvar.photolibraryorganizer.presentation.ScanUiState
 
 @Composable
@@ -33,6 +34,7 @@ internal fun PhotoLibraryOrganizerApp(
     importUiState: ImportUiState,
     libraryFiles: List<PlannedMediaFile>,
     selectedSection: AppSection,
+    imagePreviewLoader: ImagePreviewLoader,
     importAvailability: ImportAvailability,
     onSourceFolderClick: () -> Unit,
     onDestinationFolderClick: () -> Unit,
@@ -67,6 +69,7 @@ internal fun PhotoLibraryOrganizerApp(
                 importUiState = importUiState,
                 libraryFiles = libraryFiles,
                 selectedSection = selectedSection,
+                imagePreviewLoader = imagePreviewLoader,
                 importAvailability = importAvailability,
                 selectedFile = selectedFile,
                 selectedMode = plan.importMode,
