@@ -24,6 +24,7 @@ import com.anvar.photolibraryorganizer.domain.PhotoLibraryPlan
 import com.anvar.photolibraryorganizer.domain.model.ImportAvailability
 import com.anvar.photolibraryorganizer.domain.model.ImportOrganizationRules
 import com.anvar.photolibraryorganizer.presentation.ImportReport
+import com.anvar.photolibraryorganizer.presentation.ImportRulesPreset
 import com.anvar.photolibraryorganizer.presentation.ImportUiState
 import com.anvar.photolibraryorganizer.presentation.ScanUiState
 import kotlinx.datetime.TimeZone
@@ -43,6 +44,7 @@ internal fun ImportPanel(
     onConfirmImportClick: () -> Unit,
     onCancelImportClick: () -> Unit,
     onImportModeSelected: (ImportMode) -> Unit,
+    onImportRulesSelected: (ImportOrganizationRules) -> Unit,
 ) {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
@@ -82,6 +84,10 @@ internal fun ImportPanel(
             )
             ImportReportSummary(lastImportReport)
             ImportRulesSummary(plan.importRules)
+            ImportRulesPresetPicker(
+                selectedRules = plan.importRules,
+                onImportRulesSelected = onImportRulesSelected,
+            )
             ImportModeChips(
                 selectedMode = selectedMode,
                 onImportModeSelected = onImportModeSelected,
@@ -102,6 +108,58 @@ internal fun ImportPanel(
                         importUiState !is ImportUiState.Loading,
                 ) {
                     Text(if (importUiState is ImportUiState.Loading) "Импортирую..." else "Импорт")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ImportRulesPresetPicker(
+    selectedRules: ImportOrganizationRules,
+    onImportRulesSelected: (ImportOrganizationRules) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = "Структура папок",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            ImportRulesPreset.entries.forEach { preset ->
+                val selected = preset.rules == selectedRules
+                Surface(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { onImportRulesSelected(preset.rules) },
+                    shape = MaterialTheme.shapes.small,
+                    color = if (selected) {
+                        MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surfaceContainer
+                    },
+                ) {
+                    Column(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(3.dp),
+                    ) {
+                        Text(
+                            text = preset.title,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                        )
+                        Text(
+                            text = preset.description,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
             }
         }

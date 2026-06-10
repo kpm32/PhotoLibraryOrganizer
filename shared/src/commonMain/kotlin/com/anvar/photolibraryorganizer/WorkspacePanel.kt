@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import com.anvar.photolibraryorganizer.domain.ImportMode
 import com.anvar.photolibraryorganizer.domain.PhotoLibraryPlan
 import com.anvar.photolibraryorganizer.domain.model.ImportAvailability
+import com.anvar.photolibraryorganizer.domain.model.ImportOrganizationRules
 import com.anvar.photolibraryorganizer.domain.model.MediaFileCategory
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
 import com.anvar.photolibraryorganizer.domain.model.detectMediaFileType
@@ -61,6 +62,7 @@ internal fun MainWorkspace(
     onCancelDeleteQuarantineClick: () -> Unit,
     onClearIssuesClick: () -> Unit,
     onImportModeSelected: (ImportMode) -> Unit,
+    onImportRulesSelected: (ImportOrganizationRules) -> Unit,
     onFileSelected: (PlannedMediaFile) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -96,6 +98,7 @@ internal fun MainWorkspace(
                 onConfirmImportClick = onConfirmImportClick,
                 onCancelImportClick = onCancelImportClick,
                 onImportModeSelected = onImportModeSelected,
+                onImportRulesSelected = onImportRulesSelected,
             )
             MediaList(
                 title = "Файлы к импорту",

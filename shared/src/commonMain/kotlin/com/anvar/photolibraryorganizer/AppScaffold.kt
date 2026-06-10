@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import com.anvar.photolibraryorganizer.domain.ImportMode
 import com.anvar.photolibraryorganizer.domain.PhotoLibraryPlan
 import com.anvar.photolibraryorganizer.domain.model.ImportAvailability
+import com.anvar.photolibraryorganizer.domain.model.ImportOrganizationRules
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
 import com.anvar.photolibraryorganizer.presentation.AppIssue
 import com.anvar.photolibraryorganizer.presentation.ImagePreviewUiState
@@ -53,6 +54,7 @@ internal fun PhotoLibraryOrganizerApp(
     onClearIssuesClick: () -> Unit,
     onSectionSelected: (AppSection) -> Unit,
     onImportModeSelected: (ImportMode) -> Unit,
+    onImportRulesSelected: (ImportOrganizationRules) -> Unit,
     onScanClick: () -> Unit,
     onImportClick: () -> Unit,
     onConfirmImportClick: () -> Unit,
@@ -103,6 +105,7 @@ internal fun PhotoLibraryOrganizerApp(
                 onCancelDeleteQuarantineClick = onCancelDeleteQuarantineClick,
                 onClearIssuesClick = onClearIssuesClick,
                 onImportModeSelected = onImportModeSelected,
+                onImportRulesSelected = onImportRulesSelected,
                 onFileSelected = onFileSelected,
                 modifier = Modifier.weight(1f),
             )

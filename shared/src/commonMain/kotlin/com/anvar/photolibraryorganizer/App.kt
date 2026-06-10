@@ -17,6 +17,7 @@ import com.anvar.photolibraryorganizer.domain.ImportMode
 import com.anvar.photolibraryorganizer.domain.PhotoLibraryError
 import com.anvar.photolibraryorganizer.domain.PhotoLibraryPlan
 import com.anvar.photolibraryorganizer.domain.model.ImportTargetStatus
+import com.anvar.photolibraryorganizer.domain.model.ImportOrganizationRules
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
 import com.anvar.photolibraryorganizer.domain.repository.DuplicateQuarantineRepository
 import com.anvar.photolibraryorganizer.domain.repository.MediaFileImporter
@@ -69,6 +70,7 @@ fun App(
         var sourceFolder by remember { mutableStateOf<String?>(null) }
         var destinationFolder by remember { mutableStateOf<String?>(null) }
         var importMode by remember { mutableStateOf(ImportMode.ScanOnly) }
+        var importRules by remember { mutableStateOf(ImportOrganizationRules.Default) }
         var selectedSection by remember { mutableStateOf(AppSection.AllPhotos) }
         var scanUiState by remember { mutableStateOf<ScanUiState>(ScanUiState.Idle) }
         var importUiState by remember { mutableStateOf<ImportUiState>(ImportUiState.Idle) }
@@ -104,6 +106,7 @@ fun App(
             val settings = appSettingsStorage.loadSettings()
             sourceFolder = settings.sourceFolder
             destinationFolder = settings.destinationFolder
+            importRules = settings.importRules
             if (!settings.destinationFolder.isNullOrBlank()) {
                 libraryFiles = refreshLibraryFiles(
                     destinationFolder = settings.destinationFolder,
@@ -133,6 +136,7 @@ fun App(
             sourceFolder = sourceFolder,
             destinationFolder = destinationFolder,
             importMode = importMode,
+            importRules = importRules,
         )
 
         PhotoLibraryOrganizerApp(
@@ -159,6 +163,7 @@ fun App(
                             AppSettings(
                                 sourceFolder = sourceFolder,
                                 destinationFolder = destinationFolder,
+                                importRules = importRules,
                             ),
                         )
                     }
@@ -181,6 +186,7 @@ fun App(
                             AppSettings(
                                 sourceFolder = sourceFolder,
                                 destinationFolder = destinationFolder,
+                                importRules = importRules,
                             ),
                         )
                     }
@@ -207,6 +213,21 @@ fun App(
             onImportModeSelected = {
                 importMode = it
                 importUiState = ImportUiState.Idle
+            },
+            onImportRulesSelected = { selectedImportRules ->
+                importRules = selectedImportRules
+                scanUiState = ScanUiState.Idle
+                importUiState = ImportUiState.Idle
+                lastImportReport = null
+                coroutineScope.launch {
+                    appSettingsStorage.saveSettings(
+                        AppSettings(
+                            sourceFolder = sourceFolder,
+                            destinationFolder = destinationFolder,
+                            importRules = selectedImportRules,
+                        ),
+                    )
+                }
             },
             onScanClick = {
                 coroutineScope.launch {
