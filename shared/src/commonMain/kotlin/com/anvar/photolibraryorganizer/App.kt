@@ -86,6 +86,7 @@ fun App(
         var scanUiState by remember { mutableStateOf<ScanUiState>(ScanUiState.Idle) }
         var importUiState by remember { mutableStateOf<ImportUiState>(ImportUiState.Idle) }
         var selectedFile by remember { mutableStateOf<PlannedMediaFile?>(null) }
+        var libraryFiles by remember { mutableStateOf<List<PlannedMediaFile>>(emptyList()) }
         var imagePreviewUiState by remember { mutableStateOf<ImagePreviewUiState>(ImagePreviewUiState.Empty) }
         val coroutineScope = rememberCoroutineScope()
         val scanSourceFolderUseCase = remember(photoSourceScanner) {
@@ -119,6 +120,7 @@ fun App(
             plan = plan,
             scanUiState = scanUiState,
             importUiState = importUiState,
+            libraryFiles = libraryFiles,
             importAvailability = resolveImportAvailabilityUseCase(
                 importMode = importMode,
                 plannedFiles = (scanUiState as? ScanUiState.Success)?.plannedFiles.orEmpty(),
@@ -128,6 +130,7 @@ fun App(
                 scanUiState = ScanUiState.Idle
                 importUiState = ImportUiState.Idle
                 selectedFile = null
+                libraryFiles = emptyList()
                 imagePreviewUiState = ImagePreviewUiState.Empty
             },
             onDestinationFolderClick = {
@@ -135,6 +138,7 @@ fun App(
                 scanUiState = ScanUiState.Idle
                 importUiState = ImportUiState.Idle
                 selectedFile = null
+                libraryFiles = emptyList()
                 imagePreviewUiState = ImagePreviewUiState.Empty
             },
             onImportModeSelected = {
@@ -145,6 +149,7 @@ fun App(
                 coroutineScope.launch {
                     scanUiState = ScanUiState.Loading
                     importUiState = ImportUiState.Idle
+                    libraryFiles = emptyList()
                     scanUiState = try {
                         when (val result = withContext(Dispatchers.Default) { scanSourceFolderUseCase(sourceFolder) }) {
                             is AppResult.Success -> ScanUiState.Success(
@@ -171,7 +176,14 @@ fun App(
                                 importMediaFilesUseCase(importMode, plannedFiles)
                             }
                         ) {
-                            is AppResult.Success -> ImportUiState.Success(result.data)
+                            is AppResult.Success -> {
+                                libraryFiles = refreshLibraryFiles(
+                                    destinationFolder = destinationFolder,
+                                    photoSourceScanner = photoSourceScanner,
+                                )
+                                selectedFile = libraryFiles.firstOrNull() ?: selectedFile
+                                ImportUiState.Success(result.data)
+                            }
                             is AppResult.Error -> ImportUiState.Error(result.error.toUserMessage())
                         }
                     } catch (exception: Throwable) {
@@ -191,6 +203,7 @@ private fun PhotoLibraryOrganizerApp(
     plan: PhotoLibraryPlan,
     scanUiState: ScanUiState,
     importUiState: ImportUiState,
+    libraryFiles: List<PlannedMediaFile>,
     importAvailability: ImportAvailability,
     onSourceFolderClick: () -> Unit,
     onDestinationFolderClick: () -> Unit,
@@ -210,14 +223,15 @@ private fun PhotoLibraryOrganizerApp(
                 .background(MaterialTheme.colorScheme.surface)
                 .safeContentPadding()
                 .fillMaxSize()
-                .padding(start = 20.dp, top = 24.dp, end = 20.dp, bottom = 20.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                .padding(start = 14.dp, top = 16.dp, end = 14.dp, bottom = 14.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             LibrarySidebar()
             MainWorkspace(
                 plan = plan,
                 scanUiState = scanUiState,
                 importUiState = importUiState,
+                libraryFiles = libraryFiles,
                 importAvailability = importAvailability,
                 selectedFile = selectedFile,
                 onScanClick = onScanClick,
@@ -243,18 +257,18 @@ private fun PhotoLibraryOrganizerApp(
 private fun LibrarySidebar() {
     Surface(
         modifier = Modifier
-            .width(220.dp)
+            .width(180.dp)
             .fillMaxSize(),
         color = MaterialTheme.colorScheme.surfaceContainer,
         shape = MaterialTheme.shapes.medium,
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Text(
                 text = "Фотоархив",
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )
             SidebarSection(
@@ -298,6 +312,7 @@ private fun MainWorkspace(
     plan: PhotoLibraryPlan,
     scanUiState: ScanUiState,
     importUiState: ImportUiState,
+    libraryFiles: List<PlannedMediaFile>,
     importAvailability: ImportAvailability,
     selectedFile: PlannedMediaFile?,
     onScanClick: () -> Unit,
@@ -320,6 +335,7 @@ private fun MainWorkspace(
         )
         MediaList(
             scanUiState = scanUiState,
+            libraryFiles = libraryFiles,
             selectedFile = selectedFile,
             onFileSelected = onFileSelected,
             modifier = Modifier.weight(1f),
@@ -355,8 +371,8 @@ private fun InspectorPanel(
     onImportModeSelected: (ImportMode) -> Unit,
 ) {
     Surface(
-        modifier = Modifier
-            .width(360.dp)
+            modifier = Modifier
+            .width(300.dp)
             .fillMaxSize(),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         shape = MaterialTheme.shapes.medium,
@@ -364,8 +380,8 @@ private fun InspectorPanel(
         Column(
             modifier = Modifier
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
                 text = "Инспектор",
@@ -536,15 +552,17 @@ private fun ScanPreview(
                 ImportAvailabilityHint(importAvailability)
             }
             ImportStatus(importUiState)
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
                     onClick = onScanClick,
+                    modifier = Modifier.fillMaxWidth(),
                     enabled = plan.canScan && scanUiState !is ScanUiState.Loading,
                 ) {
                     Text(if (scanUiState is ScanUiState.Loading) "Сканирую..." else "Сканировать")
                 }
                 OutlinedButton(
                     onClick = onImportClick,
+                    modifier = Modifier.fillMaxWidth(),
                     enabled = importAvailability is ImportAvailability.Available &&
                         importUiState !is ImportUiState.Loading,
                 ) {
@@ -558,6 +576,7 @@ private fun ScanPreview(
 @Composable
 private fun MediaList(
     scanUiState: ScanUiState,
+    libraryFiles: List<PlannedMediaFile>,
     selectedFile: PlannedMediaFile?,
     onFileSelected: (PlannedMediaFile) -> Unit,
     modifier: Modifier = Modifier,
@@ -573,34 +592,51 @@ private fun MediaList(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
-                text = "Файлы",
+                text = if (libraryFiles.isEmpty()) "Файлы к импорту" else "Библиотека",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )
             HorizontalDivider()
-            when (scanUiState) {
-                ScanUiState.Idle -> EmptyListText("После сканирования здесь появится список найденных фото.")
-                ScanUiState.Loading -> EmptyListText("Сканирую папку...")
-                is ScanUiState.Error -> EmptyListText(scanUiState.message)
-                is ScanUiState.Success -> {
-                    if (scanUiState.plannedFiles.isEmpty()) {
-                        EmptyListText("Медиафайлы не найдены.")
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            items(scanUiState.plannedFiles) { plannedFile ->
-                                MediaListRow(
-                                    plannedFile = plannedFile,
-                                    selected = plannedFile == selectedFile,
-                                    onClick = { onFileSelected(plannedFile) },
-                                )
-                            }
-                        }
-                    }
-                }
+            val files = libraryFiles.ifEmpty {
+                (scanUiState as? ScanUiState.Success)?.plannedFiles.orEmpty()
             }
+
+            when {
+                libraryFiles.isNotEmpty() -> MediaRows(
+                    files = files,
+                    selectedFile = selectedFile,
+                    onFileSelected = onFileSelected,
+                )
+                scanUiState == ScanUiState.Idle -> EmptyListText("После сканирования здесь появится список найденных фото.")
+                scanUiState == ScanUiState.Loading -> EmptyListText("Сканирую папку...")
+                scanUiState is ScanUiState.Error -> EmptyListText(scanUiState.message)
+                files.isEmpty() -> EmptyListText("Медиафайлы не найдены.")
+                else -> MediaRows(
+                    files = files,
+                    selectedFile = selectedFile,
+                    onFileSelected = onFileSelected,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MediaRows(
+    files: List<PlannedMediaFile>,
+    selectedFile: PlannedMediaFile?,
+    onFileSelected: (PlannedMediaFile) -> Unit,
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        items(files) { plannedFile ->
+            MediaListRow(
+                plannedFile = plannedFile,
+                selected = plannedFile == selectedFile,
+                onClick = { onFileSelected(plannedFile) },
+            )
         }
     }
 }
@@ -635,7 +671,7 @@ private fun MediaListRow(
             Box(
                 modifier = Modifier
                     .width(44.dp)
-                    .height(34.dp)
+                    .height(32.dp)
                     .background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.small),
                 contentAlignment = Alignment.Center,
             ) {
@@ -668,7 +704,7 @@ private fun SelectedFilePreview(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(180.dp)
+                .height(150.dp)
                 .background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.medium),
             contentAlignment = Alignment.Center,
         ) {
@@ -837,6 +873,26 @@ private fun PhotoLibraryError.toUserMessage(): String {
         PhotoLibraryError.UnsupportedImportMode -> "Этот режим импорта пока не поддерживается."
         is PhotoLibraryError.FileSystem -> "Не удалось просканировать папку: $message"
         is PhotoLibraryError.Unknown -> "Неизвестная ошибка сканирования: ${message ?: "без деталей"}"
+    }
+}
+
+private suspend fun refreshLibraryFiles(
+    destinationFolder: String?,
+    photoSourceScanner: PhotoSourceScanner,
+): List<PlannedMediaFile> {
+    val libraryFolder = destinationFolder?.trim()?.trimEnd('/')?.let { "$it/Library" }
+        ?: return emptyList()
+
+    return when (val result = photoSourceScanner.scanFolder(libraryFolder)) {
+        is AppResult.Success -> result.data.mediaFiles.map { mediaFile ->
+            PlannedMediaFile(
+                sourcePath = mediaFile.path,
+                fileName = mediaFile.fileName,
+                targetRelativePath = mediaFile.path,
+                sizeBytes = mediaFile.sizeBytes,
+            )
+        }
+        is AppResult.Error -> emptyList()
     }
 }
 
