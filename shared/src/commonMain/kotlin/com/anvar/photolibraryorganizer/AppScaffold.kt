@@ -1,6 +1,7 @@
 package com.anvar.photolibraryorganizer
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -22,6 +23,7 @@ import com.anvar.photolibraryorganizer.domain.model.ImportAvailability
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
 import com.anvar.photolibraryorganizer.presentation.ImagePreviewUiState
 import com.anvar.photolibraryorganizer.presentation.ImportUiState
+import com.anvar.photolibraryorganizer.presentation.AppSection
 import com.anvar.photolibraryorganizer.presentation.ScanUiState
 
 @Composable
@@ -30,10 +32,12 @@ internal fun PhotoLibraryOrganizerApp(
     scanUiState: ScanUiState,
     importUiState: ImportUiState,
     libraryFiles: List<PlannedMediaFile>,
+    selectedSection: AppSection,
     importAvailability: ImportAvailability,
     onSourceFolderClick: () -> Unit,
     onDestinationFolderClick: () -> Unit,
     onRefreshLibraryClick: () -> Unit,
+    onSectionSelected: (AppSection) -> Unit,
     onImportModeSelected: (ImportMode) -> Unit,
     onScanClick: () -> Unit,
     onImportClick: () -> Unit,
@@ -53,12 +57,16 @@ internal fun PhotoLibraryOrganizerApp(
                 .padding(start = 14.dp, top = 16.dp, end = 14.dp, bottom = 14.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            LibrarySidebar()
+            LibrarySidebar(
+                selectedSection = selectedSection,
+                onSectionSelected = onSectionSelected,
+            )
             MainWorkspace(
                 plan = plan,
                 scanUiState = scanUiState,
                 importUiState = importUiState,
                 libraryFiles = libraryFiles,
+                selectedSection = selectedSection,
                 importAvailability = importAvailability,
                 selectedFile = selectedFile,
                 selectedMode = plan.importMode,
@@ -82,7 +90,10 @@ internal fun PhotoLibraryOrganizerApp(
 }
 
 @Composable
-private fun LibrarySidebar() {
+private fun LibrarySidebar(
+    selectedSection: AppSection,
+    onSectionSelected: (AppSection) -> Unit,
+) {
     Surface(
         modifier = Modifier
             .width(180.dp)
@@ -101,11 +112,24 @@ private fun LibrarySidebar() {
             )
             SidebarSection(
                 title = "Библиотека",
-                items = listOf("Все фото", "Годы", "Месяцы", "Без даты"),
+                items = listOf(
+                    AppSection.AllPhotos,
+                    AppSection.Years,
+                    AppSection.Months,
+                    AppSection.WithoutDate,
+                ),
+                selectedSection = selectedSection,
+                onSectionSelected = onSectionSelected,
             )
             SidebarSection(
                 title = "Работа",
-                items = listOf("Импорт", "Дубликаты", "Ошибки"),
+                items = listOf(
+                    AppSection.Import,
+                    AppSection.Duplicates,
+                    AppSection.Errors,
+                ),
+                selectedSection = selectedSection,
+                onSectionSelected = onSectionSelected,
             )
         }
     }
@@ -114,7 +138,9 @@ private fun LibrarySidebar() {
 @Composable
 private fun SidebarSection(
     title: String,
-    items: List<String>,
+    items: List<AppSection>,
+    selectedSection: AppSection,
+    onSectionSelected: (AppSection) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
@@ -124,13 +150,24 @@ private fun SidebarSection(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         items.forEach { item ->
-            Text(
-                text = item,
+            Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 6.dp, horizontal = 8.dp),
-                style = MaterialTheme.typography.bodyMedium,
-            )
+                    .clickable { onSectionSelected(item) },
+                color = if (item == selectedSection) {
+                    MaterialTheme.colorScheme.primaryContainer
+                } else {
+                    MaterialTheme.colorScheme.surfaceContainer
+                },
+                shape = MaterialTheme.shapes.small,
+            ) {
+                Text(
+                    text = item.title,
+                    modifier = Modifier.padding(vertical = 6.dp, horizontal = 8.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = if (item == selectedSection) FontWeight.SemiBold else FontWeight.Normal,
+                )
+            }
         }
     }
 }

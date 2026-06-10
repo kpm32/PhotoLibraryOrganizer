@@ -26,6 +26,7 @@ import com.anvar.photolibraryorganizer.domain.usecase.ScanSourceFolderUseCase
 import com.anvar.photolibraryorganizer.presentation.FolderPicker
 import com.anvar.photolibraryorganizer.presentation.AppSettings
 import com.anvar.photolibraryorganizer.presentation.AppSettingsStorage
+import com.anvar.photolibraryorganizer.presentation.AppSection
 import com.anvar.photolibraryorganizer.presentation.ImagePreviewLoader
 import com.anvar.photolibraryorganizer.presentation.ImagePreviewUiState
 import com.anvar.photolibraryorganizer.presentation.ImportUiState
@@ -54,6 +55,7 @@ fun App(
         var sourceFolder by remember { mutableStateOf<String?>(null) }
         var destinationFolder by remember { mutableStateOf<String?>(null) }
         var importMode by remember { mutableStateOf(ImportMode.ScanOnly) }
+        var selectedSection by remember { mutableStateOf(AppSection.AllPhotos) }
         var scanUiState by remember { mutableStateOf<ScanUiState>(ScanUiState.Idle) }
         var importUiState by remember { mutableStateOf<ImportUiState>(ImportUiState.Idle) }
         var selectedFile by remember { mutableStateOf<PlannedMediaFile?>(null) }
@@ -106,6 +108,7 @@ fun App(
             scanUiState = scanUiState,
             importUiState = importUiState,
             libraryFiles = libraryFiles,
+            selectedSection = selectedSection,
             importAvailability = resolveImportAvailabilityUseCase(
                 importMode = importMode,
                 plannedFiles = (scanUiState as? ScanUiState.Success)?.plannedFiles.orEmpty(),
@@ -213,6 +216,7 @@ fun App(
                     selectedFile = libraryFiles.firstOrNull()
                 }
             },
+            onSectionSelected = { selectedSection = it },
             selectedFile = selectedFile,
             imagePreviewUiState = imagePreviewUiState,
             onFileSelected = { selectedFile = it },

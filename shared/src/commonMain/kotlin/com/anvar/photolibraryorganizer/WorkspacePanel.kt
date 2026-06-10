@@ -31,6 +31,7 @@ import com.anvar.photolibraryorganizer.domain.PhotoLibraryPlan
 import com.anvar.photolibraryorganizer.domain.model.ImportAvailability
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
 import com.anvar.photolibraryorganizer.presentation.ImportUiState
+import com.anvar.photolibraryorganizer.presentation.AppSection
 import com.anvar.photolibraryorganizer.presentation.ScanUiState
 
 @Composable
@@ -39,6 +40,7 @@ internal fun MainWorkspace(
     scanUiState: ScanUiState,
     importUiState: ImportUiState,
     libraryFiles: List<PlannedMediaFile>,
+    selectedSection: AppSection,
     importAvailability: ImportAvailability,
     selectedFile: PlannedMediaFile?,
     selectedMode: ImportMode,
@@ -52,37 +54,57 @@ internal fun MainWorkspace(
         modifier = modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        WorkspaceHeader()
-        ScanPreview(
-            plan = plan,
-            scanUiState = scanUiState,
-            importUiState = importUiState,
-            importAvailability = importAvailability,
-            selectedMode = selectedMode,
-            onScanClick = onScanClick,
-            onImportClick = onImportClick,
-            onImportModeSelected = onImportModeSelected,
-        )
-        MediaList(
-            scanUiState = scanUiState,
-            libraryFiles = libraryFiles,
-            selectedFile = selectedFile,
-            onFileSelected = onFileSelected,
-            modifier = Modifier.weight(1f),
-        )
+        WorkspaceHeader(selectedSection)
+        if (selectedSection == AppSection.Import) {
+            ScanPreview(
+                plan = plan,
+                scanUiState = scanUiState,
+                importUiState = importUiState,
+                importAvailability = importAvailability,
+                selectedMode = selectedMode,
+                onScanClick = onScanClick,
+                onImportClick = onImportClick,
+                onImportModeSelected = onImportModeSelected,
+            )
+            MediaList(
+                title = "Файлы к импорту",
+                emptyText = "После сканирования здесь появится список найденных фото.",
+                scanUiState = scanUiState,
+                files = (scanUiState as? ScanUiState.Success)?.plannedFiles.orEmpty(),
+                selectedFile = selectedFile,
+                onFileSelected = onFileSelected,
+                modifier = Modifier.weight(1f),
+            )
+        } else {
+            LibrarySection(
+                selectedSection = selectedSection,
+                libraryFiles = libraryFiles,
+                selectedFile = selectedFile,
+                onFileSelected = onFileSelected,
+                modifier = Modifier.weight(1f),
+            )
+        }
     }
 }
 
 @Composable
-private fun WorkspaceHeader() {
+private fun WorkspaceHeader(selectedSection: AppSection) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
-            text = "Импорт и каталог",
+            text = selectedSection.title,
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.SemiBold,
         )
         Text(
-            text = "Сначала показываем план, потом копируем. Исходники не удаляются.",
+            text = when (selectedSection) {
+                AppSection.Import -> "Сначала показываем план, потом копируем. Исходники не удаляются."
+                AppSection.AllPhotos -> "Просмотр уже разложенной библиотеки."
+                AppSection.Years -> "Группировка по годам появится следующим шагом."
+                AppSection.Months -> "Группировка по месяцам появится следующим шагом."
+                AppSection.WithoutDate -> "Файлы без даты появятся после EXIF-анализа."
+                AppSection.Duplicates -> "Поиск дубликатов будет отдельным безопасным сценарием."
+                AppSection.Errors -> "Ошибки импорта и сканирования будут собираться здесь."
+            },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -218,9 +240,65 @@ private fun ImportAvailabilityHint(importAvailability: ImportAvailability) {
 }
 
 @Composable
-private fun MediaList(
-    scanUiState: ScanUiState,
+private fun LibrarySection(
+    selectedSection: AppSection,
     libraryFiles: List<PlannedMediaFile>,
+    selectedFile: PlannedMediaFile?,
+    onFileSelected: (PlannedMediaFile) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (selectedSection == AppSection.AllPhotos) {
+        MediaList(
+            title = "Библиотека",
+            emptyText = "Выбери папку библиотеки или нажми «Обновить библиотеку».",
+            scanUiState = ScanUiState.Idle,
+            files = libraryFiles,
+            selectedFile = selectedFile,
+            onFileSelected = onFileSelected,
+            modifier = modifier,
+        )
+    } else {
+        PlaceholderPanel(
+            title = selectedSection.title,
+            text = "Этот раздел уже есть в навигации, но его логика будет добавлена отдельным шагом.",
+            modifier = modifier,
+        )
+    }
+}
+
+@Composable
+private fun PlaceholderPanel(
+    title: String,
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    ElevatedCard(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            HorizontalDivider()
+            EmptyListText(text)
+        }
+    }
+}
+
+@Composable
+private fun MediaList(
+    title: String,
+    emptyText: String,
+    scanUiState: ScanUiState,
+    files: List<PlannedMediaFile>,
     selectedFile: PlannedMediaFile?,
     onFileSelected: (PlannedMediaFile) -> Unit,
     modifier: Modifier = Modifier,
@@ -236,22 +314,18 @@ private fun MediaList(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
-                text = if (libraryFiles.isEmpty()) "Файлы к импорту" else "Библиотека",
+                text = title,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )
             HorizontalDivider()
-            val files = libraryFiles.ifEmpty {
-                (scanUiState as? ScanUiState.Success)?.plannedFiles.orEmpty()
-            }
-
             when {
-                libraryFiles.isNotEmpty() -> MediaRows(
+                files.isNotEmpty() -> MediaRows(
                     files = files,
                     selectedFile = selectedFile,
                     onFileSelected = onFileSelected,
                 )
-                scanUiState == ScanUiState.Idle -> EmptyListText("После сканирования здесь появится список найденных фото.")
+                scanUiState == ScanUiState.Idle -> EmptyListText(emptyText)
                 scanUiState == ScanUiState.Loading -> EmptyListText("Сканирую папку...")
                 scanUiState is ScanUiState.Error -> EmptyListText(scanUiState.message)
                 files.isEmpty() -> EmptyListText("Медиафайлы не найдены.")
