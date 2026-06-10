@@ -19,6 +19,8 @@ import kotlin.io.path.getLastModifiedTime
 import kotlin.io.path.name
 
 class JvmPhotoSourceScanner : PhotoSourceScanner {
+    private val jpegExifDateReader = JpegExifDateReader()
+
     override suspend fun scanFolder(path: String): AppResult<ScanSourceFolderResult> {
         return try {
             val sourcePath = Path.of(path)
@@ -56,6 +58,7 @@ class JvmPhotoSourceScanner : PhotoSourceScanner {
                                 category = mediaType.category,
                                 sizeBytes = file.fileSize(),
                                 modifiedAtEpochMillis = file.getLastModifiedTime().toMillis(),
+                                capturedAtEpochMillis = file.readCapturedAtEpochMillis(mediaType.category),
                             )
                         }
                     }
@@ -81,6 +84,14 @@ class JvmPhotoSourceScanner : PhotoSourceScanner {
             AppResult.Error(PhotoLibraryError.FileSystem(exception.message ?: "No permission to scan folder"))
         } catch (exception: Throwable) {
             AppResult.Error(PhotoLibraryError.Unknown(exception.message))
+        }
+    }
+
+    private fun Path.readCapturedAtEpochMillis(category: MediaFileCategory): Long? {
+        return if (category == MediaFileCategory.Image) {
+            jpegExifDateReader.readCapturedAtEpochMillis(this)
+        } else {
+            null
         }
     }
 }

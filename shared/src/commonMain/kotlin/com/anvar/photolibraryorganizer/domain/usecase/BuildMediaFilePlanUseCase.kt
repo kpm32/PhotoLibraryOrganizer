@@ -15,7 +15,9 @@ class BuildMediaFilePlanUseCase {
             ?: return emptyList()
 
         return mediaFiles.map { mediaFile ->
-            val dateTime = Instant.fromEpochMilliseconds(mediaFile.modifiedAtEpochMillis)
+            val dateTime = Instant.fromEpochMilliseconds(
+                mediaFile.capturedAtEpochMillis ?: mediaFile.modifiedAtEpochMillis,
+            )
                 .toLocalDateTime(TimeZone.currentSystemDefault())
             val year = dateTime.year.toString()
             val month = (dateTime.month.ordinal + 1).toString().padStart(2, '0')

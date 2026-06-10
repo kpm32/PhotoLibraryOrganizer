@@ -120,6 +120,29 @@ class SharedCommonTest {
     }
 
     @Test
+    fun buildsTargetPathFromCapturedDateWhenAvailable() {
+        val useCase = BuildMediaFilePlanUseCase()
+
+        val result = useCase(
+            destinationFolder = "/library-root",
+            mediaFiles = listOf(
+                ScannedMediaFile(
+                    path = "/source/IMG_0001.JPG",
+                    fileName = "IMG_0001.JPG",
+                    extension = "jpg",
+                    category = MediaFileCategory.Image,
+                    sizeBytes = 1024,
+                    modifiedAtEpochMillis = 1_735_689_600_000,
+                    capturedAtEpochMillis = 1_577_836_800_000,
+                ),
+            ),
+        )
+
+        assertEquals(1, result.size)
+        assertTrue(result.first().targetRelativePath.contains("/library-root/Library/2020/2020-01/"))
+    }
+
+    @Test
     fun importIsUnavailableBeforeScanPlanExists() {
         val useCase = ResolveImportAvailabilityUseCase()
 
