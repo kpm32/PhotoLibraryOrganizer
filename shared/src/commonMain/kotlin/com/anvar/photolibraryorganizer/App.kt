@@ -106,7 +106,13 @@ fun App(
                 scanUiState = ScanUiState.Idle
                 importUiState = ImportUiState.Idle
                 selectedFile = null
-                libraryFiles = emptyList()
+                coroutineScope.launch {
+                    libraryFiles = refreshLibraryFiles(
+                        destinationFolder = destinationFolder,
+                        photoSourceScanner = photoSourceScanner,
+                    )
+                    selectedFile = libraryFiles.firstOrNull()
+                }
                 imagePreviewUiState = ImagePreviewUiState.Empty
             },
             onImportModeSelected = {
@@ -159,6 +165,15 @@ fun App(
                     } catch (exception: Throwable) {
                         ImportUiState.Error("Импорт прервался: ${exception.message ?: "без деталей"}")
                     }
+                }
+            },
+            onRefreshLibraryClick = {
+                coroutineScope.launch {
+                    libraryFiles = refreshLibraryFiles(
+                        destinationFolder = destinationFolder,
+                        photoSourceScanner = photoSourceScanner,
+                    )
+                    selectedFile = libraryFiles.firstOrNull()
                 }
             },
             selectedFile = selectedFile,

@@ -37,6 +37,7 @@ internal fun InspectorPanel(
     imagePreviewUiState: ImagePreviewUiState,
     onSourceFolderClick: () -> Unit,
     onDestinationFolderClick: () -> Unit,
+    onRefreshLibraryClick: () -> Unit,
 ) {
     Surface(
         modifier = Modifier
@@ -73,6 +74,12 @@ internal fun InspectorPanel(
                 actionText = "Выбрать",
                 onClick = onDestinationFolderClick,
             )
+            OutlinedButton(
+                onClick = onRefreshLibraryClick,
+                enabled = !plan.destinationFolder.isNullOrBlank(),
+            ) {
+                Text("Обновить библиотеку")
+            }
             if (scanUiState is ScanUiState.Success) {
                 HorizontalDivider()
                 ScanSummaryRows(scanUiState)

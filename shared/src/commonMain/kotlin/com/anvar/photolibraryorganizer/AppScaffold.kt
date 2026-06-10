@@ -33,6 +33,7 @@ internal fun PhotoLibraryOrganizerApp(
     importAvailability: ImportAvailability,
     onSourceFolderClick: () -> Unit,
     onDestinationFolderClick: () -> Unit,
+    onRefreshLibraryClick: () -> Unit,
     onImportModeSelected: (ImportMode) -> Unit,
     onScanClick: () -> Unit,
     onImportClick: () -> Unit,
@@ -74,6 +75,7 @@ internal fun PhotoLibraryOrganizerApp(
                 imagePreviewUiState = imagePreviewUiState,
                 onSourceFolderClick = onSourceFolderClick,
                 onDestinationFolderClick = onDestinationFolderClick,
+                onRefreshLibraryClick = onRefreshLibraryClick,
             )
         }
     }
