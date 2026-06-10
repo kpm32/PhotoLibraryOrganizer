@@ -2,6 +2,7 @@ package com.anvar.photolibraryorganizer
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -10,6 +11,7 @@ import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -23,7 +25,9 @@ import androidx.compose.ui.unit.dp
 import com.anvar.photolibraryorganizer.domain.ImportMode
 import com.anvar.photolibraryorganizer.domain.PhotoLibraryPlan
 import com.anvar.photolibraryorganizer.domain.model.ImportAvailability
+import com.anvar.photolibraryorganizer.domain.model.MediaFileCategory
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
+import com.anvar.photolibraryorganizer.domain.model.detectMediaFileType
 import com.anvar.photolibraryorganizer.presentation.AppIssue
 import com.anvar.photolibraryorganizer.presentation.AppSection
 import com.anvar.photolibraryorganizer.presentation.ImagePreviewLoader
@@ -59,9 +63,15 @@ internal fun MainWorkspace(
     modifier: Modifier = Modifier,
 ) {
     var librarySearchQuery by remember { mutableStateOf("") }
+    var mediaCategoryFilter by remember { mutableStateOf(MediaCategoryFilter.All) }
+    var extensionFilter by remember { mutableStateOf("") }
     val searchEnabled = selectedSection.supportsLibrarySearch()
     val visibleLibraryFiles = if (searchEnabled) {
-        libraryFiles.filterByMediaSearch(librarySearchQuery)
+        libraryFiles.filterLibraryFiles(
+            query = librarySearchQuery,
+            mediaCategoryFilter = mediaCategoryFilter,
+            extensionFilter = extensionFilter,
+        )
     } else {
         libraryFiles
     }
@@ -99,6 +109,10 @@ internal fun MainWorkspace(
                 LibrarySearchBar(
                     query = librarySearchQuery,
                     onQueryChange = { librarySearchQuery = it },
+                    mediaCategoryFilter = mediaCategoryFilter,
+                    onMediaCategoryFilterChange = { mediaCategoryFilter = it },
+                    extensionFilter = extensionFilter,
+                    onExtensionFilterChange = { extensionFilter = it },
                     totalFiles = libraryFiles.size,
                     visibleFiles = visibleLibraryFiles.size,
                 )
@@ -128,6 +142,10 @@ internal fun MainWorkspace(
 private fun LibrarySearchBar(
     query: String,
     onQueryChange: (String) -> Unit,
+    mediaCategoryFilter: MediaCategoryFilter,
+    onMediaCategoryFilterChange: (MediaCategoryFilter) -> Unit,
+    extensionFilter: String,
+    onExtensionFilterChange: (String) -> Unit,
     totalFiles: Int,
     visibleFiles: Int,
 ) {
@@ -147,6 +165,38 @@ private fun LibrarySearchBar(
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 label = { Text("Поиск по имени, пути или SHA-256") },
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                MediaCategoryFilter.entries.forEach { filter ->
+                    Surface(
+                        modifier = Modifier.weight(1f),
+                        color = if (filter == mediaCategoryFilter) {
+                            MaterialTheme.colorScheme.primaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.surfaceContainer
+                        },
+                        shape = MaterialTheme.shapes.small,
+                        onClick = { onMediaCategoryFilterChange(filter) },
+                    ) {
+                        Text(
+                            text = filter.title,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                        )
+                    }
+                }
+            }
+            OutlinedTextField(
+                value = extensionFilter,
+                onValueChange = onExtensionFilterChange,
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                label = { Text("Расширение, например jpg или mov") },
             )
             Text(
                 text = "Показано $visibleFiles из $totalFiles",
@@ -341,6 +391,14 @@ private fun List<PlannedMediaFile>.hasDuplicateGroups(): Boolean {
         .any { it.size > 1 }
 }
 
+private enum class MediaCategoryFilter(
+    val title: String,
+) {
+    All("Все"),
+    Images("Фото"),
+    Videos("Видео"),
+}
+
 private fun AppSection.supportsLibrarySearch(): Boolean {
     return this == AppSection.AllPhotos ||
         this == AppSection.Years ||
@@ -348,13 +406,29 @@ private fun AppSection.supportsLibrarySearch(): Boolean {
         this == AppSection.WithoutDate
 }
 
-private fun List<PlannedMediaFile>.filterByMediaSearch(query: String): List<PlannedMediaFile> {
+private fun List<PlannedMediaFile>.filterLibraryFiles(
+    query: String,
+    mediaCategoryFilter: MediaCategoryFilter,
+    extensionFilter: String,
+): List<PlannedMediaFile> {
     val normalizedQuery = query.trim()
-    if (normalizedQuery.isBlank()) return this
+    val normalizedExtension = extensionFilter.trim().removePrefix(".").lowercase()
 
     return filter { file ->
-        file.fileName.contains(normalizedQuery, ignoreCase = true) ||
+        val mediaType = detectMediaFileType(file.fileName)
+        val queryMatches = normalizedQuery.isBlank() ||
+            file.fileName.contains(normalizedQuery, ignoreCase = true) ||
             file.targetRelativePath.contains(normalizedQuery, ignoreCase = true) ||
             file.contentHash?.contains(normalizedQuery, ignoreCase = true) == true
+        val categoryMatches = when (mediaCategoryFilter) {
+            MediaCategoryFilter.All -> true
+            MediaCategoryFilter.Images -> mediaType?.category == MediaFileCategory.Image
+            MediaCategoryFilter.Videos -> mediaType?.category == MediaFileCategory.Video
+        }
+        val extensionMatches = normalizedExtension.isBlank() ||
+            file.fileName.substringAfterLast('.', missingDelimiterValue = "")
+                .equals(normalizedExtension, ignoreCase = true)
+
+        queryMatches && categoryMatches && extensionMatches
     }
 }
