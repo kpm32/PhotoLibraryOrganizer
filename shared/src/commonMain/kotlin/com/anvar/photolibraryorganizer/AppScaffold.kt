@@ -21,6 +21,7 @@ import com.anvar.photolibraryorganizer.domain.ImportMode
 import com.anvar.photolibraryorganizer.domain.PhotoLibraryPlan
 import com.anvar.photolibraryorganizer.domain.model.ImportAvailability
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
+import com.anvar.photolibraryorganizer.presentation.AppIssue
 import com.anvar.photolibraryorganizer.presentation.ImagePreviewUiState
 import com.anvar.photolibraryorganizer.presentation.ImportUiState
 import com.anvar.photolibraryorganizer.presentation.AppSection
@@ -39,6 +40,7 @@ internal fun PhotoLibraryOrganizerApp(
     duplicateActionMessage: String?,
     duplicateDeleteAwaitingConfirmation: Boolean,
     importAvailability: ImportAvailability,
+    issues: List<AppIssue>,
     onSourceFolderClick: () -> Unit,
     onDestinationFolderClick: () -> Unit,
     onRefreshLibraryClick: () -> Unit,
@@ -46,6 +48,7 @@ internal fun PhotoLibraryOrganizerApp(
     onRequestDeleteQuarantineClick: () -> Unit,
     onConfirmDeleteQuarantineClick: () -> Unit,
     onCancelDeleteQuarantineClick: () -> Unit,
+    onClearIssuesClick: () -> Unit,
     onSectionSelected: (AppSection) -> Unit,
     onImportModeSelected: (ImportMode) -> Unit,
     onScanClick: () -> Unit,
@@ -84,6 +87,7 @@ internal fun PhotoLibraryOrganizerApp(
                 duplicateActionMessage = duplicateActionMessage,
                 duplicateDeleteAwaitingConfirmation = duplicateDeleteAwaitingConfirmation,
                 importAvailability = importAvailability,
+                issues = issues,
                 selectedFile = selectedFile,
                 selectedMode = plan.importMode,
                 onScanClick = onScanClick,
@@ -94,6 +98,7 @@ internal fun PhotoLibraryOrganizerApp(
                 onRequestDeleteQuarantineClick = onRequestDeleteQuarantineClick,
                 onConfirmDeleteQuarantineClick = onConfirmDeleteQuarantineClick,
                 onCancelDeleteQuarantineClick = onCancelDeleteQuarantineClick,
+                onClearIssuesClick = onClearIssuesClick,
                 onImportModeSelected = onImportModeSelected,
                 onFileSelected = onFileSelected,
                 modifier = Modifier.weight(1f),

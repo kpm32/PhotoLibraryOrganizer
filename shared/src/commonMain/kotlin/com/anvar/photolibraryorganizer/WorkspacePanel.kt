@@ -18,6 +18,7 @@ import com.anvar.photolibraryorganizer.domain.ImportMode
 import com.anvar.photolibraryorganizer.domain.PhotoLibraryPlan
 import com.anvar.photolibraryorganizer.domain.model.ImportAvailability
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
+import com.anvar.photolibraryorganizer.presentation.AppIssue
 import com.anvar.photolibraryorganizer.presentation.AppSection
 import com.anvar.photolibraryorganizer.presentation.ImagePreviewLoader
 import com.anvar.photolibraryorganizer.presentation.ImportUiState
@@ -35,6 +36,7 @@ internal fun MainWorkspace(
     duplicateActionMessage: String?,
     duplicateDeleteAwaitingConfirmation: Boolean,
     importAvailability: ImportAvailability,
+    issues: List<AppIssue>,
     selectedFile: PlannedMediaFile?,
     selectedMode: ImportMode,
     onScanClick: () -> Unit,
@@ -45,6 +47,7 @@ internal fun MainWorkspace(
     onRequestDeleteQuarantineClick: () -> Unit,
     onConfirmDeleteQuarantineClick: () -> Unit,
     onCancelDeleteQuarantineClick: () -> Unit,
+    onClearIssuesClick: () -> Unit,
     onImportModeSelected: (ImportMode) -> Unit,
     onFileSelected: (PlannedMediaFile) -> Unit,
     modifier: Modifier = Modifier,
@@ -85,12 +88,14 @@ internal fun MainWorkspace(
                 imagePreviewLoader = imagePreviewLoader,
                 duplicateActionMessage = duplicateActionMessage,
                 duplicateDeleteAwaitingConfirmation = duplicateDeleteAwaitingConfirmation,
+                issues = issues,
                 selectedFile = selectedFile,
                 onFileSelected = onFileSelected,
                 onMoveDuplicatesClick = onMoveDuplicatesClick,
                 onRequestDeleteQuarantineClick = onRequestDeleteQuarantineClick,
                 onConfirmDeleteQuarantineClick = onConfirmDeleteQuarantineClick,
                 onCancelDeleteQuarantineClick = onCancelDeleteQuarantineClick,
+                onClearIssuesClick = onClearIssuesClick,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -129,12 +134,14 @@ private fun LibrarySection(
     imagePreviewLoader: ImagePreviewLoader,
     duplicateActionMessage: String?,
     duplicateDeleteAwaitingConfirmation: Boolean,
+    issues: List<AppIssue>,
     selectedFile: PlannedMediaFile?,
     onFileSelected: (PlannedMediaFile) -> Unit,
     onMoveDuplicatesClick: () -> Unit,
     onRequestDeleteQuarantineClick: () -> Unit,
     onConfirmDeleteQuarantineClick: () -> Unit,
     onCancelDeleteQuarantineClick: () -> Unit,
+    onClearIssuesClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     when (selectedSection) {
@@ -215,9 +222,13 @@ private fun LibrarySection(
             modifier = modifier,
         )
 
-        AppSection.Errors,
-        AppSection.Import,
-        -> PlaceholderPanel(
+        AppSection.Errors -> ErrorsPanel(
+            issues = issues,
+            onClearIssuesClick = onClearIssuesClick,
+            modifier = modifier,
+        )
+
+        AppSection.Import -> PlaceholderPanel(
             title = selectedSection.title,
             text = "Этот раздел уже есть в навигации, но его логика будет добавлена отдельным шагом.",
             modifier = modifier,

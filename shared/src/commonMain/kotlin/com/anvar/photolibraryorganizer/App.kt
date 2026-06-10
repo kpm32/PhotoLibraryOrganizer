@@ -30,6 +30,7 @@ import com.anvar.photolibraryorganizer.presentation.FolderPicker
 import com.anvar.photolibraryorganizer.presentation.AppSettings
 import com.anvar.photolibraryorganizer.presentation.AppSettingsStorage
 import com.anvar.photolibraryorganizer.presentation.AppSection
+import com.anvar.photolibraryorganizer.presentation.AppIssue
 import com.anvar.photolibraryorganizer.presentation.CachingImagePreviewLoader
 import com.anvar.photolibraryorganizer.presentation.FileRevealHandler
 import com.anvar.photolibraryorganizer.presentation.ImagePreviewLoader
@@ -75,8 +76,15 @@ fun App(
         var duplicateActionMessage by remember { mutableStateOf<String?>(null) }
         var duplicateDeleteAwaitingConfirmation by remember { mutableStateOf(false) }
         var imagePreviewUiState by remember { mutableStateOf<ImagePreviewUiState>(ImagePreviewUiState.Empty) }
+        var issues by remember { mutableStateOf<List<AppIssue>>(emptyList()) }
+        var nextIssueId by remember { mutableStateOf(1) }
 
         val coroutineScope = rememberCoroutineScope()
+        fun addIssue(title: String, detail: String) {
+            issues = listOf(AppIssue(nextIssueId, title, detail)) + issues
+            nextIssueId += 1
+        }
+
         val scanSourceFolderUseCase = remember(photoSourceScanner) {
             ScanSourceFolderUseCase(photoSourceScanner)
         }
@@ -138,6 +146,7 @@ fun App(
                 importMode = importMode,
                 plannedFiles = (scanUiState as? ScanUiState.Success)?.plannedFiles.orEmpty(),
             ),
+            issues = issues,
             onSourceFolderClick = {
                 folderPicker.chooseFolder("Выбери исходную папку")?.let {
                     sourceFolder = it
@@ -216,10 +225,16 @@ fun App(
                                 ).also { selectedFile = it.plannedFiles.firstOrNull() }
                             }
 
-                            is AppResult.Error -> ScanUiState.Error(result.error.toUserMessage())
+                            is AppResult.Error -> {
+                                val message = result.error.toUserMessage()
+                                addIssue("Сканирование", message)
+                                ScanUiState.Error(message)
+                            }
                         }
                     } catch (exception: Throwable) {
-                        ScanUiState.Error("Сканирование прервалось: ${exception.message ?: "без деталей"}")
+                        val message = "Сканирование прервалось: ${exception.message ?: "без деталей"}"
+                        addIssue("Сканирование", message)
+                        ScanUiState.Error(message)
                     }
                 }
             },
@@ -253,13 +268,25 @@ fun App(
                                     photoSourceScanner = photoSourceScanner,
                                 )
                                 selectedFile = libraryFiles.firstOrNull() ?: selectedFile
+                                if (result.data.failedFiles > 0) {
+                                    addIssue(
+                                        title = "Импорт",
+                                        detail = "Импорт завершился с ошибками: ${result.data.failedFiles}.",
+                                    )
+                                }
                                 ImportUiState.Success(result.data)
                             }
 
-                            is AppResult.Error -> ImportUiState.Error(result.error.toUserMessage())
+                            is AppResult.Error -> {
+                                val message = result.error.toUserMessage()
+                                addIssue("Импорт", message)
+                                ImportUiState.Error(message)
+                            }
                         }
                     } catch (exception: Throwable) {
-                        ImportUiState.Error("Импорт прервался: ${exception.message ?: "без деталей"}")
+                        val message = "Импорт прервался: ${exception.message ?: "без деталей"}"
+                        addIssue("Импорт", message)
+                        ImportUiState.Error(message)
                     }
                 }
             },
@@ -305,13 +332,25 @@ fun App(
                                     photoSourceScanner = photoSourceScanner,
                                 )
                                 selectedFile = libraryFiles.firstOrNull()
+                                if (result.data.failedFiles > 0) {
+                                    addIssue(
+                                        title = "Дубликаты",
+                                        detail = "Часть дублей не удалось перенести в Duplicates: ${result.data.failedFiles}.",
+                                    )
+                                }
                                 "Перенесено в Duplicates: ${result.data.movedFiles}, ошибок: ${result.data.failedFiles}."
                             }
 
-                            is AppResult.Error -> result.error.toUserMessage()
+                            is AppResult.Error -> {
+                                val message = result.error.toUserMessage()
+                                addIssue("Дубликаты", message)
+                                message
+                            }
                         }
                     } catch (exception: Throwable) {
-                        "Не удалось перенести дубликаты: ${exception.message ?: "без деталей"}"
+                        val message = "Не удалось перенести дубликаты: ${exception.message ?: "без деталей"}"
+                        addIssue("Дубликаты", message)
+                        message
                     }
                 }
             },
@@ -357,20 +396,31 @@ fun App(
                                     photoSourceScanner = photoSourceScanner,
                                 )
                                 selectedFile = libraryFiles.firstOrNull()
+                                if (result.data.failedFiles > 0) {
+                                    addIssue(
+                                        title = "Дубликаты",
+                                        detail = "Часть файлов из Duplicates не удалось удалить: ${result.data.failedFiles}.",
+                                    )
+                                }
                                 "Удалено из Duplicates: ${result.data.deletedFiles}, ошибок: ${result.data.failedFiles}."
                             }
 
                             is AppResult.Error -> {
                                 duplicateDeleteAwaitingConfirmation = false
-                                result.error.toUserMessage()
+                                val message = result.error.toUserMessage()
+                                addIssue("Дубликаты", message)
+                                message
                             }
                         }
                     } catch (exception: Throwable) {
                         duplicateDeleteAwaitingConfirmation = false
-                        "Не удалось удалить файлы из Duplicates: ${exception.message ?: "без деталей"}"
+                        val message = "Не удалось удалить файлы из Duplicates: ${exception.message ?: "без деталей"}"
+                        addIssue("Дубликаты", message)
+                        message
                     }
                 }
             },
+            onClearIssuesClick = { issues = emptyList() },
             onSectionSelected = { selectedSection = it },
             selectedFile = selectedFile,
             imagePreviewUiState = imagePreviewUiState,
