@@ -1,18 +1,22 @@
 package com.anvar.photolibraryorganizer
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
@@ -33,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.anvar.photolibraryorganizer.domain.ImportMode
 import com.anvar.photolibraryorganizer.domain.PhotoLibraryPlan
@@ -474,7 +479,7 @@ private fun MediaList(
             )
             HorizontalDivider()
             when {
-                files.isNotEmpty() -> MediaRows(
+                files.isNotEmpty() -> MediaGrid(
                     files = files,
                     imagePreviewLoader = imagePreviewLoader,
                     selectedFile = selectedFile,
@@ -484,7 +489,7 @@ private fun MediaList(
                 scanUiState == ScanUiState.Loading -> EmptyListText("Сканирую папку...")
                 scanUiState is ScanUiState.Error -> EmptyListText(scanUiState.message)
                 files.isEmpty() -> EmptyListText("Медиафайлы не найдены.")
-                else -> MediaRows(
+                else -> MediaGrid(
                     files = files,
                     imagePreviewLoader = imagePreviewLoader,
                     selectedFile = selectedFile,
@@ -496,18 +501,20 @@ private fun MediaList(
 }
 
 @Composable
-private fun MediaRows(
+private fun MediaGrid(
     files: List<PlannedMediaFile>,
     imagePreviewLoader: ImagePreviewLoader,
     selectedFile: PlannedMediaFile?,
     onFileSelected: (PlannedMediaFile) -> Unit,
 ) {
-    LazyColumn(
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 150.dp),
         modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        items(files, key = { it.sourcePath }) { plannedFile ->
-            MediaListRow(
+        gridItems(files, key = { it.sourcePath }) { plannedFile ->
+            MediaGridTile(
                 plannedFile = plannedFile,
                 imagePreviewLoader = imagePreviewLoader,
                 selected = plannedFile == selectedFile,
@@ -593,7 +600,7 @@ private fun GroupedMediaList(
                         selectedGroup = activeGroup,
                         onGroupSelected = { selectedGroup = it },
                     )
-                    MediaRows(
+                    MediaGrid(
                         files = activeFiles,
                         imagePreviewLoader = imagePreviewLoader,
                         selectedFile = selectedFile,
@@ -657,7 +664,7 @@ private fun EmptyListText(text: String) {
 }
 
 @Composable
-private fun MediaListRow(
+private fun MediaGridTile(
     plannedFile: PlannedMediaFile,
     imagePreviewLoader: ImagePreviewLoader,
     selected: Boolean,
@@ -673,16 +680,20 @@ private fun MediaListRow(
             .clickable(onClick = onClick),
         color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
         shape = MaterialTheme.shapes.small,
+        border = if (selected) {
+            BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+        } else {
+            null
+        },
     ) {
-        Row(
-            modifier = Modifier.padding(10.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        Column(
+            modifier = Modifier.padding(8.dp),
+            verticalArrangement = Arrangement.spacedBy(7.dp),
         ) {
             Box(
                 modifier = Modifier
-                    .width(52.dp)
-                    .height(38.dp)
+                    .fillMaxWidth()
+                    .aspectRatio(1.18f)
                     .background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.small),
                 contentAlignment = Alignment.Center,
             ) {
@@ -697,26 +708,20 @@ private fun MediaListRow(
                     Text("Фото", style = MaterialTheme.typography.labelSmall)
                 }
             }
-            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(
-                    text = plannedFile.fileName,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                )
-                Text(
-                    text = plannedFile.targetStatus.label,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                )
-                Text(
-                    text = plannedFile.targetRelativePath,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                )
-            }
+            Text(
+                text = plannedFile.fileName,
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = plannedFile.shortLibraryCaption(),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
@@ -761,6 +766,17 @@ private fun PlannedMediaFile.quarantineGroupName(): String {
     val pathParts = targetRelativePath.replace('\\', '/').split('/')
     val duplicatesIndex = pathParts.indexOfLast { it == "Duplicates" }
     return pathParts.getOrNull(duplicatesIndex + 1)?.takeIf { it.isNotBlank() } ?: "Без группы"
+}
+
+private fun PlannedMediaFile.shortLibraryCaption(): String {
+    val normalizedPath = targetRelativePath.replace('\\', '/')
+    val sectionPath = when {
+        "Library/" in normalizedPath -> normalizedPath.substringAfter("Library/")
+        "Duplicates/" in normalizedPath -> normalizedPath.substringAfter("Duplicates/")
+        else -> return targetStatus.label
+    }
+
+    return sectionPath.substringBeforeLast('/', missingDelimiterValue = targetStatus.label)
 }
 
 private fun scanStatusText(
