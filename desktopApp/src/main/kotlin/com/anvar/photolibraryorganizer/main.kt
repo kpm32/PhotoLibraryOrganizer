@@ -1,6 +1,7 @@
 package com.anvar.photolibraryorganizer
 
 import androidx.compose.ui.unit.dp
+import com.anvar.photolibraryorganizer.data.filesystem.JvmDuplicateQuarantineRepository
 import com.anvar.photolibraryorganizer.data.filesystem.JvmImportPlanTargetResolver
 import com.anvar.photolibraryorganizer.data.filesystem.JvmMediaFileImporter
 import com.anvar.photolibraryorganizer.data.filesystem.JvmPhotoSourceScanner
@@ -24,6 +25,7 @@ fun main() {
                 photoSourceScanner = JvmPhotoSourceScanner(),
                 mediaFileImporter = JvmMediaFileImporter(),
                 importPlanTargetResolver = JvmImportPlanTargetResolver(),
+                duplicateQuarantineRepository = JvmDuplicateQuarantineRepository(),
                 imagePreviewLoader = JvmImagePreviewLoader(),
                 appSettingsStorage = JvmAppSettingsStorage(),
                 folderPicker = NativeFolderPicker(),

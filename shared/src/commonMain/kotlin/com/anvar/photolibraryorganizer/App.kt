@@ -18,6 +18,7 @@ import com.anvar.photolibraryorganizer.domain.PhotoLibraryError
 import com.anvar.photolibraryorganizer.domain.PhotoLibraryPlan
 import com.anvar.photolibraryorganizer.domain.model.ImportTargetStatus
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
+import com.anvar.photolibraryorganizer.domain.repository.DuplicateQuarantineRepository
 import com.anvar.photolibraryorganizer.domain.repository.MediaFileImporter
 import com.anvar.photolibraryorganizer.domain.repository.ImportPlanTargetResolver
 import com.anvar.photolibraryorganizer.domain.repository.PhotoSourceScanner
@@ -33,6 +34,7 @@ import com.anvar.photolibraryorganizer.presentation.CachingImagePreviewLoader
 import com.anvar.photolibraryorganizer.presentation.ImagePreviewLoader
 import com.anvar.photolibraryorganizer.presentation.ImagePreviewUiState
 import com.anvar.photolibraryorganizer.presentation.ImportUiState
+import com.anvar.photolibraryorganizer.presentation.PreviewDuplicateQuarantineRepository
 import com.anvar.photolibraryorganizer.presentation.PreviewAppSettingsStorage
 import com.anvar.photolibraryorganizer.presentation.PreviewFolderPicker
 import com.anvar.photolibraryorganizer.presentation.PreviewImportPlanTargetResolver
@@ -50,6 +52,7 @@ fun App(
     photoSourceScanner: PhotoSourceScanner = PreviewPhotoSourceScanner,
     mediaFileImporter: MediaFileImporter = PreviewMediaFileImporter,
     importPlanTargetResolver: ImportPlanTargetResolver = PreviewImportPlanTargetResolver,
+    duplicateQuarantineRepository: DuplicateQuarantineRepository = PreviewDuplicateQuarantineRepository,
     imagePreviewLoader: ImagePreviewLoader = PreviewImagePreviewLoader,
     appSettingsStorage: AppSettingsStorage = PreviewAppSettingsStorage,
     folderPicker: FolderPicker = PreviewFolderPicker,
@@ -65,6 +68,7 @@ fun App(
         var importUiState by remember { mutableStateOf<ImportUiState>(ImportUiState.Idle) }
         var selectedFile by remember { mutableStateOf<PlannedMediaFile?>(null) }
         var libraryFiles by remember { mutableStateOf<List<PlannedMediaFile>>(emptyList()) }
+        var duplicateActionMessage by remember { mutableStateOf<String?>(null) }
         var imagePreviewUiState by remember { mutableStateOf<ImagePreviewUiState>(ImagePreviewUiState.Empty) }
 
         val coroutineScope = rememberCoroutineScope()
@@ -118,6 +122,7 @@ fun App(
             libraryFiles = libraryFiles,
             selectedSection = selectedSection,
             imagePreviewLoader = cachedImagePreviewLoader,
+            duplicateActionMessage = duplicateActionMessage,
             importAvailability = resolveImportAvailabilityUseCase(
                 importMode = importMode,
                 plannedFiles = (scanUiState as? ScanUiState.Success)?.plannedFiles.orEmpty(),
@@ -136,6 +141,7 @@ fun App(
                 }
                 scanUiState = ScanUiState.Idle
                 importUiState = ImportUiState.Idle
+                duplicateActionMessage = null
                 selectedFile = null
                 libraryFiles = emptyList()
                 imagePreviewUiState = ImagePreviewUiState.Empty
@@ -154,6 +160,7 @@ fun App(
                 }
                 scanUiState = ScanUiState.Idle
                 importUiState = ImportUiState.Idle
+                duplicateActionMessage = null
                 selectedFile = null
                 coroutineScope.launch {
                     libraryFiles = refreshLibraryFiles(
@@ -172,6 +179,7 @@ fun App(
                 coroutineScope.launch {
                     scanUiState = ScanUiState.Loading
                     importUiState = ImportUiState.Idle
+                    duplicateActionMessage = null
                     libraryFiles = emptyList()
                     scanUiState = try {
                         when (val result = withContext(Dispatchers.Default) { scanSourceFolderUseCase(sourceFolder) }) {
@@ -239,6 +247,40 @@ fun App(
                     selectedFile = libraryFiles.firstOrNull()
                 }
             },
+            onMoveDuplicatesClick = {
+                coroutineScope.launch {
+                    val duplicatesToMove = libraryFiles.duplicateQuarantineCandidates()
+                    if (duplicatesToMove.isEmpty()) {
+                        duplicateActionMessage = "Дубликаты для переноса не найдены."
+                        return@launch
+                    }
+
+                    duplicateActionMessage = "Переношу дубликаты в папку Duplicates..."
+                    duplicateActionMessage = try {
+                        when (
+                            val result = withContext(Dispatchers.Default) {
+                                duplicateQuarantineRepository.moveToQuarantine(
+                                    destinationFolder = destinationFolder,
+                                    duplicateFiles = duplicatesToMove,
+                                )
+                            }
+                        ) {
+                            is AppResult.Success -> {
+                                libraryFiles = refreshLibraryFiles(
+                                    destinationFolder = destinationFolder,
+                                    photoSourceScanner = photoSourceScanner,
+                                )
+                                selectedFile = libraryFiles.firstOrNull()
+                                "Перенесено в Duplicates: ${result.data.movedFiles}, ошибок: ${result.data.failedFiles}."
+                            }
+
+                            is AppResult.Error -> result.error.toUserMessage()
+                        }
+                    } catch (exception: Throwable) {
+                        "Не удалось перенести дубликаты: ${exception.message ?: "без деталей"}"
+                    }
+                }
+            },
             onSectionSelected = { selectedSection = it },
             selectedFile = selectedFile,
             imagePreviewUiState = imagePreviewUiState,
@@ -279,4 +321,13 @@ private suspend fun refreshLibraryFiles(
 
         is AppResult.Error -> emptyList()
     }
+}
+
+private fun List<PlannedMediaFile>.duplicateQuarantineCandidates(): List<PlannedMediaFile> {
+    return asSequence()
+        .filter { it.contentHash != null }
+        .groupBy { it.contentHash }
+        .values
+        .filter { it.size > 1 }
+        .flatMap { files -> files.sortedBy { it.targetRelativePath }.drop(1) }
 }

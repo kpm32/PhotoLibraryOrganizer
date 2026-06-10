@@ -52,6 +52,7 @@ internal fun MainWorkspace(
     libraryFiles: List<PlannedMediaFile>,
     selectedSection: AppSection,
     imagePreviewLoader: ImagePreviewLoader,
+    duplicateActionMessage: String?,
     importAvailability: ImportAvailability,
     selectedFile: PlannedMediaFile?,
     selectedMode: ImportMode,
@@ -59,6 +60,7 @@ internal fun MainWorkspace(
     onImportClick: () -> Unit,
     onConfirmImportClick: () -> Unit,
     onCancelImportClick: () -> Unit,
+    onMoveDuplicatesClick: () -> Unit,
     onImportModeSelected: (ImportMode) -> Unit,
     onFileSelected: (PlannedMediaFile) -> Unit,
     modifier: Modifier = Modifier,
@@ -96,8 +98,10 @@ internal fun MainWorkspace(
                 selectedSection = selectedSection,
                 libraryFiles = libraryFiles,
                 imagePreviewLoader = imagePreviewLoader,
+                duplicateActionMessage = duplicateActionMessage,
                 selectedFile = selectedFile,
                 onFileSelected = onFileSelected,
+                onMoveDuplicatesClick = onMoveDuplicatesClick,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -310,8 +314,10 @@ private fun LibrarySection(
     selectedSection: AppSection,
     libraryFiles: List<PlannedMediaFile>,
     imagePreviewLoader: ImagePreviewLoader,
+    duplicateActionMessage: String?,
     selectedFile: PlannedMediaFile?,
     onFileSelected: (PlannedMediaFile) -> Unit,
+    onMoveDuplicatesClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     when (selectedSection) {
@@ -368,6 +374,9 @@ private fun LibrarySection(
             imagePreviewLoader = imagePreviewLoader,
             selectedFile = selectedFile,
             onFileSelected = onFileSelected,
+            actionText = "Перенести дубли в Duplicates",
+            actionMessage = duplicateActionMessage,
+            onActionClick = onMoveDuplicatesClick,
             modifier = modifier,
         )
 
@@ -487,6 +496,9 @@ private fun GroupedMediaList(
     imagePreviewLoader: ImagePreviewLoader,
     selectedFile: PlannedMediaFile?,
     onFileSelected: (PlannedMediaFile) -> Unit,
+    actionText: String? = null,
+    actionMessage: String? = null,
+    onActionClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val groupTitles = groups.keys.toList()
@@ -509,6 +521,21 @@ private fun GroupedMediaList(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )
+            if (groups.isNotEmpty() && actionText != null && onActionClick != null) {
+                Button(
+                    onClick = onActionClick,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(actionText)
+                }
+            }
+            if (actionMessage != null) {
+                Text(
+                    text = actionMessage,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             HorizontalDivider()
             if (groups.isEmpty()) {
                 EmptyListText(emptyText)
