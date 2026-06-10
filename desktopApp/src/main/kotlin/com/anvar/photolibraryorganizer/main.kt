@@ -1,5 +1,7 @@
 package com.anvar.photolibraryorganizer
 
+import com.anvar.photolibraryorganizer.data.filesystem.JvmPhotoSourceScanner
+import com.anvar.photolibraryorganizer.presentation.SwingFolderPicker
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 
@@ -8,6 +10,9 @@ fun main() = application {
         onCloseRequest = ::exitApplication,
         title = "PhotoLibraryOrganizer",
     ) {
-        App()
+        App(
+            photoSourceScanner = JvmPhotoSourceScanner(),
+            folderPicker = SwingFolderPicker(),
+        )
     }
 }

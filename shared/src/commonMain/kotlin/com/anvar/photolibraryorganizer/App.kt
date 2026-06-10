@@ -26,22 +26,40 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.anvar.photolibraryorganizer.domain.AppResult
 import com.anvar.photolibraryorganizer.domain.ImportMode
+import com.anvar.photolibraryorganizer.domain.PhotoLibraryError
 import com.anvar.photolibraryorganizer.domain.PhotoLibraryPlan
+import com.anvar.photolibraryorganizer.domain.repository.PhotoSourceScanner
+import com.anvar.photolibraryorganizer.domain.usecase.ScanSourceFolderUseCase
+import com.anvar.photolibraryorganizer.presentation.FolderPicker
+import com.anvar.photolibraryorganizer.presentation.PreviewFolderPicker
+import com.anvar.photolibraryorganizer.presentation.PreviewPhotoSourceScanner
+import com.anvar.photolibraryorganizer.presentation.ScanUiState
+import kotlinx.coroutines.launch
 
 @Composable
 @Preview
-fun App() {
+fun App(
+    photoSourceScanner: PhotoSourceScanner = PreviewPhotoSourceScanner,
+    folderPicker: FolderPicker = PreviewFolderPicker,
+) {
     MaterialTheme {
         var sourceFolder by remember { mutableStateOf<String?>(null) }
         var destinationFolder by remember { mutableStateOf<String?>(null) }
         var importMode by remember { mutableStateOf(ImportMode.ScanOnly) }
+        var scanUiState by remember { mutableStateOf<ScanUiState>(ScanUiState.Idle) }
+        val coroutineScope = rememberCoroutineScope()
+        val scanSourceFolderUseCase = remember(photoSourceScanner) {
+            ScanSourceFolderUseCase(photoSourceScanner)
+        }
 
         val plan = PhotoLibraryPlan(
             sourceFolder = sourceFolder,
@@ -51,13 +69,25 @@ fun App() {
 
         PhotoLibraryOrganizerApp(
             plan = plan,
+            scanUiState = scanUiState,
             onSourceFolderClick = {
-                sourceFolder = "/Users/anvardzan/Pictures/Unsorted archive"
+                folderPicker.chooseFolder("Выбери исходную папку")?.let { sourceFolder = it }
+                scanUiState = ScanUiState.Idle
             },
             onDestinationFolderClick = {
-                destinationFolder = "/Users/anvardzan/Pictures/PhotoLibrary"
+                folderPicker.chooseFolder("Выбери папку библиотеки")?.let { destinationFolder = it }
+                scanUiState = ScanUiState.Idle
             },
             onImportModeSelected = { importMode = it },
+            onScanClick = {
+                coroutineScope.launch {
+                    scanUiState = ScanUiState.Loading
+                    scanUiState = when (val result = scanSourceFolderUseCase(sourceFolder)) {
+                        is AppResult.Success -> ScanUiState.Success(result.data.summary)
+                        is AppResult.Error -> ScanUiState.Error(result.error.toUserMessage())
+                    }
+                }
+            },
         )
     }
 }
@@ -65,9 +95,11 @@ fun App() {
 @Composable
 private fun PhotoLibraryOrganizerApp(
     plan: PhotoLibraryPlan,
+    scanUiState: ScanUiState,
     onSourceFolderClick: () -> Unit,
     onDestinationFolderClick: () -> Unit,
     onImportModeSelected: (ImportMode) -> Unit,
+    onScanClick: () -> Unit,
 ) {
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -110,7 +142,11 @@ private fun PhotoLibraryOrganizerApp(
                 onImportModeSelected = onImportModeSelected,
             )
 
-            ScanPreview(plan = plan)
+            ScanPreview(
+                plan = plan,
+                scanUiState = scanUiState,
+                onScanClick = onScanClick,
+            )
         }
     }
 }
@@ -255,7 +291,11 @@ private fun ModeOption(
 }
 
 @Composable
-private fun ScanPreview(plan: PhotoLibraryPlan) {
+private fun ScanPreview(
+    plan: PhotoLibraryPlan,
+    scanUiState: ScanUiState,
+    onScanClick: () -> Unit,
+) {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.elevatedCardColors(
@@ -273,20 +313,19 @@ private fun ScanPreview(plan: PhotoLibraryPlan) {
             )
             HorizontalDivider()
             Text(
-                text = if (plan.canScan) {
-                    "Готово к безопасному сканированию. На этом шаге приложение еще не будет копировать, переносить или удалять файлы."
-                } else {
-                    "Выбери исходную папку и папку библиотеки, чтобы подготовить сканирование."
-                },
+                text = scanStatusText(plan, scanUiState),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            if (scanUiState is ScanUiState.Success) {
+                ScanSummaryRows(scanUiState)
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Button(
-                    onClick = {},
-                    enabled = plan.canScan,
+                    onClick = onScanClick,
+                    enabled = plan.canScan && scanUiState !is ScanUiState.Loading,
                 ) {
-                    Text("Scan")
+                    Text(if (scanUiState is ScanUiState.Loading) "Scanning..." else "Scan")
                 }
                 OutlinedButton(
                     onClick = {},
@@ -296,5 +335,83 @@ private fun ScanPreview(plan: PhotoLibraryPlan) {
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ScanSummaryRows(scanUiState: ScanUiState.Success) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        SummaryRow("Всего файлов", scanUiState.summary.scannedFiles.toString())
+        SummaryRow("Медиа", scanUiState.summary.mediaFiles.toString())
+        SummaryRow("Фото", scanUiState.summary.imageFiles.toString())
+        SummaryRow("Видео", scanUiState.summary.videoFiles.toString())
+        SummaryRow("Неподдерживаемые", scanUiState.summary.unsupportedFiles.toString())
+        SummaryRow("Размер медиа", scanUiState.summary.totalMediaBytes.toReadableSize())
+    }
+}
+
+@Composable
+private fun SummaryRow(
+    label: String,
+    value: String,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+        )
+    }
+}
+
+private fun scanStatusText(
+    plan: PhotoLibraryPlan,
+    scanUiState: ScanUiState,
+): String {
+    return when (scanUiState) {
+        ScanUiState.Idle -> if (plan.canScan) {
+            "Готово к безопасному сканированию. На этом шаге приложение еще не будет копировать, переносить или удалять файлы."
+        } else {
+            "Выбери исходную папку и папку библиотеки, чтобы подготовить сканирование."
+        }
+
+        ScanUiState.Loading -> "Сканирую папку и подпапки. Файлы не изменяются."
+        is ScanUiState.Success -> "Сканирование завершено. Это только статистика, импорт пока не запускался."
+        is ScanUiState.Error -> scanUiState.message
+    }
+}
+
+private fun PhotoLibraryError.toUserMessage(): String {
+    return when (this) {
+        PhotoLibraryError.InvalidSourceFolder -> "Исходная папка не выбрана."
+        is PhotoLibraryError.SourceFolderNotFound -> "Исходная папка не найдена: $path"
+        is PhotoLibraryError.SourceFolderIsNotDirectory -> "Выбранный путь не является папкой: $path"
+        is PhotoLibraryError.FileSystem -> "Не удалось просканировать папку: $message"
+        is PhotoLibraryError.Unknown -> "Неизвестная ошибка сканирования: ${message ?: "без деталей"}"
+    }
+}
+
+private fun Long.toReadableSize(): String {
+    val units = listOf("B", "KB", "MB", "GB", "TB")
+    var value = toDouble()
+    var unitIndex = 0
+
+    while (value >= 1024 && unitIndex < units.lastIndex) {
+        value /= 1024
+        unitIndex += 1
+    }
+
+    return if (unitIndex == 0) {
+        "${value.toLong()} ${units[unitIndex]}"
+    } else {
+        "${(value * 10).toLong() / 10.0} ${units[unitIndex]}"
     }
 }
