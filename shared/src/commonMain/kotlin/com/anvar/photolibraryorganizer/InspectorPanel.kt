@@ -50,6 +50,7 @@ internal fun InspectorPanel(
     onSourceFolderClick: () -> Unit,
     onDestinationFolderClick: () -> Unit,
     onRefreshLibraryClick: () -> Unit,
+    isLibraryRefreshing: Boolean,
 ) {
     Surface(
         modifier = Modifier
@@ -95,9 +96,16 @@ internal fun InspectorPanel(
             )
             OutlinedButton(
                 onClick = onRefreshLibraryClick,
-                enabled = !plan.destinationFolder.isNullOrBlank(),
+                enabled = !plan.destinationFolder.isNullOrBlank() && !isLibraryRefreshing,
             ) {
-                Text("Обновить библиотеку")
+                Text(if (isLibraryRefreshing) "Обновляю..." else "Обновить библиотеку")
+            }
+            if (isLibraryRefreshing) {
+                Text(
+                    text = "Читаю папки библиотеки. Окно можно оставить открытым.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
             if (scanUiState is ScanUiState.Success) {
                 HorizontalDivider()

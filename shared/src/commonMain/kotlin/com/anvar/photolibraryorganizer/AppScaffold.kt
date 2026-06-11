@@ -63,6 +63,7 @@ internal fun PhotoLibraryOrganizerApp(
     unsupportedActionMessage: String?,
     unsupportedDeleteAwaitingConfirmation: Boolean,
     importAvailability: ImportAvailability,
+    isLibraryRefreshing: Boolean,
     issues: List<AppIssue>,
     onSourceFolderClick: () -> Unit,
     onDestinationFolderClick: () -> Unit,
@@ -186,6 +187,7 @@ internal fun PhotoLibraryOrganizerApp(
                     unsupportedActionMessage = unsupportedActionMessage,
                     unsupportedDeleteAwaitingConfirmation = unsupportedDeleteAwaitingConfirmation,
                     importAvailability = importAvailability,
+                    isLibraryRefreshing = isLibraryRefreshing,
                     issues = issues,
                     selectedFile = selectedFile,
                     selectedMode = plan.importMode,
@@ -230,6 +232,7 @@ internal fun PhotoLibraryOrganizerApp(
                     onSourceFolderClick = onSourceFolderClick,
                     onDestinationFolderClick = onDestinationFolderClick,
                     onRefreshLibraryClick = onRefreshLibraryClick,
+                    isLibraryRefreshing = isLibraryRefreshing,
                 )
             }
             if (isViewerOpen && selectedFile != null) {

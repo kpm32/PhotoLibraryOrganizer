@@ -32,9 +32,12 @@ class JvmPhotoSourceScannerTest {
         nestedFolder.resolve("README").writeText("no extension")
 
         val progressEvents = mutableListOf<Int>()
-        val result = scanner.scanFolder(sourceFolder.toString()) { progress ->
-            progressEvents += progress.scannedFiles
-        }
+        val result = scanner.scanFolder(
+            path = sourceFolder.toString(),
+            onProgress = { progress ->
+                progressEvents += progress.scannedFiles
+            },
+        )
 
         val success = assertIs<AppResult.Success<ScanSourceFolderResult>>(result)
         val summary = success.data.summary
@@ -70,6 +73,20 @@ class JvmPhotoSourceScannerTest {
         val mediaFile = success.data.mediaFiles.single()
         assertEquals(expectedCapturedAtEpochMillis(), mediaFile.capturedAtEpochMillis)
         assertEquals(1, success.data.summary.capturedDateFiles)
+    }
+
+    @Test
+    fun canSkipContentHashForFastLibraryRefresh() = runTest {
+        val sourceFolder = Files.createTempDirectory("photo-fast-refresh-test")
+        sourceFolder.resolve("image.jpg").writeText("fake image")
+
+        val result = scanner.scanFolder(
+            path = sourceFolder.toString(),
+            readContentHash = false,
+        )
+
+        val success = assertIs<AppResult.Success<ScanSourceFolderResult>>(result)
+        assertEquals(null, success.data.mediaFiles.single().contentHash)
     }
 
     @Test

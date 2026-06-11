@@ -32,6 +32,7 @@ class JvmPhotoSourceScanner(
     override suspend fun scanFolder(
         path: String,
         onProgress: (ScanSourceFolderProgress) -> Unit,
+        readContentHash: Boolean,
     ): AppResult<ScanSourceFolderResult> {
         return try {
             val sourcePath = Path.of(path)
@@ -39,7 +40,7 @@ class JvmPhotoSourceScanner(
             when {
                 !sourcePath.exists() -> AppResult.Error(PhotoLibraryError.SourceFolderNotFound(path))
                 !sourcePath.isDirectory() -> AppResult.Error(PhotoLibraryError.SourceFolderIsNotDirectory(path))
-                else -> scanExistingDirectory(sourcePath, onProgress)
+                else -> scanExistingDirectory(sourcePath, onProgress, readContentHash)
             }
         } catch (exception: CancellationException) {
             throw exception
@@ -51,6 +52,7 @@ class JvmPhotoSourceScanner(
     private suspend fun scanExistingDirectory(
         sourcePath: Path,
         onProgress: (ScanSourceFolderProgress) -> Unit,
+        readContentHash: Boolean,
     ): AppResult<ScanSourceFolderResult> {
         return try {
             val mediaFiles = mutableListOf<ScannedMediaFile>()
@@ -93,7 +95,7 @@ class JvmPhotoSourceScanner(
                                 extension = mediaType.extension,
                                 category = mediaType.category,
                             ),
-                            contentHash = file.sha256(),
+                            contentHash = if (readContentHash) file.sha256() else null,
                         )
                     }
                     if (scannedFiles % PROGRESS_EMIT_STEP == 0) {

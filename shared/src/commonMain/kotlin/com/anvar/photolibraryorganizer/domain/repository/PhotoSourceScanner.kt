@@ -8,5 +8,6 @@ interface PhotoSourceScanner {
     suspend fun scanFolder(
         path: String,
         onProgress: (ScanSourceFolderProgress) -> Unit = {},
+        readContentHash: Boolean = true,
     ): AppResult<ScanSourceFolderResult>
 }

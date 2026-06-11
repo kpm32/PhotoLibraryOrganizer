@@ -19,6 +19,7 @@ object PreviewPhotoSourceScanner : PhotoSourceScanner {
     override suspend fun scanFolder(
         path: String,
         onProgress: (ScanSourceFolderProgress) -> Unit,
+        readContentHash: Boolean,
     ): AppResult<ScanSourceFolderResult> {
         val files = listOf(
             ScannedMediaFile(

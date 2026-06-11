@@ -100,6 +100,7 @@ fun App(
         var libraryFiles by remember { mutableStateOf<List<PlannedMediaFile>>(emptyList()) }
         var duplicateFiles by remember { mutableStateOf<List<PlannedMediaFile>>(emptyList()) }
         var unsupportedFiles by remember { mutableStateOf<List<PlannedMediaFile>>(emptyList()) }
+        var isLibraryRefreshing by remember { mutableStateOf(false) }
         var duplicateActionMessage by remember { mutableStateOf<String?>(null) }
         var duplicateDeleteAwaitingConfirmation by remember { mutableStateOf(false) }
         var unsupportedActionMessage by remember { mutableStateOf<String?>(null) }
@@ -133,19 +134,24 @@ fun App(
             destinationFolder = settings.destinationFolder
             importRules = settings.importRules
             if (!settings.destinationFolder.isNullOrBlank()) {
-                libraryFiles = refreshLibraryFiles(
-                    destinationFolder = settings.destinationFolder,
-                    photoSourceScanner = photoSourceScanner,
-                )
-                duplicateFiles = refreshDuplicateFiles(
-                    destinationFolder = settings.destinationFolder,
-                    photoSourceScanner = photoSourceScanner,
-                )
-                unsupportedFiles = refreshUnsupportedFiles(
-                    destinationFolder = settings.destinationFolder,
-                    photoSourceScanner = photoSourceScanner,
-                )
-                selectedFile = libraryFiles.firstOrNull()
+                isLibraryRefreshing = true
+                try {
+                    libraryFiles = refreshLibraryFiles(
+                        destinationFolder = settings.destinationFolder,
+                        photoSourceScanner = photoSourceScanner,
+                    )
+                    duplicateFiles = refreshDuplicateFiles(
+                        destinationFolder = settings.destinationFolder,
+                        photoSourceScanner = photoSourceScanner,
+                    )
+                    unsupportedFiles = refreshUnsupportedFiles(
+                        destinationFolder = settings.destinationFolder,
+                        photoSourceScanner = photoSourceScanner,
+                    )
+                    selectedFile = libraryFiles.firstOrNull()
+                } finally {
+                    isLibraryRefreshing = false
+                }
             }
         }
 
@@ -200,6 +206,7 @@ fun App(
                 importMode = importMode,
                 plannedFiles = (scanUiState as? ScanUiState.Success)?.plannedFiles.orEmpty(),
             ),
+            isLibraryRefreshing = isLibraryRefreshing,
             issues = issues,
             onSourceFolderClick = {
                 folderPicker.chooseFolder("Выбери исходную папку")?.let {
@@ -253,19 +260,24 @@ fun App(
                 unsupportedDeleteAwaitingConfirmation = false
                 selectedFile = null
                 coroutineScope.launch {
-                    libraryFiles = refreshLibraryFiles(
-                        destinationFolder = destinationFolder,
-                        photoSourceScanner = photoSourceScanner,
-                    )
-                    duplicateFiles = refreshDuplicateFiles(
-                        destinationFolder = destinationFolder,
-                        photoSourceScanner = photoSourceScanner,
-                    )
-                    unsupportedFiles = refreshUnsupportedFiles(
-                        destinationFolder = destinationFolder,
-                        photoSourceScanner = photoSourceScanner,
-                    )
-                    selectedFile = libraryFiles.firstOrNull()
+                    isLibraryRefreshing = true
+                    try {
+                        libraryFiles = refreshLibraryFiles(
+                            destinationFolder = destinationFolder,
+                            photoSourceScanner = photoSourceScanner,
+                        )
+                        duplicateFiles = refreshDuplicateFiles(
+                            destinationFolder = destinationFolder,
+                            photoSourceScanner = photoSourceScanner,
+                        )
+                        unsupportedFiles = refreshUnsupportedFiles(
+                            destinationFolder = destinationFolder,
+                            photoSourceScanner = photoSourceScanner,
+                        )
+                        selectedFile = libraryFiles.firstOrNull()
+                    } finally {
+                        isLibraryRefreshing = false
+                    }
                 }
                 imagePreviewUiState = ImagePreviewUiState.Empty
             },
@@ -510,19 +522,24 @@ fun App(
             },
             onRefreshLibraryClick = {
                 coroutineScope.launch {
-                    libraryFiles = refreshLibraryFiles(
-                        destinationFolder = destinationFolder,
-                        photoSourceScanner = photoSourceScanner,
-                    )
-                    duplicateFiles = refreshDuplicateFiles(
-                        destinationFolder = destinationFolder,
-                        photoSourceScanner = photoSourceScanner,
-                    )
-                    unsupportedFiles = refreshUnsupportedFiles(
-                        destinationFolder = destinationFolder,
-                        photoSourceScanner = photoSourceScanner,
-                    )
-                    selectedFile = libraryFiles.firstOrNull()
+                    isLibraryRefreshing = true
+                    try {
+                        libraryFiles = refreshLibraryFiles(
+                            destinationFolder = destinationFolder,
+                            photoSourceScanner = photoSourceScanner,
+                        )
+                        duplicateFiles = refreshDuplicateFiles(
+                            destinationFolder = destinationFolder,
+                            photoSourceScanner = photoSourceScanner,
+                        )
+                        unsupportedFiles = refreshUnsupportedFiles(
+                            destinationFolder = destinationFolder,
+                            photoSourceScanner = photoSourceScanner,
+                        )
+                        selectedFile = libraryFiles.firstOrNull()
+                    } finally {
+                        isLibraryRefreshing = false
+                    }
                 }
             },
             onMoveDuplicatesClick = {
@@ -918,7 +935,14 @@ private suspend fun refreshPlannedFiles(
     folder: String,
     photoSourceScanner: PhotoSourceScanner,
 ): List<PlannedMediaFile> {
-    return when (val result = photoSourceScanner.scanFolder(folder)) {
+    return when (
+        val result = withContext(Dispatchers.Default) {
+            photoSourceScanner.scanFolder(
+                path = folder,
+                readContentHash = false,
+            )
+        }
+    ) {
         is AppResult.Success -> result.data.mediaFiles.map { mediaFile ->
             PlannedMediaFile(
                 sourcePath = mediaFile.path,
@@ -937,7 +961,14 @@ private suspend fun refreshAllFiles(
     folder: String,
     photoSourceScanner: PhotoSourceScanner,
 ): List<PlannedMediaFile> {
-    return when (val result = photoSourceScanner.scanFolder(folder)) {
+    return when (
+        val result = withContext(Dispatchers.Default) {
+            photoSourceScanner.scanFolder(
+                path = folder,
+                readContentHash = false,
+            )
+        }
+    ) {
         is AppResult.Success -> {
             val mediaFiles = result.data.mediaFiles.map { mediaFile ->
                 PlannedMediaFile(

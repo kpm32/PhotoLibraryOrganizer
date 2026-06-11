@@ -361,6 +361,7 @@ class SharedCommonTest {
         override suspend fun scanFolder(
             path: String,
             onProgress: (ScanSourceFolderProgress) -> Unit,
+            readContentHash: Boolean,
         ): AppResult<ScanSourceFolderResult> {
             lastScannedPath = path
             return AppResult.Success(

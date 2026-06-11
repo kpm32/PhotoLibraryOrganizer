@@ -55,6 +55,7 @@ internal fun MainWorkspace(
     unsupportedActionMessage: String?,
     unsupportedDeleteAwaitingConfirmation: Boolean,
     importAvailability: ImportAvailability,
+    isLibraryRefreshing: Boolean,
     issues: List<AppIssue>,
     selectedFile: PlannedMediaFile?,
     selectedMode: ImportMode,
