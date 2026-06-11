@@ -21,8 +21,14 @@ compose.desktop {
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "com.anvar.photolibraryorganizer"
+            packageName = "PhotoLibraryOrganizer"
             packageVersion = "1.0.0"
+            description = "Photo archive organizer"
+
+            macOS {
+                bundleID = "com.anvar.photolibraryorganizer"
+                iconFile.set(project.file("src/main/resources/app-icon.icns"))
+            }
         }
     }
 }
