@@ -39,6 +39,7 @@ internal fun PhotoLibraryOrganizerApp(
     importHistory: List<ImportReport>,
     libraryFiles: List<PlannedMediaFile>,
     duplicateFiles: List<PlannedMediaFile>,
+    unsupportedFiles: List<PlannedMediaFile>,
     selectedSection: AppSection,
     imagePreviewLoader: ImagePreviewLoader,
     duplicateActionMessage: String?,
@@ -96,6 +97,7 @@ internal fun PhotoLibraryOrganizerApp(
                 importHistory = importHistory,
                 libraryFiles = libraryFiles,
                 duplicateFiles = duplicateFiles,
+                unsupportedFiles = unsupportedFiles,
                 selectedSection = selectedSection,
                 imagePreviewLoader = imagePreviewLoader,
                 duplicateActionMessage = duplicateActionMessage,
@@ -176,6 +178,7 @@ private fun LibrarySidebar(
                 items = listOf(
                     AppSection.Import,
                     AppSection.Duplicates,
+                    AppSection.Unsupported,
                     AppSection.Errors,
                 ),
                 selectedSection = selectedSection,

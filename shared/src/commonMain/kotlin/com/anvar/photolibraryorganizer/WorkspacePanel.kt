@@ -45,6 +45,7 @@ internal fun MainWorkspace(
     importHistory: List<ImportReport>,
     libraryFiles: List<PlannedMediaFile>,
     duplicateFiles: List<PlannedMediaFile>,
+    unsupportedFiles: List<PlannedMediaFile>,
     selectedSection: AppSection,
     imagePreviewLoader: ImagePreviewLoader,
     duplicateActionMessage: String?,
@@ -133,6 +134,7 @@ internal fun MainWorkspace(
                 selectedSection = selectedSection,
                 libraryFiles = visibleLibraryFiles,
                 duplicateFiles = duplicateFiles,
+                unsupportedFiles = unsupportedFiles,
                 imagePreviewLoader = imagePreviewLoader,
                 duplicateActionMessage = duplicateActionMessage,
                 duplicateDeleteAwaitingConfirmation = duplicateDeleteAwaitingConfirmation,
@@ -237,6 +239,7 @@ private fun WorkspaceHeader(selectedSection: AppSection) {
                 AppSection.Months -> "Библиотека, сгруппированная по месяцам."
                 AppSection.WithoutDate -> "Файлы, для которых пока не удалось определить дату."
                 AppSection.Duplicates -> "Файлы с одинаковым SHA-256 хэшем."
+                AppSection.Unsupported -> "Файлы, которые приложение не считает фото или видео, лежат отдельно и не потеряны."
                 AppSection.Errors -> "Ошибки импорта и сканирования будут собираться здесь."
             },
             style = MaterialTheme.typography.bodyMedium,
@@ -250,6 +253,7 @@ private fun LibrarySection(
     selectedSection: AppSection,
     libraryFiles: List<PlannedMediaFile>,
     duplicateFiles: List<PlannedMediaFile>,
+    unsupportedFiles: List<PlannedMediaFile>,
     imagePreviewLoader: ImagePreviewLoader,
     duplicateActionMessage: String?,
     duplicateDeleteAwaitingConfirmation: Boolean,
@@ -341,6 +345,18 @@ private fun LibrarySection(
             modifier = modifier,
         )
 
+        AppSection.Unsupported -> GroupedMediaList(
+            title = "Неподдерживаемые",
+            emptyText = "Папка Unsupported пока пуста.",
+            groups = unsupportedFiles
+                .groupBy { it.unsupportedTypeGroup() }
+                .toSortedMap(compareBy { it }),
+            imagePreviewLoader = imagePreviewLoader,
+            selectedFile = selectedFile,
+            onFileSelected = onFileSelected,
+            modifier = modifier,
+        )
+
         AppSection.Errors -> ErrorsPanel(
             issues = issues,
             onClearIssuesClick = onClearIssuesClick,
@@ -416,6 +432,13 @@ private fun AppSection.supportsLibrarySearch(): Boolean {
         this == AppSection.Years ||
         this == AppSection.Months ||
         this == AppSection.WithoutDate
+}
+
+private fun PlannedMediaFile.unsupportedTypeGroup(): String {
+    val extension = fileName.substringAfterLast('.', missingDelimiterValue = "")
+        .lowercase()
+        .ifBlank { "без расширения" }
+    return extension
 }
 
 private fun List<PlannedMediaFile>.filterLibraryFiles(

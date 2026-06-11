@@ -9,5 +9,6 @@ enum class AppSection(
     WithoutDate("Без даты"),
     Import("Импорт"),
     Duplicates("Дубликаты"),
+    Unsupported("Неподдерживаемые"),
     Errors("Ошибки"),
 }

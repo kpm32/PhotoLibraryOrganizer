@@ -134,6 +134,7 @@ private fun PlannedMediaFile.shortLibraryCaption(): String {
     val sectionPath = when {
         "Library/" in normalizedPath -> normalizedPath.substringAfter("Library/")
         "Duplicates/" in normalizedPath -> normalizedPath.substringAfter("Duplicates/")
+        "Unsupported/" in normalizedPath -> normalizedPath.substringAfter("Unsupported/")
         else -> return targetStatus.label
     }
 

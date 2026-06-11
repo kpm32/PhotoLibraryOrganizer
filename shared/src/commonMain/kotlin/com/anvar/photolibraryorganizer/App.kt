@@ -94,6 +94,7 @@ fun App(
         var selectedFile by remember { mutableStateOf<PlannedMediaFile?>(null) }
         var libraryFiles by remember { mutableStateOf<List<PlannedMediaFile>>(emptyList()) }
         var duplicateFiles by remember { mutableStateOf<List<PlannedMediaFile>>(emptyList()) }
+        var unsupportedFiles by remember { mutableStateOf<List<PlannedMediaFile>>(emptyList()) }
         var duplicateActionMessage by remember { mutableStateOf<String?>(null) }
         var duplicateDeleteAwaitingConfirmation by remember { mutableStateOf(false) }
         var imagePreviewUiState by remember { mutableStateOf<ImagePreviewUiState>(ImagePreviewUiState.Empty) }
@@ -133,6 +134,10 @@ fun App(
                     destinationFolder = settings.destinationFolder,
                     photoSourceScanner = photoSourceScanner,
                 )
+                unsupportedFiles = refreshUnsupportedFiles(
+                    destinationFolder = settings.destinationFolder,
+                    photoSourceScanner = photoSourceScanner,
+                )
                 selectedFile = libraryFiles.firstOrNull()
             }
         }
@@ -160,6 +165,7 @@ fun App(
             scanUiState = scanUiState,
             libraryFiles = libraryFiles,
             duplicateFiles = duplicateFiles,
+            unsupportedFiles = unsupportedFiles,
         )
         val selectedFileIndex = selectedFile?.let { selected ->
             navigationFiles.indexOfFirst { it.sourcePath == selected.sourcePath }
@@ -174,6 +180,7 @@ fun App(
             importHistory = importHistory,
             libraryFiles = libraryFiles,
             duplicateFiles = duplicateFiles,
+            unsupportedFiles = unsupportedFiles,
             selectedSection = selectedSection,
             imagePreviewLoader = cachedImagePreviewLoader,
             duplicateActionMessage = duplicateActionMessage,
@@ -204,6 +211,7 @@ fun App(
                 selectedFile = null
                 libraryFiles = emptyList()
                 duplicateFiles = emptyList()
+                unsupportedFiles = emptyList()
                 imagePreviewUiState = ImagePreviewUiState.Empty
             },
             onDestinationFolderClick = {
@@ -231,6 +239,10 @@ fun App(
                         photoSourceScanner = photoSourceScanner,
                     )
                     duplicateFiles = refreshDuplicateFiles(
+                        destinationFolder = destinationFolder,
+                        photoSourceScanner = photoSourceScanner,
+                    )
+                    unsupportedFiles = refreshUnsupportedFiles(
                         destinationFolder = destinationFolder,
                         photoSourceScanner = photoSourceScanner,
                     )
@@ -346,7 +358,7 @@ fun App(
                 importJob?.cancel()
                 importJob = coroutineScope.launch {
                     val plannedFiles = (scanUiState as? ScanUiState.Success)?.plannedFiles.orEmpty()
-                    val unsupportedFiles = (scanUiState as? ScanUiState.Success)?.unsupportedFiles.orEmpty()
+                    val unsupportedSourceFiles = (scanUiState as? ScanUiState.Success)?.unsupportedFiles.orEmpty()
                     val readyFileCount = plannedFiles.count { it.targetStatus != ImportTargetStatus.AlreadyExists }
                     val existingFileCount = plannedFiles.count { it.targetStatus == ImportTargetStatus.AlreadyExists }
                     lastImportProgress = null
@@ -365,11 +377,11 @@ fun App(
                             }
                         ) {
                             is AppResult.Success -> {
-                                val unsupportedQuarantineResult = if (importMode == ImportMode.Move && unsupportedFiles.isNotEmpty()) {
+                                val unsupportedQuarantineResult = if (importMode == ImportMode.Move && unsupportedSourceFiles.isNotEmpty()) {
                                     withContext(Dispatchers.Default) {
                                         unsupportedFileQuarantineRepository.moveToQuarantine(
                                             destinationFolder = destinationFolder,
-                                            unsupportedFiles = unsupportedFiles,
+                                            unsupportedFiles = unsupportedSourceFiles,
                                         )
                                     }
                                 } else {
@@ -377,7 +389,7 @@ fun App(
                                 }
                                 val finalImportResult = result.data.withUnsupportedQuarantine(
                                     result = unsupportedQuarantineResult,
-                                    fallbackFailedFiles = unsupportedFiles.size,
+                                    fallbackFailedFiles = unsupportedSourceFiles.size,
                                 )
                                 val report = ImportReport(
                                     importMode = importMode,
@@ -398,6 +410,10 @@ fun App(
                                     photoSourceScanner = photoSourceScanner,
                                 )
                                 duplicateFiles = refreshDuplicateFiles(
+                                    destinationFolder = destinationFolder,
+                                    photoSourceScanner = photoSourceScanner,
+                                )
+                                unsupportedFiles = refreshUnsupportedFiles(
                                     destinationFolder = destinationFolder,
                                     photoSourceScanner = photoSourceScanner,
                                 )
@@ -427,6 +443,10 @@ fun App(
                             destinationFolder = destinationFolder,
                             photoSourceScanner = photoSourceScanner,
                         )
+                        unsupportedFiles = refreshUnsupportedFiles(
+                            destinationFolder = destinationFolder,
+                            photoSourceScanner = photoSourceScanner,
+                        )
                         selectedFile = libraryFiles.firstOrNull() ?: selectedFile
                     } catch (exception: Throwable) {
                         val message = "Импорт прервался: ${exception.message ?: "без деталей"}"
@@ -449,6 +469,10 @@ fun App(
                         destinationFolder = destinationFolder,
                         photoSourceScanner = photoSourceScanner,
                     )
+                    unsupportedFiles = refreshUnsupportedFiles(
+                        destinationFolder = destinationFolder,
+                        photoSourceScanner = photoSourceScanner,
+                    )
                     selectedFile = libraryFiles.firstOrNull() ?: selectedFile
                 }
             },
@@ -459,6 +483,10 @@ fun App(
                         photoSourceScanner = photoSourceScanner,
                     )
                     duplicateFiles = refreshDuplicateFiles(
+                        destinationFolder = destinationFolder,
+                        photoSourceScanner = photoSourceScanner,
+                    )
+                    unsupportedFiles = refreshUnsupportedFiles(
                         destinationFolder = destinationFolder,
                         photoSourceScanner = photoSourceScanner,
                     )
@@ -490,6 +518,10 @@ fun App(
                                     photoSourceScanner = photoSourceScanner,
                                 )
                                 duplicateFiles = refreshDuplicateFiles(
+                                    destinationFolder = destinationFolder,
+                                    photoSourceScanner = photoSourceScanner,
+                                )
+                                unsupportedFiles = refreshUnsupportedFiles(
                                     destinationFolder = destinationFolder,
                                     photoSourceScanner = photoSourceScanner,
                                 )
@@ -554,6 +586,10 @@ fun App(
                                     photoSourceScanner = photoSourceScanner,
                                 )
                                 duplicateFiles = refreshDuplicateFiles(
+                                    destinationFolder = destinationFolder,
+                                    photoSourceScanner = photoSourceScanner,
+                                )
+                                unsupportedFiles = refreshUnsupportedFiles(
                                     destinationFolder = destinationFolder,
                                     photoSourceScanner = photoSourceScanner,
                                 )
@@ -663,6 +699,16 @@ private suspend fun refreshDuplicateFiles(
     return refreshPlannedFiles(duplicatesFolder, photoSourceScanner)
 }
 
+private suspend fun refreshUnsupportedFiles(
+    destinationFolder: String?,
+    photoSourceScanner: PhotoSourceScanner,
+): List<PlannedMediaFile> {
+    val unsupportedFolder = destinationFolder?.trim()?.trimEnd('/')?.let { "$it/Unsupported" }
+        ?: return emptyList()
+
+    return refreshAllFiles(unsupportedFolder, photoSourceScanner)
+}
+
 private suspend fun refreshPlannedFiles(
     folder: String,
     photoSourceScanner: PhotoSourceScanner,
@@ -676,6 +722,36 @@ private suspend fun refreshPlannedFiles(
                 sizeBytes = mediaFile.sizeBytes,
                 contentHash = mediaFile.contentHash,
             )
+        }
+
+        is AppResult.Error -> emptyList()
+    }
+}
+
+private suspend fun refreshAllFiles(
+    folder: String,
+    photoSourceScanner: PhotoSourceScanner,
+): List<PlannedMediaFile> {
+    return when (val result = photoSourceScanner.scanFolder(folder)) {
+        is AppResult.Success -> {
+            val mediaFiles = result.data.mediaFiles.map { mediaFile ->
+                PlannedMediaFile(
+                    sourcePath = mediaFile.path,
+                    fileName = mediaFile.fileName,
+                    targetRelativePath = mediaFile.path,
+                    sizeBytes = mediaFile.sizeBytes,
+                    contentHash = mediaFile.contentHash,
+                )
+            }
+            val unsupportedFiles = result.data.unsupportedFiles.map { unsupportedFile ->
+                PlannedMediaFile(
+                    sourcePath = unsupportedFile.path,
+                    fileName = unsupportedFile.fileName,
+                    targetRelativePath = unsupportedFile.path,
+                    sizeBytes = unsupportedFile.sizeBytes,
+                )
+            }
+            mediaFiles + unsupportedFiles
         }
 
         is AppResult.Error -> emptyList()
@@ -696,6 +772,7 @@ private fun navigationFilesForSection(
     scanUiState: ScanUiState,
     libraryFiles: List<PlannedMediaFile>,
     duplicateFiles: List<PlannedMediaFile>,
+    unsupportedFiles: List<PlannedMediaFile>,
 ): List<PlannedMediaFile> {
     return when (selectedSection) {
         AppSection.Import -> (scanUiState as? ScanUiState.Success)?.plannedFiles.orEmpty()
@@ -708,6 +785,7 @@ private fun navigationFilesForSection(
             libraryFiles = libraryFiles,
             duplicateFiles = duplicateFiles,
         ).flatMap { group -> group.libraryFiles + group.duplicateFiles }
+        AppSection.Unsupported -> unsupportedFiles
         AppSection.Errors -> emptyList()
     }
 }
