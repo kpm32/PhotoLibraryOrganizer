@@ -10,11 +10,21 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.focusable
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.anvar.photolibraryorganizer.domain.ImportMode
@@ -86,8 +96,35 @@ internal fun PhotoLibraryOrganizerApp(
     onNextFileClick: () -> Unit,
     onFileSelected: (PlannedMediaFile) -> Unit,
 ) {
+    val focusRequester = remember { FocusRequester() }
+    val canNavigateSelectedFile = navigationFileCount > 1 && selectedFileIndex >= 0
+
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
+
     Surface(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .focusRequester(focusRequester)
+            .focusable()
+            .onKeyEvent { event ->
+                if (!canNavigateSelectedFile || event.type != KeyEventType.KeyDown) {
+                    return@onKeyEvent false
+                }
+
+                when (event.key) {
+                    Key.DirectionLeft -> {
+                        onPreviousFileClick()
+                        true
+                    }
+                    Key.DirectionRight -> {
+                        onNextFileClick()
+                        true
+                    }
+                    else -> false
+                }
+            },
         color = MaterialTheme.colorScheme.background,
     ) {
         Row(

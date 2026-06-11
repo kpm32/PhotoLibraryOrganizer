@@ -49,7 +49,7 @@ internal fun InspectorPanel(
 ) {
     Surface(
         modifier = Modifier
-            .width(300.dp)
+            .width(340.dp)
             .fillMaxSize(),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         shape = MaterialTheme.shapes.medium,
@@ -142,7 +142,7 @@ private fun SelectedFilePreview(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(150.dp)
+                .height(230.dp)
                 .background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.medium),
             contentAlignment = Alignment.Center,
         ) {
