@@ -56,6 +56,7 @@ internal fun MainWorkspace(
     onImportClick: () -> Unit,
     onConfirmImportClick: () -> Unit,
     onCancelImportClick: () -> Unit,
+    onCancelRunningImportClick: () -> Unit,
     onMoveDuplicatesClick: () -> Unit,
     onRequestDeleteQuarantineClick: () -> Unit,
     onConfirmDeleteQuarantineClick: () -> Unit,
@@ -99,6 +100,7 @@ internal fun MainWorkspace(
                 onImportClick = onImportClick,
                 onConfirmImportClick = onConfirmImportClick,
                 onCancelImportClick = onCancelImportClick,
+                onCancelRunningImportClick = onCancelRunningImportClick,
                 onImportModeSelected = onImportModeSelected,
                 onImportRulesSelected = onImportRulesSelected,
             )

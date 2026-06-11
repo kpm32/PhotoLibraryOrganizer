@@ -6,6 +6,9 @@ import com.anvar.photolibraryorganizer.domain.model.ImportMediaFilesProgress
 import com.anvar.photolibraryorganizer.domain.model.ImportMediaFilesResult
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
 import com.anvar.photolibraryorganizer.domain.repository.MediaFileImporter
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
@@ -27,7 +30,7 @@ class JvmMediaFileImporter : MediaFileImporter {
         return importFiles(plannedFiles, moveSource = true, onProgress = onProgress)
     }
 
-    private fun importFiles(
+    private suspend fun importFiles(
         plannedFiles: List<PlannedMediaFile>,
         moveSource: Boolean,
         onProgress: (ImportMediaFilesProgress) -> Unit,
@@ -39,6 +42,7 @@ class JvmMediaFileImporter : MediaFileImporter {
             var failedFiles = 0
 
             plannedFiles.forEachIndexed { index, plannedFile ->
+                currentCoroutineContext().ensureActive()
                 val sourcePath = Path.of(plannedFile.sourcePath)
                 val targetPath = Path.of(plannedFile.targetRelativePath)
 
@@ -79,6 +83,8 @@ class JvmMediaFileImporter : MediaFileImporter {
                     failedFiles = failedFiles,
                 ),
             )
+        } catch (exception: CancellationException) {
+            throw exception
         } catch (exception: Throwable) {
             AppResult.Error(PhotoLibraryError.FileSystem(exception.message ?: "File import failed"))
         }

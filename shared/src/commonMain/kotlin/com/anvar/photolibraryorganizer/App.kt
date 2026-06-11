@@ -18,6 +18,7 @@ import com.anvar.photolibraryorganizer.domain.PhotoLibraryError
 import com.anvar.photolibraryorganizer.domain.PhotoLibraryPlan
 import com.anvar.photolibraryorganizer.domain.model.ImportTargetStatus
 import com.anvar.photolibraryorganizer.domain.model.ImportOrganizationRules
+import com.anvar.photolibraryorganizer.domain.model.ImportMediaFilesProgress
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
 import com.anvar.photolibraryorganizer.domain.repository.DuplicateQuarantineRepository
 import com.anvar.photolibraryorganizer.domain.repository.MediaFileImporter
@@ -77,6 +78,8 @@ fun App(
         var scanUiState by remember { mutableStateOf<ScanUiState>(ScanUiState.Idle) }
         var scanRequestToken by remember { mutableStateOf(0) }
         var scanJob by remember { mutableStateOf<Job?>(null) }
+        var importJob by remember { mutableStateOf<Job?>(null) }
+        var lastImportProgress by remember { mutableStateOf<ImportMediaFilesProgress?>(null) }
         var importUiState by remember { mutableStateOf<ImportUiState>(ImportUiState.Idle) }
         var lastImportReport by remember { mutableStateOf<ImportReport?>(null) }
         var selectedFile by remember { mutableStateOf<PlannedMediaFile?>(null) }
@@ -327,17 +330,20 @@ fun App(
                 importUiState = ImportUiState.Idle
             },
             onConfirmImportClick = {
-                coroutineScope.launch {
+                importJob?.cancel()
+                importJob = coroutineScope.launch {
                     val plannedFiles = (scanUiState as? ScanUiState.Success)?.plannedFiles.orEmpty()
                     val readyFileCount = plannedFiles.count { it.targetStatus != ImportTargetStatus.AlreadyExists }
                     val existingFileCount = plannedFiles.count { it.targetStatus == ImportTargetStatus.AlreadyExists }
+                    lastImportProgress = null
                     importUiState = ImportUiState.Loading()
-                    importUiState = try {
+                    try {
                         when (
                             val result = withContext(Dispatchers.Default) {
                                 importMediaFilesUseCase(importMode, plannedFiles) { progress ->
                                     coroutineScope.launch {
                                         if (importUiState is ImportUiState.Loading) {
+                                            lastImportProgress = progress
                                             importUiState = ImportUiState.Loading(progress)
                                         }
                                     }
@@ -371,20 +377,48 @@ fun App(
                                         detail = "Импорт завершился с ошибками: ${result.data.failedFiles}.",
                                     )
                                 }
-                                ImportUiState.Success(result.data)
+                                importUiState = ImportUiState.Success(result.data)
                             }
 
                             is AppResult.Error -> {
                                 val message = result.error.toUserMessage()
                                 addIssue("Импорт", message)
-                                ImportUiState.Error(message)
+                                importUiState = ImportUiState.Error(message)
                             }
                         }
+                    } catch (exception: CancellationException) {
+                        importUiState = ImportUiState.Canceled(lastImportProgress)
+                        libraryFiles = refreshLibraryFiles(
+                            destinationFolder = destinationFolder,
+                            photoSourceScanner = photoSourceScanner,
+                        )
+                        duplicateFiles = refreshDuplicateFiles(
+                            destinationFolder = destinationFolder,
+                            photoSourceScanner = photoSourceScanner,
+                        )
+                        selectedFile = libraryFiles.firstOrNull() ?: selectedFile
                     } catch (exception: Throwable) {
                         val message = "Импорт прервался: ${exception.message ?: "без деталей"}"
                         addIssue("Импорт", message)
-                        ImportUiState.Error(message)
+                        importUiState = ImportUiState.Error(message)
+                    } finally {
+                        importJob = null
                     }
+                }
+            },
+            onCancelRunningImportClick = {
+                importJob?.cancel()
+                importUiState = ImportUiState.Canceled(lastImportProgress)
+                coroutineScope.launch {
+                    libraryFiles = refreshLibraryFiles(
+                        destinationFolder = destinationFolder,
+                        photoSourceScanner = photoSourceScanner,
+                    )
+                    duplicateFiles = refreshDuplicateFiles(
+                        destinationFolder = destinationFolder,
+                        photoSourceScanner = photoSourceScanner,
+                    )
+                    selectedFile = libraryFiles.firstOrNull() ?: selectedFile
                 }
             },
             onRefreshLibraryClick = {

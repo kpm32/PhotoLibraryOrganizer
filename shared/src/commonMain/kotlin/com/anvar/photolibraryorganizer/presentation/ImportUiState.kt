@@ -10,6 +10,7 @@ sealed interface ImportUiState {
         val existingFileCount: Int,
     ) : ImportUiState
     data class Loading(val progress: ImportMediaFilesProgress? = null) : ImportUiState
+    data class Canceled(val progress: ImportMediaFilesProgress? = null) : ImportUiState
     data class Success(val result: ImportMediaFilesResult) : ImportUiState
     data class Error(val message: String) : ImportUiState
 }

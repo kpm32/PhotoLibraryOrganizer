@@ -44,6 +44,7 @@ internal fun ImportPanel(
     onImportClick: () -> Unit,
     onConfirmImportClick: () -> Unit,
     onCancelImportClick: () -> Unit,
+    onCancelRunningImportClick: () -> Unit,
     onImportModeSelected: (ImportMode) -> Unit,
     onImportRulesSelected: (ImportOrganizationRules) -> Unit,
     onCancelScanClick: () -> Unit,
@@ -119,6 +120,14 @@ internal fun ImportPanel(
                         importUiState !is ImportUiState.Loading,
                 ) {
                     Text(if (importUiState is ImportUiState.Loading) "Импортирую..." else "Импорт")
+                }
+                if (importUiState is ImportUiState.Loading) {
+                    OutlinedButton(
+                        onClick = onCancelRunningImportClick,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Остановить импорт")
+                    }
                 }
             }
         }
@@ -274,6 +283,9 @@ private fun ImportStatus(importUiState: ImportUiState) {
         is ImportUiState.Loading -> importUiState.progress?.let { progress ->
             "Импорт: ${progress.processedFiles} из ${progress.totalFiles}. Копий ${progress.copiedFiles}, переносов ${progress.movedFiles}, пропусков ${progress.skippedFiles}, ошибок ${progress.failedFiles}."
         } ?: "Выполняю импорт по выбранному режиму."
+        is ImportUiState.Canceled -> importUiState.progress?.let { progress ->
+            "Импорт остановлен: обработано ${progress.processedFiles} из ${progress.totalFiles}. Копий ${progress.copiedFiles}, переносов ${progress.movedFiles}, пропусков ${progress.skippedFiles}, ошибок ${progress.failedFiles}."
+        } ?: "Импорт остановлен. Уже обработанные файлы оставлены на месте."
         is ImportUiState.Success -> {
             "Импорт завершен: скопировано ${importUiState.result.copiedFiles}, перенесено ${importUiState.result.movedFiles}, пропущено ${importUiState.result.skippedFiles}, ошибок ${importUiState.result.failedFiles}."
         }
