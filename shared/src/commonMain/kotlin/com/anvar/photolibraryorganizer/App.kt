@@ -991,7 +991,8 @@ private fun navigationFilesForSection(
             duplicateFiles = duplicateFiles,
         ).flatMap { group -> group.libraryFiles + group.duplicateFiles }
         AppSection.Unsupported -> unsupportedFiles
-        AppSection.Errors -> emptyList()
+        AppSection.Errors,
+        AppSection.About -> emptyList()
     }
 }
 

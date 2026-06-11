@@ -269,6 +269,7 @@ private fun WorkspaceHeader(selectedSection: AppSection) {
                 AppSection.Duplicates -> "Файлы с одинаковым SHA-256 хэшем."
                 AppSection.Unsupported -> "Файлы, которые приложение не считает фото или видео, лежат отдельно и не потеряны."
                 AppSection.Errors -> "Ошибки импорта и сканирования будут собираться здесь."
+                AppSection.About -> "Версия, статус релиза, лицензия и заметки по установке."
             },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -420,10 +421,68 @@ private fun LibrarySection(
             modifier = modifier,
         )
 
+        AppSection.About -> AboutPanel(modifier = modifier)
+
         AppSection.Import -> PlaceholderPanel(
             title = selectedSection.title,
             text = "Этот раздел уже есть в навигации, но его логика будет добавлена отдельным шагом.",
             modifier = modifier,
+        )
+    }
+}
+
+@Composable
+private fun AboutPanel(
+    modifier: Modifier = Modifier,
+) {
+    ElevatedCard(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = "Photo Library Organizer",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
+            HorizontalDivider()
+            AboutRow("Версия", "1.0.0-preview.2")
+            AboutRow("Статус", "Preview-релиз для macOS")
+            AboutRow("Интерфейс", "Русский")
+            AboutRow("Лицензия", "MIT")
+            AboutRow("GitHub", "github.com/kpm32/PhotoLibraryOrganizer")
+            AboutRow(
+                label = "Установка",
+                value = "Сборка пока не подписана Apple Developer ID. Если macOS блокирует запуск, открой приложение через правый клик или разреши запуск в Privacy & Security.",
+            )
+            AboutRow(
+                label = "Безопасность",
+                value = "Для первого реального архива используй только сканирование или копирование. Перенос запускай после проверки результата.",
+            )
+        }
+    }
+}
+
+@Composable
+private fun AboutRow(
+    label: String,
+    value: String,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }

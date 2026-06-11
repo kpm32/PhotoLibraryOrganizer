@@ -292,6 +292,12 @@ private fun LibrarySidebar(
                 selectedSection = selectedSection,
                 onSectionSelected = onSectionSelected,
             )
+            SidebarSection(
+                title = "Справка",
+                items = listOf(AppSection.About),
+                selectedSection = selectedSection,
+                onSectionSelected = onSectionSelected,
+            )
         }
     }
 }

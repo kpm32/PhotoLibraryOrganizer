@@ -12,4 +12,5 @@ enum class AppSection(
     Duplicates("Дубликаты"),
     Unsupported("Неподдерживаемые", navigationTitle = "Пропущенные"),
     Errors("Ошибки"),
+    About("О программе"),
 }
