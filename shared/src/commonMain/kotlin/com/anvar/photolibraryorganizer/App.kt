@@ -783,6 +783,15 @@ fun App(
                     addIssue = ::addIssue,
                 )
             },
+            onOpenUnsupportedTypeFolderClick = { type ->
+                openLibrarySubfolder(
+                    destinationFolder = destinationFolder,
+                    subfolder = "Unsupported/${type.toUnsupportedFolderName()}",
+                    title = "Неподдерживаемые",
+                    fileRevealHandler = fileRevealHandler,
+                    addIssue = ::addIssue,
+                )
+            },
             onOpenDuplicatesFolderClick = {
                 openLibrarySubfolder(
                     destinationFolder = destinationFolder,
@@ -869,6 +878,10 @@ private fun openLibrarySubfolder(
     if (!fileRevealHandler.open(path)) {
         addIssue(title, "Не удалось открыть папку: $path")
     }
+}
+
+private fun String.toUnsupportedFolderName(): String {
+    return if (this == "без расширения") "no-extension" else this
 }
 
 private suspend fun refreshLibraryFiles(

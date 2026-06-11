@@ -68,6 +68,7 @@ internal fun MainWorkspace(
     onCancelEmptyFolderCleanupClick: () -> Unit,
     onOpenLibraryFolderClick: () -> Unit,
     onOpenUnsupportedFolderClick: () -> Unit,
+    onOpenUnsupportedTypeFolderClick: (String) -> Unit,
     onOpenDuplicatesFolderClick: () -> Unit,
     onMoveDuplicatesClick: () -> Unit,
     onRequestDeleteQuarantineClick: () -> Unit,
@@ -171,6 +172,7 @@ internal fun MainWorkspace(
                 onRequestDeleteUnsupportedClick = onRequestDeleteUnsupportedClick,
                 onConfirmDeleteUnsupportedClick = onConfirmDeleteUnsupportedClick,
                 onCancelDeleteUnsupportedClick = onCancelDeleteUnsupportedClick,
+                onOpenUnsupportedTypeFolderClick = onOpenUnsupportedTypeFolderClick,
                 onClearIssuesClick = onClearIssuesClick,
                 modifier = Modifier.weight(1f),
             )
@@ -295,6 +297,7 @@ private fun LibrarySection(
     onRequestDeleteUnsupportedClick: () -> Unit,
     onConfirmDeleteUnsupportedClick: () -> Unit,
     onCancelDeleteUnsupportedClick: () -> Unit,
+    onOpenUnsupportedTypeFolderClick: (String) -> Unit,
     onClearIssuesClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -406,6 +409,8 @@ private fun LibrarySection(
                 else -> null
             },
             onSecondaryActionClick = onCancelDeleteUnsupportedClick,
+            onGroupActionClick = onOpenUnsupportedTypeFolderClick,
+            groupActionText = "Открыть группу",
             modifier = modifier,
         )
 

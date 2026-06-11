@@ -14,6 +14,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -98,6 +99,8 @@ internal fun GroupedMediaList(
     actionMessage: String? = null,
     onActionClick: (() -> Unit)? = null,
     onSecondaryActionClick: (() -> Unit)? = null,
+    groupActionText: String? = null,
+    onGroupActionClick: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val groupTitles = groups.keys.toList()
@@ -133,6 +136,19 @@ internal fun GroupedMediaList(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+            if (activeGroup != null && groupActionText != null && onGroupActionClick != null) {
+                OutlinedButton(
+                    onClick = { onGroupActionClick(activeGroup) },
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                ) {
+                    Text(
+                        text = "$groupActionText: $activeGroup",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
             }
             HorizontalDivider()
             if (groups.isEmpty()) {
