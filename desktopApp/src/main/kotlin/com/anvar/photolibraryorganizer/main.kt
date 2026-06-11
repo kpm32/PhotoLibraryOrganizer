@@ -1,5 +1,6 @@
 package com.anvar.photolibraryorganizer
 
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.unit.dp
 import com.anvar.photolibraryorganizer.data.filesystem.JvmEmptyFolderCleanupRepository
 import com.anvar.photolibraryorganizer.data.filesystem.JvmDuplicateQuarantineRepository
@@ -15,6 +16,7 @@ import com.anvar.photolibraryorganizer.presentation.NativeFolderPicker
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.application
+import java.awt.Dimension
 
 fun main() {
     System.setProperty("apple.awt.application.appearance", "system")
@@ -22,9 +24,12 @@ fun main() {
     application {
         Window(
             onCloseRequest = ::exitApplication,
-            title = "PhotoLibraryOrganizer",
-            state = WindowState(width = 1320.dp, height = 860.dp),
+            title = "Photo Library Organizer",
+            state = WindowState(width = 1500.dp, height = 940.dp),
         ) {
+            LaunchedEffect(Unit) {
+                window.minimumSize = Dimension(1180, 760)
+            }
             App(
                 photoSourceScanner = JvmPhotoSourceScanner(),
                 mediaFileImporter = JvmMediaFileImporter(),

@@ -652,11 +652,11 @@ fun App(
             },
             onRequestDeleteUnsupportedClick = {
                 if (unsupportedFiles.isEmpty()) {
-                    unsupportedActionMessage = "В папке Unsupported пока нет файлов для удаления."
+                    unsupportedActionMessage = "В папке пропущенных файлов пока нечего удалять."
                     unsupportedDeleteAwaitingConfirmation = false
                 } else {
                     unsupportedDeleteAwaitingConfirmation = true
-                    unsupportedActionMessage = "Будет удалено из Unsupported: ${unsupportedFiles.size}. Библиотеку и исходники не трогаем."
+                    unsupportedActionMessage = "Будет удалено пропущенных файлов: ${unsupportedFiles.size}. Библиотеку и исходники не трогаем."
                 }
             },
             onCancelDeleteUnsupportedClick = {
@@ -667,11 +667,11 @@ fun App(
                 coroutineScope.launch {
                     if (unsupportedFiles.isEmpty()) {
                         unsupportedDeleteAwaitingConfirmation = false
-                        unsupportedActionMessage = "В папке Unsupported пока нет файлов для удаления."
+                        unsupportedActionMessage = "В папке пропущенных файлов пока нечего удалять."
                         return@launch
                     }
 
-                    unsupportedActionMessage = "Удаляю файлы из Unsupported..."
+                    unsupportedActionMessage = "Удаляю пропущенные файлы..."
                     unsupportedActionMessage = try {
                         when (
                             val result = withContext(Dispatchers.Default) {
@@ -701,10 +701,10 @@ fun App(
                                 if (result.data.failedFiles > 0) {
                                     addIssue(
                                         title = "Неподдерживаемые",
-                                        detail = "Часть файлов из Unsupported не удалось удалить: ${result.data.failedFiles}.",
+                                        detail = "Часть пропущенных файлов не удалось удалить: ${result.data.failedFiles}.",
                                     )
                                 }
-                                "Удалено из Unsupported: ${result.data.deletedFiles}, ошибок: ${result.data.failedFiles}."
+                                "Удалено пропущенных файлов: ${result.data.deletedFiles}, ошибок: ${result.data.failedFiles}."
                             }
 
                             is AppResult.Error -> {
@@ -716,7 +716,7 @@ fun App(
                         }
                     } catch (exception: Throwable) {
                         unsupportedDeleteAwaitingConfirmation = false
-                        val message = "Не удалось удалить файлы из Unsupported: ${exception.message ?: "без деталей"}"
+                        val message = "Не удалось удалить пропущенные файлы: ${exception.message ?: "без деталей"}"
                         addIssue("Неподдерживаемые", message)
                         message
                     }

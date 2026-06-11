@@ -297,8 +297,8 @@ private fun ImportReportSummary(
                 value = "копий ${lastImportReport.copiedFiles}, переносов ${lastImportReport.movedFiles}, пропусков ${lastImportReport.skippedFiles}, ошибок ${lastImportReport.failedFiles}",
             )
             importResult?.let { result ->
-                CompactRuleRow("В Unsupported", result.quarantinedUnsupportedFiles.toString())
-                CompactRuleRow("Ошибок Unsupported", result.failedUnsupportedFiles.toString())
+                CompactRuleRow("В пропущенные", result.quarantinedUnsupportedFiles.toString())
+                CompactRuleRow("Ошибок пропущенных", result.failedUnsupportedFiles.toString())
                 ImportFailureDetails(result.failureDetails)
             }
             CompactRuleRow("Всего найдено", lastImportReport.plannedFiles.toString())
@@ -314,13 +314,13 @@ private fun ImportReportSummary(
                     onClick = onOpenUnsupportedFolderClick,
                     modifier = Modifier.weight(1f),
                 ) {
-                    Text("Unsupported")
+                    Text("Пропущенные")
                 }
                 OutlinedButton(
                     onClick = onOpenDuplicatesFolderClick,
                     modifier = Modifier.weight(1f),
                 ) {
-                    Text("Duplicates")
+                    Text("Дубли")
                 }
             }
         }
@@ -467,7 +467,7 @@ private fun ImportStatus(importUiState: ImportUiState) {
             "Импорт остановлен: обработано ${progress.processedFiles} из ${progress.totalFiles}. Копий ${progress.copiedFiles}, переносов ${progress.movedFiles}, пропусков ${progress.skippedFiles}, ошибок ${progress.failedFiles}."
         } ?: "Импорт остановлен. Уже обработанные файлы оставлены на месте."
         is ImportUiState.Success -> {
-            "Импорт завершен: скопировано ${importUiState.result.copiedFiles}, перенесено ${importUiState.result.movedFiles}, в Unsupported ${importUiState.result.quarantinedUnsupportedFiles}, пропущено ${importUiState.result.skippedFiles}, ошибок ${importUiState.result.failedFiles + importUiState.result.failedUnsupportedFiles}."
+                "Импорт завершен: скопировано ${importUiState.result.copiedFiles}, перенесено ${importUiState.result.movedFiles}, в пропущенные ${importUiState.result.quarantinedUnsupportedFiles}, пропущено ${importUiState.result.skippedFiles}, ошибок ${importUiState.result.failedFiles + importUiState.result.failedUnsupportedFiles}."
         }
         is ImportUiState.Error -> importUiState.message
     }
@@ -605,7 +605,7 @@ private fun importConfirmationText(
         ImportMode.Copy -> "Исходники останутся на месте."
         ImportMode.Move -> {
             val unsupportedNote = if (importUiState.unsupportedFileCount > 0) {
-                " Неподдерживаемые файлы уйдут в Unsupported: ${importUiState.unsupportedFileCount}."
+                " Неподдерживаемые файлы уйдут в отдельную папку: ${importUiState.unsupportedFileCount}."
             } else {
                 ""
             }

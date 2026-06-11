@@ -381,7 +381,7 @@ private fun LibrarySection(
 
         AppSection.Unsupported -> GroupedMediaList(
             title = "Неподдерживаемые",
-            emptyText = "Папка Unsupported пока пуста.",
+            emptyText = "Папка пропущенных файлов пока пуста.",
             groups = unsupportedFiles
                 .groupBy { it.unsupportedTypeGroup() }
                 .toList()
@@ -482,7 +482,7 @@ private fun unsupportedActionText(
 ): String? {
     return when {
         unsupportedDeleteAwaitingConfirmation && unsupportedFiles.isNotEmpty() -> "Подтвердить удаление"
-        unsupportedFiles.isNotEmpty() -> "Удалить файлы из Unsupported"
+        unsupportedFiles.isNotEmpty() -> "Удалить пропущенные файлы"
         else -> null
     }
 }
