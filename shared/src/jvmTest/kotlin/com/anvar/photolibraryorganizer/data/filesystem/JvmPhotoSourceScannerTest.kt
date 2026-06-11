@@ -2,9 +2,11 @@ package com.anvar.photolibraryorganizer.data.filesystem
 
 import com.anvar.photolibraryorganizer.domain.AppResult
 import com.anvar.photolibraryorganizer.domain.PhotoLibraryError
+import com.anvar.photolibraryorganizer.domain.model.MediaFileCategory
 import com.anvar.photolibraryorganizer.domain.model.ScanSourceFolderResult
 import kotlinx.coroutines.test.runTest
 import java.nio.file.Files
+import java.nio.file.Path
 import java.time.LocalDateTime
 import java.time.ZoneId
 import kotlin.io.path.createDirectory
@@ -69,6 +71,42 @@ class JvmPhotoSourceScannerTest {
     }
 
     @Test
+    fun readsCapturedDateFromHeicMetadata() = runTest {
+        val capturedAt = 1_704_067_200_000
+        val metadataDateReader = FakeCapturedDateReader(capturedAt)
+        val scanner = JvmPhotoSourceScanner(
+            metadataDateReader = metadataDateReader,
+        )
+        val sourceFolder = Files.createTempDirectory("photo-heic-metadata-test")
+        sourceFolder.resolve("image.heic").writeText("fake heic")
+
+        val result = scanner.scanFolder(sourceFolder.toString(), onProgress = {})
+
+        val success = assertIs<AppResult.Success<ScanSourceFolderResult>>(result)
+        val mediaFile = success.data.mediaFiles.single()
+        assertEquals(capturedAt, mediaFile.capturedAtEpochMillis)
+        assertEquals(listOf("heic" to MediaFileCategory.Image), metadataDateReader.metadataCalls)
+    }
+
+    @Test
+    fun readsCapturedDateFromVideoMetadata() = runTest {
+        val capturedAt = 1_704_067_200_000
+        val metadataDateReader = FakeCapturedDateReader(capturedAt)
+        val scanner = JvmPhotoSourceScanner(
+            metadataDateReader = metadataDateReader,
+        )
+        val sourceFolder = Files.createTempDirectory("photo-video-metadata-test")
+        sourceFolder.resolve("clip.mov").writeText("fake mov")
+
+        val result = scanner.scanFolder(sourceFolder.toString(), onProgress = {})
+
+        val success = assertIs<AppResult.Success<ScanSourceFolderResult>>(result)
+        val mediaFile = success.data.mediaFiles.single()
+        assertEquals(capturedAt, mediaFile.capturedAtEpochMillis)
+        assertEquals(listOf("mov" to MediaFileCategory.Video), metadataDateReader.metadataCalls)
+    }
+
+    @Test
     fun calculatesStableContentHashesForMediaFiles() = runTest {
         val sourceFolder = Files.createTempDirectory("photo-hash-test")
         sourceFolder.resolve("same-a.jpg").writeText("same-content")
@@ -123,5 +161,22 @@ class JvmPhotoSourceScannerTest {
             .atZone(ZoneId.systemDefault())
             .toInstant()
             .toEpochMilli()
+    }
+
+    private class FakeCapturedDateReader(
+        private val capturedAtEpochMillis: Long,
+    ) : CapturedDateReader {
+        private val mutableMetadataCalls = mutableListOf<Pair<String, MediaFileCategory>>()
+        val metadataCalls: List<Pair<String, MediaFileCategory>>
+            get() = mutableMetadataCalls
+
+        override fun readCapturedAtEpochMillis(
+            path: Path,
+            extension: String,
+            category: MediaFileCategory,
+        ): Long {
+            mutableMetadataCalls += extension to category
+            return capturedAtEpochMillis
+        }
     }
 }

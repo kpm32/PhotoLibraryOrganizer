@@ -24,7 +24,9 @@ import kotlin.io.path.isRegularFile
 import kotlin.io.path.getLastModifiedTime
 import kotlin.io.path.name
 
-class JvmPhotoSourceScanner : PhotoSourceScanner {
+class JvmPhotoSourceScanner(
+    private val metadataDateReader: CapturedDateReader = MacMetadataDateReader(),
+) : PhotoSourceScanner {
     private val jpegExifDateReader = JpegExifDateReader()
 
     override suspend fun scanFolder(
@@ -87,7 +89,10 @@ class JvmPhotoSourceScanner : PhotoSourceScanner {
                             category = mediaType.category,
                             sizeBytes = file.fileSize(),
                             modifiedAtEpochMillis = file.getLastModifiedTime().toMillis(),
-                            capturedAtEpochMillis = file.readCapturedAtEpochMillis(mediaType.category),
+                            capturedAtEpochMillis = file.readCapturedAtEpochMillis(
+                                extension = mediaType.extension,
+                                category = mediaType.category,
+                            ),
                             contentHash = file.sha256(),
                         )
                     }
@@ -152,12 +157,20 @@ class JvmPhotoSourceScanner : PhotoSourceScanner {
             .toMap()
     }
 
-    private fun Path.readCapturedAtEpochMillis(category: MediaFileCategory): Long? {
-        return if (category == MediaFileCategory.Image) {
+    private fun Path.readCapturedAtEpochMillis(
+        extension: String,
+        category: MediaFileCategory,
+    ): Long? {
+        val jpegCapturedAt = if (extension == "jpg" || extension == "jpeg") {
             jpegExifDateReader.readCapturedAtEpochMillis(this)
         } else {
             null
         }
+        return jpegCapturedAt ?: metadataDateReader.readCapturedAtEpochMillis(
+            path = this,
+            extension = extension,
+            category = category,
+        )
     }
 
     private suspend fun Path.sha256(): String {
