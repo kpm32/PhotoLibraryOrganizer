@@ -15,12 +15,14 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import java.io.IOException
 import java.security.MessageDigest
+import java.nio.file.FileVisitResult
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.SimpleFileVisitor
+import java.nio.file.attribute.BasicFileAttributes
 import kotlin.io.path.exists
 import kotlin.io.path.fileSize
 import kotlin.io.path.isDirectory
-import kotlin.io.path.isRegularFile
 import kotlin.io.path.getLastModifiedTime
 import kotlin.io.path.name
 
@@ -60,62 +62,79 @@ class JvmPhotoSourceScanner(
             val unsupportedFileExtensions = mutableMapOf<String, Int>()
             var scannedFiles = 0
             var unsupportedFiles = 0
+            val scanContext = currentCoroutineContext()
 
-            Files.walk(sourcePath).use { paths ->
-                val iterator = paths
-                    .filter { it.isRegularFile() }
-                    .iterator()
-                while (iterator.hasNext()) {
-                    val file = iterator.next()
-                    currentCoroutineContext().ensureActive()
-                    scannedFiles += 1
-
-                    try {
-                        val mediaType = detectMediaFileType(file.name)
-                        if (mediaType == null) {
-                            unsupportedFiles += 1
-                            val extension = file.name.unsupportedExtensionLabel()
-                            unsupportedFileExtensions[extension] = unsupportedFileExtensions.getOrDefault(extension, 0) + 1
-                            unsupportedSourceFiles += UnsupportedSourceFile(
-                                path = file.toAbsolutePath().toString(),
-                                relativePath = sourcePath.relativize(file).toString(),
-                                fileName = file.name,
-                                extensionLabel = extension,
-                                sizeBytes = file.fileSize(),
-                                modifiedAtEpochMillis = file.getLastModifiedTime().toMillis(),
-                            )
-                        } else {
-                            mediaFiles += ScannedMediaFile(
-                                path = file.toAbsolutePath().toString(),
-                                fileName = file.name,
-                                extension = mediaType.extension,
-                                category = mediaType.category,
-                                sizeBytes = file.fileSize(),
-                                modifiedAtEpochMillis = file.getLastModifiedTime().toMillis(),
-                                capturedAtEpochMillis = file.readCapturedAtEpochMillis(
-                                    extension = mediaType.extension,
-                                    category = mediaType.category,
-                                ),
-                                contentHash = if (readContentHash) file.sha256() else null,
-                            )
-                        }
-                    } catch (exception: IOException) {
-                        // Files on external drives can disappear while the scan is running.
-                    } catch (exception: SecurityException) {
-                        // Keep scanning when one file cannot be read.
-                    }
-                    if (scannedFiles % PROGRESS_EMIT_STEP == 0) {
-                        onProgress(
-                            ScanSourceFolderProgress(
-                                scannedFiles = scannedFiles,
-                                mediaFiles = mediaFiles.size,
-                                unsupportedFiles = unsupportedFiles,
-                                unsupportedFileExtensions = unsupportedFileExtensions.toSortedUnsupportedExtensions(),
-                            ),
-                        )
-                    }
+            fun emitProgressIfNeeded() {
+                if (scannedFiles % PROGRESS_EMIT_STEP == 0) {
+                    onProgress(
+                        ScanSourceFolderProgress(
+                            scannedFiles = scannedFiles,
+                            mediaFiles = mediaFiles.size,
+                            unsupportedFiles = unsupportedFiles,
+                            unsupportedFileExtensions = unsupportedFileExtensions.toSortedUnsupportedExtensions(),
+                        ),
+                    )
                 }
             }
+
+            Files.walkFileTree(
+                sourcePath,
+                object : SimpleFileVisitor<Path>() {
+                    override fun visitFile(
+                        file: Path,
+                        attrs: BasicFileAttributes,
+                    ): FileVisitResult {
+                        if (!attrs.isRegularFile) return FileVisitResult.CONTINUE
+                        scanContext.ensureActive()
+                        scannedFiles += 1
+
+                        try {
+                            val mediaType = detectMediaFileType(file.name)
+                            if (mediaType == null) {
+                                unsupportedFiles += 1
+                                val extension = file.name.unsupportedExtensionLabel()
+                                unsupportedFileExtensions[extension] = unsupportedFileExtensions.getOrDefault(extension, 0) + 1
+                                unsupportedSourceFiles += UnsupportedSourceFile(
+                                    path = file.toAbsolutePath().toString(),
+                                    relativePath = sourcePath.relativize(file).toString(),
+                                    fileName = file.name,
+                                    extensionLabel = extension,
+                                    sizeBytes = file.fileSize(),
+                                    modifiedAtEpochMillis = file.getLastModifiedTime().toMillis(),
+                                )
+                            } else {
+                                mediaFiles += ScannedMediaFile(
+                                    path = file.toAbsolutePath().toString(),
+                                    fileName = file.name,
+                                    extension = mediaType.extension,
+                                    category = mediaType.category,
+                                    sizeBytes = file.fileSize(),
+                                    modifiedAtEpochMillis = file.getLastModifiedTime().toMillis(),
+                                    capturedAtEpochMillis = file.readCapturedAtEpochMillis(
+                                        extension = mediaType.extension,
+                                        category = mediaType.category,
+                                    ),
+                                    contentHash = if (readContentHash) file.sha256(scanContext::ensureActive) else null,
+                                )
+                            }
+                        } catch (exception: IOException) {
+                            // Files on external drives can disappear while the scan is running.
+                        } catch (exception: SecurityException) {
+                            // Keep scanning when one file cannot be read.
+                        }
+                        emitProgressIfNeeded()
+                        return FileVisitResult.CONTINUE
+                    }
+
+                    override fun visitFileFailed(
+                        file: Path,
+                        exc: IOException,
+                    ): FileVisitResult {
+                        scanContext.ensureActive()
+                        return FileVisitResult.CONTINUE
+                    }
+                },
+            )
             onProgress(
                 ScanSourceFolderProgress(
                     scannedFiles = scannedFiles,
@@ -183,12 +202,12 @@ class JvmPhotoSourceScanner(
         )
     }
 
-    private suspend fun Path.sha256(): String {
+    private fun Path.sha256(ensureActive: () -> Unit): String {
         val digest = MessageDigest.getInstance("SHA-256")
         Files.newInputStream(this).use { input ->
             val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
             while (true) {
-                currentCoroutineContext().ensureActive()
+                ensureActive()
                 val read = input.read(buffer)
                 if (read == -1) break
                 digest.update(buffer, 0, read)
