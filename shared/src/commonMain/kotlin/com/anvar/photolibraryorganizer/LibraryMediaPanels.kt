@@ -167,7 +167,7 @@ private fun GroupSelector(
 ) {
     LazyColumn(
         modifier = Modifier
-            .width(150.dp)
+            .width(170.dp)
             .fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
@@ -185,11 +185,21 @@ private fun GroupSelector(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
-                        text = group.key,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                    )
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        Text(
+                            text = group.key,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                        )
+                        Text(
+                            text = group.value.sumOf { it.sizeBytes }.toReadableSize(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                     Text(
                         text = group.value.size.toString(),
                         style = MaterialTheme.typography.labelMedium,

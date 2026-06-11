@@ -381,7 +381,12 @@ private fun LibrarySection(
             emptyText = "Папка Unsupported пока пуста.",
             groups = unsupportedFiles
                 .groupBy { it.unsupportedTypeGroup() }
-                .toSortedMap(compareBy { it }),
+                .toList()
+                .sortedWith(
+                    compareByDescending<Pair<String, List<PlannedMediaFile>>> { (_, files) -> files.sumOf { it.sizeBytes } }
+                        .thenBy { it.first },
+                )
+                .toMap(),
             imagePreviewLoader = imagePreviewLoader,
             selectedFile = selectedFile,
             onFileSelected = onFileSelected,
