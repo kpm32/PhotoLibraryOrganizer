@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.0-preview.4 - 2026-06-11
+
+Hotfix preview build for real archive scan reliability.
+
+### Fixed
+
+- A single disappeared or unreadable file no longer stops the whole scan.
+- Per-file `NoSuchFileException`, IO, and permission read errors are skipped while the rest of the archive continues scanning.
+
 ## 1.0.0-preview.3 - 2026-06-11
 
 Hotfix preview build for large real photo archives.
