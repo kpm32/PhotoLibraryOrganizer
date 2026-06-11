@@ -51,6 +51,9 @@ internal fun ImportPanel(
     onRequestEmptyFolderCleanupClick: () -> Unit,
     onConfirmEmptyFolderCleanupClick: () -> Unit,
     onCancelEmptyFolderCleanupClick: () -> Unit,
+    onOpenLibraryFolderClick: () -> Unit,
+    onOpenUnsupportedFolderClick: () -> Unit,
+    onOpenDuplicatesFolderClick: () -> Unit,
     onImportModeSelected: (ImportMode) -> Unit,
     onImportRulesSelected: (ImportOrganizationRules) -> Unit,
     onCancelScanClick: () -> Unit,
@@ -92,7 +95,13 @@ internal fun ImportPanel(
                 onConfirmImportClick = onConfirmImportClick,
                 onCancelImportClick = onCancelImportClick,
             )
-            ImportReportSummary(lastImportReport)
+            ImportReportSummary(
+                lastImportReport = lastImportReport,
+                importUiState = importUiState,
+                onOpenLibraryFolderClick = onOpenLibraryFolderClick,
+                onOpenUnsupportedFolderClick = onOpenUnsupportedFolderClick,
+                onOpenDuplicatesFolderClick = onOpenDuplicatesFolderClick,
+            )
             EmptyFolderCleanupAction(
                 lastImportReport = lastImportReport,
                 message = emptyFolderCleanupMessage,
@@ -253,8 +262,15 @@ private fun ImportRulesPresetPicker(
 }
 
 @Composable
-private fun ImportReportSummary(lastImportReport: ImportReport?) {
+private fun ImportReportSummary(
+    lastImportReport: ImportReport?,
+    importUiState: ImportUiState,
+    onOpenLibraryFolderClick: () -> Unit,
+    onOpenUnsupportedFolderClick: () -> Unit,
+    onOpenDuplicatesFolderClick: () -> Unit,
+) {
     if (lastImportReport == null) return
+    val importResult = (importUiState as? ImportUiState.Success)?.result
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -279,8 +295,32 @@ private fun ImportReportSummary(lastImportReport: ImportReport?) {
                 label = "Итог",
                 value = "копий ${lastImportReport.copiedFiles}, переносов ${lastImportReport.movedFiles}, пропусков ${lastImportReport.skippedFiles}, ошибок ${lastImportReport.failedFiles}",
             )
+            importResult?.let { result ->
+                CompactRuleRow("В Unsupported", result.quarantinedUnsupportedFiles.toString())
+                CompactRuleRow("Ошибок Unsupported", result.failedUnsupportedFiles.toString())
+            }
             CompactRuleRow("Всего найдено", lastImportReport.plannedFiles.toString())
             CompactRuleRow("Время", lastImportReport.createdAtEpochMillis.toReadableDateTime())
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
+                    onClick = onOpenLibraryFolderClick,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text("Библиотека")
+                }
+                OutlinedButton(
+                    onClick = onOpenUnsupportedFolderClick,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text("Unsupported")
+                }
+                OutlinedButton(
+                    onClick = onOpenDuplicatesFolderClick,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text("Duplicates")
+                }
+            }
         }
     }
 }

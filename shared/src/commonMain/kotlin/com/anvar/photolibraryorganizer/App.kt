@@ -758,6 +758,33 @@ fun App(
                     }
                 }
             },
+            onOpenLibraryFolderClick = {
+                openLibrarySubfolder(
+                    destinationFolder = destinationFolder,
+                    subfolder = "Library",
+                    title = "Библиотека",
+                    fileRevealHandler = fileRevealHandler,
+                    addIssue = ::addIssue,
+                )
+            },
+            onOpenUnsupportedFolderClick = {
+                openLibrarySubfolder(
+                    destinationFolder = destinationFolder,
+                    subfolder = "Unsupported",
+                    title = "Unsupported",
+                    fileRevealHandler = fileRevealHandler,
+                    addIssue = ::addIssue,
+                )
+            },
+            onOpenDuplicatesFolderClick = {
+                openLibrarySubfolder(
+                    destinationFolder = destinationFolder,
+                    subfolder = "Duplicates",
+                    title = "Duplicates",
+                    fileRevealHandler = fileRevealHandler,
+                    addIssue = ::addIssue,
+                )
+            },
             onClearIssuesClick = { issues = emptyList() },
             onSectionSelected = { selectedSection = it },
             selectedFile = selectedFile,
@@ -816,6 +843,24 @@ private fun ImportMediaFilesResult.withUnsupportedQuarantine(
             failedUnsupportedFiles = result.data.failedFiles,
         )
         is AppResult.Error -> copy(failedUnsupportedFiles = failedUnsupportedFiles + fallbackFailedFiles)
+    }
+}
+
+private fun openLibrarySubfolder(
+    destinationFolder: String?,
+    subfolder: String,
+    title: String,
+    fileRevealHandler: FileRevealHandler,
+    addIssue: (String, String) -> Unit,
+) {
+    val path = destinationFolder?.trim()?.trimEnd('/')?.let { "$it/$subfolder" }
+    if (path == null) {
+        addIssue(title, "Папка библиотеки не выбрана.")
+        return
+    }
+
+    if (!fileRevealHandler.open(path)) {
+        addIssue(title, "Не удалось открыть папку: $path")
     }
 }
 
