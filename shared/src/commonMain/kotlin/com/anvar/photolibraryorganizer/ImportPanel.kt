@@ -46,6 +46,7 @@ internal fun ImportPanel(
     onCancelImportClick: () -> Unit,
     onImportModeSelected: (ImportMode) -> Unit,
     onImportRulesSelected: (ImportOrganizationRules) -> Unit,
+    onCancelScanClick: () -> Unit,
 ) {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
@@ -101,6 +102,14 @@ internal fun ImportPanel(
                     enabled = plan.canScan && scanUiState !is ScanUiState.Loading,
                 ) {
                     Text(if (scanUiState is ScanUiState.Loading) "Сканирую..." else "Сканировать")
+                }
+                if (scanUiState is ScanUiState.Loading) {
+                    OutlinedButton(
+                        onClick = onCancelScanClick,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Остановить сканирование")
+                    }
                 }
                 OutlinedButton(
                     onClick = onImportClick,
@@ -406,6 +415,7 @@ private fun scanStatusText(
         }
 
         is ScanUiState.Loading -> "Сканирую папку и подпапки. Файлы не изменяются."
+        ScanUiState.Canceled -> "Сканирование остановлено. Файлы не изменялись."
         is ScanUiState.Success -> "Сканирование завершено. Это только статистика, импорт пока не запускался."
         is ScanUiState.Error -> scanUiState.message
     }

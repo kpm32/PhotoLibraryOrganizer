@@ -9,6 +9,9 @@ import com.anvar.photolibraryorganizer.domain.model.ScanSourceFolderSummary
 import com.anvar.photolibraryorganizer.domain.model.ScannedMediaFile
 import com.anvar.photolibraryorganizer.domain.model.detectMediaFileType
 import com.anvar.photolibraryorganizer.domain.repository.PhotoSourceScanner
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import java.io.IOException
 import java.security.MessageDigest
 import java.nio.file.Files
@@ -35,12 +38,14 @@ class JvmPhotoSourceScanner : PhotoSourceScanner {
                 !sourcePath.isDirectory() -> AppResult.Error(PhotoLibraryError.SourceFolderIsNotDirectory(path))
                 else -> scanExistingDirectory(sourcePath, onProgress)
             }
+        } catch (exception: CancellationException) {
+            throw exception
         } catch (exception: Throwable) {
             AppResult.Error(PhotoLibraryError.Unknown(exception.message))
         }
     }
 
-    private fun scanExistingDirectory(
+    private suspend fun scanExistingDirectory(
         sourcePath: Path,
         onProgress: (ScanSourceFolderProgress) -> Unit,
     ): AppResult<ScanSourceFolderResult> {
@@ -51,39 +56,42 @@ class JvmPhotoSourceScanner : PhotoSourceScanner {
             var unsupportedFiles = 0
 
             Files.walk(sourcePath).use { paths ->
-                paths
+                val iterator = paths
                     .filter { it.isRegularFile() }
-                    .forEach { file ->
-                        scannedFiles += 1
+                    .iterator()
+                while (iterator.hasNext()) {
+                    val file = iterator.next()
+                    currentCoroutineContext().ensureActive()
+                    scannedFiles += 1
 
-                        val mediaType = detectMediaFileType(file.name)
-                        if (mediaType == null) {
-                            unsupportedFiles += 1
-                            val extension = file.name.unsupportedExtensionLabel()
-                            unsupportedFileExtensions[extension] = unsupportedFileExtensions.getOrDefault(extension, 0) + 1
-                        } else {
-                            mediaFiles += ScannedMediaFile(
-                                path = file.toAbsolutePath().toString(),
-                                fileName = file.name,
-                                extension = mediaType.extension,
-                                category = mediaType.category,
-                                sizeBytes = file.fileSize(),
-                                modifiedAtEpochMillis = file.getLastModifiedTime().toMillis(),
-                                capturedAtEpochMillis = file.readCapturedAtEpochMillis(mediaType.category),
-                                contentHash = file.sha256(),
-                            )
-                        }
-                        if (scannedFiles % PROGRESS_EMIT_STEP == 0) {
-                            onProgress(
-                                ScanSourceFolderProgress(
-                                    scannedFiles = scannedFiles,
-                                    mediaFiles = mediaFiles.size,
-                                    unsupportedFiles = unsupportedFiles,
-                                    unsupportedFileExtensions = unsupportedFileExtensions.toSortedUnsupportedExtensions(),
-                                ),
-                            )
-                        }
+                    val mediaType = detectMediaFileType(file.name)
+                    if (mediaType == null) {
+                        unsupportedFiles += 1
+                        val extension = file.name.unsupportedExtensionLabel()
+                        unsupportedFileExtensions[extension] = unsupportedFileExtensions.getOrDefault(extension, 0) + 1
+                    } else {
+                        mediaFiles += ScannedMediaFile(
+                            path = file.toAbsolutePath().toString(),
+                            fileName = file.name,
+                            extension = mediaType.extension,
+                            category = mediaType.category,
+                            sizeBytes = file.fileSize(),
+                            modifiedAtEpochMillis = file.getLastModifiedTime().toMillis(),
+                            capturedAtEpochMillis = file.readCapturedAtEpochMillis(mediaType.category),
+                            contentHash = file.sha256(),
+                        )
                     }
+                    if (scannedFiles % PROGRESS_EMIT_STEP == 0) {
+                        onProgress(
+                            ScanSourceFolderProgress(
+                                scannedFiles = scannedFiles,
+                                mediaFiles = mediaFiles.size,
+                                unsupportedFiles = unsupportedFiles,
+                                unsupportedFileExtensions = unsupportedFileExtensions.toSortedUnsupportedExtensions(),
+                            ),
+                        )
+                    }
+                }
             }
             onProgress(
                 ScanSourceFolderProgress(
@@ -114,6 +122,8 @@ class JvmPhotoSourceScanner : PhotoSourceScanner {
             AppResult.Error(PhotoLibraryError.FileSystem(exception.message ?: "File system scan failed"))
         } catch (exception: SecurityException) {
             AppResult.Error(PhotoLibraryError.FileSystem(exception.message ?: "No permission to scan folder"))
+        } catch (exception: CancellationException) {
+            throw exception
         } catch (exception: Throwable) {
             AppResult.Error(PhotoLibraryError.Unknown(exception.message))
         }
@@ -139,11 +149,12 @@ class JvmPhotoSourceScanner : PhotoSourceScanner {
         }
     }
 
-    private fun Path.sha256(): String {
+    private suspend fun Path.sha256(): String {
         val digest = MessageDigest.getInstance("SHA-256")
         Files.newInputStream(this).use { input ->
             val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
             while (true) {
+                currentCoroutineContext().ensureActive()
                 val read = input.read(buffer)
                 if (read == -1) break
                 digest.update(buffer, 0, read)

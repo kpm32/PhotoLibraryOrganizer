@@ -69,6 +69,7 @@ internal fun MediaList(
                     modifier = Modifier.weight(1f),
                 )
                 scanUiState == ScanUiState.Idle -> EmptyListText(emptyText)
+                scanUiState == ScanUiState.Canceled -> EmptyListText("Сканирование остановлено. Файлы не изменялись.")
                 scanUiState is ScanUiState.Loading -> EmptyListText(scanUiState.progress.toMediaListProgressText())
                 scanUiState is ScanUiState.Error -> EmptyListText(scanUiState.message)
                 files.isEmpty() -> EmptyListText("Медиафайлы не найдены.")

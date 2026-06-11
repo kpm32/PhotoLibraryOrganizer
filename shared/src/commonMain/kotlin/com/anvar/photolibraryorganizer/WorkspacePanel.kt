@@ -63,6 +63,7 @@ internal fun MainWorkspace(
     onClearIssuesClick: () -> Unit,
     onImportModeSelected: (ImportMode) -> Unit,
     onImportRulesSelected: (ImportOrganizationRules) -> Unit,
+    onCancelScanClick: () -> Unit,
     onFileSelected: (PlannedMediaFile) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -94,6 +95,7 @@ internal fun MainWorkspace(
                 importAvailability = importAvailability,
                 selectedMode = selectedMode,
                 onScanClick = onScanClick,
+                onCancelScanClick = onCancelScanClick,
                 onImportClick = onImportClick,
                 onConfirmImportClick = onConfirmImportClick,
                 onCancelImportClick = onCancelImportClick,

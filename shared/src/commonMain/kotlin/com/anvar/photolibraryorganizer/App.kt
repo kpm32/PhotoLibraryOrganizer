@@ -47,7 +47,9 @@ import com.anvar.photolibraryorganizer.presentation.PreviewImagePreviewLoader
 import com.anvar.photolibraryorganizer.presentation.PreviewMediaFileImporter
 import com.anvar.photolibraryorganizer.presentation.PreviewPhotoSourceScanner
 import com.anvar.photolibraryorganizer.presentation.ScanUiState
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.time.Clock
@@ -74,6 +76,7 @@ fun App(
         var selectedSection by remember { mutableStateOf(AppSection.AllPhotos) }
         var scanUiState by remember { mutableStateOf<ScanUiState>(ScanUiState.Idle) }
         var scanRequestToken by remember { mutableStateOf(0) }
+        var scanJob by remember { mutableStateOf<Job?>(null) }
         var importUiState by remember { mutableStateOf<ImportUiState>(ImportUiState.Idle) }
         var lastImportReport by remember { mutableStateOf<ImportReport?>(null) }
         var selectedFile by remember { mutableStateOf<PlannedMediaFile?>(null) }
@@ -241,9 +244,10 @@ fun App(
                 }
             },
             onScanClick = {
-                coroutineScope.launch {
-                    val currentScanToken = scanRequestToken + 1
-                    scanRequestToken = currentScanToken
+                val currentScanToken = scanRequestToken + 1
+                scanRequestToken = currentScanToken
+                scanJob?.cancel()
+                scanJob = coroutineScope.launch {
                     scanUiState = ScanUiState.Loading()
                     importUiState = ImportUiState.Idle
                     lastImportReport = null
@@ -251,7 +255,7 @@ fun App(
                     duplicateDeleteAwaitingConfirmation = false
                     libraryFiles = emptyList()
                     duplicateFiles = emptyList()
-                    scanUiState = try {
+                    try {
                         when (
                             val result = withContext(Dispatchers.Default) {
                                 scanSourceFolderUseCase(sourceFolder) { progress ->
@@ -264,6 +268,7 @@ fun App(
                             }
                         ) {
                             is AppResult.Success -> {
+                                if (scanRequestToken != currentScanToken) return@launch
                                 val plannedFiles = buildMediaFilePlanUseCase(
                                     destinationFolder = destinationFolder,
                                     mediaFiles = result.data.mediaFiles,
@@ -273,20 +278,42 @@ fun App(
                                 ScanUiState.Success(
                                     summary = result.data.summary,
                                     plannedFiles = resolvedFiles,
-                                ).also { selectedFile = it.plannedFiles.firstOrNull() }
+                                ).also {
+                                    scanUiState = it
+                                    selectedFile = it.plannedFiles.firstOrNull()
+                                }
                             }
 
                             is AppResult.Error -> {
+                                if (scanRequestToken != currentScanToken) return@launch
                                 val message = result.error.toUserMessage()
                                 addIssue("Сканирование", message)
-                                ScanUiState.Error(message)
+                                scanUiState = ScanUiState.Error(message)
                             }
                         }
+                    } catch (exception: CancellationException) {
+                        if (scanRequestToken == currentScanToken) {
+                            scanUiState = ScanUiState.Canceled
+                        }
                     } catch (exception: Throwable) {
+                        if (scanRequestToken != currentScanToken) return@launch
                         val message = "Сканирование прервалось: ${exception.message ?: "без деталей"}"
                         addIssue("Сканирование", message)
-                        ScanUiState.Error(message)
+                        scanUiState = ScanUiState.Error(message)
+                    } finally {
+                        if (scanRequestToken == currentScanToken) {
+                            scanJob = null
+                        }
                     }
+                }
+            },
+            onCancelScanClick = {
+                val activeScanJob = scanJob
+                if (activeScanJob != null) {
+                    scanRequestToken += 1
+                    activeScanJob.cancel()
+                    scanJob = null
+                    scanUiState = ScanUiState.Canceled
                 }
             },
             onImportClick = {

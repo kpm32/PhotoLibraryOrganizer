@@ -7,6 +7,7 @@ import com.anvar.photolibraryorganizer.domain.model.ScanSourceFolderSummary
 sealed interface ScanUiState {
     data object Idle : ScanUiState
     data class Loading(val progress: ScanSourceFolderProgress? = null) : ScanUiState
+    data object Canceled : ScanUiState
     data class Success(
         val summary: ScanSourceFolderSummary,
         val plannedFiles: List<PlannedMediaFile>,
