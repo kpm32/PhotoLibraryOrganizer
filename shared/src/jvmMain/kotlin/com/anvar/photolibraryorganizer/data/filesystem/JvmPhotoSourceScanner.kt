@@ -70,33 +70,39 @@ class JvmPhotoSourceScanner(
                     currentCoroutineContext().ensureActive()
                     scannedFiles += 1
 
-                    val mediaType = detectMediaFileType(file.name)
-                    if (mediaType == null) {
-                        unsupportedFiles += 1
-                        val extension = file.name.unsupportedExtensionLabel()
-                        unsupportedFileExtensions[extension] = unsupportedFileExtensions.getOrDefault(extension, 0) + 1
-                        unsupportedSourceFiles += UnsupportedSourceFile(
-                            path = file.toAbsolutePath().toString(),
-                            relativePath = sourcePath.relativize(file).toString(),
-                            fileName = file.name,
-                            extensionLabel = extension,
-                            sizeBytes = file.fileSize(),
-                            modifiedAtEpochMillis = file.getLastModifiedTime().toMillis(),
-                        )
-                    } else {
-                        mediaFiles += ScannedMediaFile(
-                            path = file.toAbsolutePath().toString(),
-                            fileName = file.name,
-                            extension = mediaType.extension,
-                            category = mediaType.category,
-                            sizeBytes = file.fileSize(),
-                            modifiedAtEpochMillis = file.getLastModifiedTime().toMillis(),
-                            capturedAtEpochMillis = file.readCapturedAtEpochMillis(
+                    try {
+                        val mediaType = detectMediaFileType(file.name)
+                        if (mediaType == null) {
+                            unsupportedFiles += 1
+                            val extension = file.name.unsupportedExtensionLabel()
+                            unsupportedFileExtensions[extension] = unsupportedFileExtensions.getOrDefault(extension, 0) + 1
+                            unsupportedSourceFiles += UnsupportedSourceFile(
+                                path = file.toAbsolutePath().toString(),
+                                relativePath = sourcePath.relativize(file).toString(),
+                                fileName = file.name,
+                                extensionLabel = extension,
+                                sizeBytes = file.fileSize(),
+                                modifiedAtEpochMillis = file.getLastModifiedTime().toMillis(),
+                            )
+                        } else {
+                            mediaFiles += ScannedMediaFile(
+                                path = file.toAbsolutePath().toString(),
+                                fileName = file.name,
                                 extension = mediaType.extension,
                                 category = mediaType.category,
-                            ),
-                            contentHash = if (readContentHash) file.sha256() else null,
-                        )
+                                sizeBytes = file.fileSize(),
+                                modifiedAtEpochMillis = file.getLastModifiedTime().toMillis(),
+                                capturedAtEpochMillis = file.readCapturedAtEpochMillis(
+                                    extension = mediaType.extension,
+                                    category = mediaType.category,
+                                ),
+                                contentHash = if (readContentHash) file.sha256() else null,
+                            )
+                        }
+                    } catch (exception: IOException) {
+                        // Files on external drives can disappear while the scan is running.
+                    } catch (exception: SecurityException) {
+                        // Keep scanning when one file cannot be read.
                     }
                     if (scannedFiles % PROGRESS_EMIT_STEP == 0) {
                         onProgress(

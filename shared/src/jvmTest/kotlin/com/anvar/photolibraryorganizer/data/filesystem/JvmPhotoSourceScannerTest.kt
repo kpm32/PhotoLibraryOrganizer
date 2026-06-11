@@ -6,6 +6,7 @@ import com.anvar.photolibraryorganizer.domain.model.MediaFileCategory
 import com.anvar.photolibraryorganizer.domain.model.ScanSourceFolderResult
 import kotlinx.coroutines.test.runTest
 import java.nio.file.Files
+import java.nio.file.NoSuchFileException
 import java.nio.file.Path
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -123,6 +124,33 @@ class JvmPhotoSourceScannerTest {
         val mediaFile = success.data.mediaFiles.single()
         assertEquals(capturedAt, mediaFile.capturedAtEpochMillis)
         assertEquals(listOf("mov" to MediaFileCategory.Video), metadataDateReader.metadataCalls)
+    }
+
+    @Test
+    fun skipsUnreadableSingleFileAndContinuesScan() = runTest {
+        val sourceFolder = Files.createTempDirectory("photo-unreadable-file-test")
+        sourceFolder.resolve("broken.heic").writeText("fake heic")
+        sourceFolder.resolve("image.jpg").writeText("fake image")
+        val scanner = JvmPhotoSourceScanner(
+            metadataDateReader = object : CapturedDateReader {
+                override fun readCapturedAtEpochMillis(
+                    path: Path,
+                    extension: String,
+                    category: MediaFileCategory,
+                ): Long? {
+                    if (path.fileName.toString() == "broken.heic") {
+                        throw NoSuchFileException(path.toString())
+                    }
+                    return null
+                }
+            },
+        )
+
+        val result = scanner.scanFolder(sourceFolder.toString(), onProgress = {})
+
+        val success = assertIs<AppResult.Success<ScanSourceFolderResult>>(result)
+        assertEquals(listOf("image.jpg"), success.data.mediaFiles.map { it.fileName })
+        assertEquals(2, success.data.summary.scannedFiles)
     }
 
     @Test
