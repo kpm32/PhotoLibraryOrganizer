@@ -38,6 +38,7 @@ internal fun ImportPanel(
     scanUiState: ScanUiState,
     importUiState: ImportUiState,
     lastImportReport: ImportReport?,
+    importHistory: List<ImportReport>,
     importAvailability: ImportAvailability,
     selectedMode: ImportMode,
     onScanClick: () -> Unit,
@@ -87,6 +88,7 @@ internal fun ImportPanel(
                 onCancelImportClick = onCancelImportClick,
             )
             ImportReportSummary(lastImportReport)
+            ImportHistorySummary(importHistory)
             ImportRulesSummary(plan.importRules)
             ImportRulesPresetPicker(
                 selectedRules = plan.importRules,
@@ -153,6 +155,34 @@ private fun ScanProgressIndicator(scanUiState: ScanUiState) {
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
+        }
+    }
+}
+
+@Composable
+private fun ImportHistorySummary(importHistory: List<ImportReport>) {
+    if (importHistory.isEmpty()) return
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        shape = MaterialTheme.shapes.small,
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                text = "История импортов",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+            importHistory.take(3).forEach { report ->
+                CompactRuleRow(
+                    label = report.createdAtEpochMillis.toReadableDateTime(),
+                    value = "${report.importMode.title}: ${report.readyFiles} файлов, ошибок ${report.failedFiles}",
+                )
+            }
         }
     }
 }

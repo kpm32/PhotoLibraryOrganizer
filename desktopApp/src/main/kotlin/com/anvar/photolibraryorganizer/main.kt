@@ -8,6 +8,7 @@ import com.anvar.photolibraryorganizer.data.filesystem.JvmPhotoSourceScanner
 import com.anvar.photolibraryorganizer.presentation.JvmAppSettingsStorage
 import com.anvar.photolibraryorganizer.presentation.JvmFileRevealHandler
 import com.anvar.photolibraryorganizer.presentation.JvmImagePreviewLoader
+import com.anvar.photolibraryorganizer.presentation.JvmImportHistoryStorage
 import com.anvar.photolibraryorganizer.presentation.NativeFolderPicker
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowState
@@ -29,6 +30,7 @@ fun main() {
                 duplicateQuarantineRepository = JvmDuplicateQuarantineRepository(),
                 imagePreviewLoader = JvmImagePreviewLoader(),
                 appSettingsStorage = JvmAppSettingsStorage(),
+                importHistoryStorage = JvmImportHistoryStorage(),
                 folderPicker = NativeFolderPicker(),
                 fileRevealHandler = JvmFileRevealHandler(),
             )

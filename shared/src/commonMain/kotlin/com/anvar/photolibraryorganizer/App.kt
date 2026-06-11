@@ -37,12 +37,14 @@ import com.anvar.photolibraryorganizer.presentation.CachingImagePreviewLoader
 import com.anvar.photolibraryorganizer.presentation.FileRevealHandler
 import com.anvar.photolibraryorganizer.presentation.ImagePreviewLoader
 import com.anvar.photolibraryorganizer.presentation.ImagePreviewUiState
+import com.anvar.photolibraryorganizer.presentation.ImportHistoryStorage
 import com.anvar.photolibraryorganizer.presentation.ImportReport
 import com.anvar.photolibraryorganizer.presentation.ImportUiState
 import com.anvar.photolibraryorganizer.presentation.PreviewDuplicateQuarantineRepository
 import com.anvar.photolibraryorganizer.presentation.PreviewAppSettingsStorage
 import com.anvar.photolibraryorganizer.presentation.PreviewFileRevealHandler
 import com.anvar.photolibraryorganizer.presentation.PreviewFolderPicker
+import com.anvar.photolibraryorganizer.presentation.PreviewImportHistoryStorage
 import com.anvar.photolibraryorganizer.presentation.PreviewImportPlanTargetResolver
 import com.anvar.photolibraryorganizer.presentation.PreviewImagePreviewLoader
 import com.anvar.photolibraryorganizer.presentation.PreviewMediaFileImporter
@@ -64,6 +66,7 @@ fun App(
     duplicateQuarantineRepository: DuplicateQuarantineRepository = PreviewDuplicateQuarantineRepository,
     imagePreviewLoader: ImagePreviewLoader = PreviewImagePreviewLoader,
     appSettingsStorage: AppSettingsStorage = PreviewAppSettingsStorage,
+    importHistoryStorage: ImportHistoryStorage = PreviewImportHistoryStorage,
     folderPicker: FolderPicker = PreviewFolderPicker,
     fileRevealHandler: FileRevealHandler = PreviewFileRevealHandler,
 ) {
@@ -82,6 +85,7 @@ fun App(
         var lastImportProgress by remember { mutableStateOf<ImportMediaFilesProgress?>(null) }
         var importUiState by remember { mutableStateOf<ImportUiState>(ImportUiState.Idle) }
         var lastImportReport by remember { mutableStateOf<ImportReport?>(null) }
+        var importHistory by remember { mutableStateOf<List<ImportReport>>(emptyList()) }
         var selectedFile by remember { mutableStateOf<PlannedMediaFile?>(null) }
         var libraryFiles by remember { mutableStateOf<List<PlannedMediaFile>>(emptyList()) }
         var duplicateFiles by remember { mutableStateOf<List<PlannedMediaFile>>(emptyList()) }
@@ -111,6 +115,7 @@ fun App(
 
         LaunchedEffect(Unit) {
             val settings = appSettingsStorage.loadSettings()
+            importHistory = importHistoryStorage.loadHistory()
             sourceFolder = settings.sourceFolder
             destinationFolder = settings.destinationFolder
             importRules = settings.importRules
@@ -161,6 +166,7 @@ fun App(
             scanUiState = scanUiState,
             importUiState = importUiState,
             lastImportReport = lastImportReport,
+            importHistory = importHistory,
             libraryFiles = libraryFiles,
             duplicateFiles = duplicateFiles,
             selectedSection = selectedSection,
@@ -351,7 +357,7 @@ fun App(
                             }
                         ) {
                             is AppResult.Success -> {
-                                lastImportReport = ImportReport(
+                                val report = ImportReport(
                                     importMode = importMode,
                                     plannedFiles = plannedFiles.size,
                                     readyFiles = readyFileCount,
@@ -362,6 +368,9 @@ fun App(
                                     failedFiles = result.data.failedFiles,
                                     createdAtEpochMillis = Clock.System.now().toEpochMilliseconds(),
                                 )
+                                lastImportReport = report
+                                importHistoryStorage.appendReport(report)
+                                importHistory = importHistoryStorage.loadHistory()
                                 libraryFiles = refreshLibraryFiles(
                                     destinationFolder = destinationFolder,
                                     photoSourceScanner = photoSourceScanner,
