@@ -2,6 +2,8 @@ package com.anvar.photolibraryorganizer.data.filesystem
 
 import com.anvar.photolibraryorganizer.domain.AppResult
 import com.anvar.photolibraryorganizer.domain.PhotoLibraryError
+import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
+import com.anvar.photolibraryorganizer.domain.model.UnsupportedFileQuarantineDeleteResult
 import com.anvar.photolibraryorganizer.domain.model.UnsupportedFileQuarantineResult
 import com.anvar.photolibraryorganizer.domain.model.UnsupportedSourceFile
 import com.anvar.photolibraryorganizer.domain.repository.UnsupportedFileQuarantineRepository
@@ -52,6 +54,43 @@ class JvmUnsupportedFileQuarantineRepository : UnsupportedFileQuarantineReposito
             throw exception
         } catch (exception: Throwable) {
             AppResult.Error(PhotoLibraryError.FileSystem(exception.message ?: "Unsupported quarantine failed"))
+        }
+    }
+
+    override suspend fun deleteFromQuarantine(
+        destinationFolder: String?,
+        quarantineFiles: List<PlannedMediaFile>,
+    ): AppResult<UnsupportedFileQuarantineDeleteResult> {
+        val destination = destinationFolder?.trim()?.trimEnd('/')
+            ?: return AppResult.Error(PhotoLibraryError.FileSystem("Папка библиотеки не выбрана."))
+
+        return try {
+            val quarantineRoot = Path.of(destination, "Unsupported").toAbsolutePath().normalize()
+            var deletedFiles = 0
+            var failedFiles = 0
+
+            quarantineFiles.forEach { quarantineFile ->
+                currentCoroutineContext().ensureActive()
+                val sourcePath = Path.of(quarantineFile.sourcePath).toAbsolutePath().normalize()
+                if (!sourcePath.startsWith(quarantineRoot) || !sourcePath.exists() || !Files.isRegularFile(sourcePath)) {
+                    failedFiles += 1
+                    return@forEach
+                }
+
+                Files.delete(sourcePath)
+                deletedFiles += 1
+            }
+
+            AppResult.Success(
+                UnsupportedFileQuarantineDeleteResult(
+                    deletedFiles = deletedFiles,
+                    failedFiles = failedFiles,
+                ),
+            )
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (exception: Throwable) {
+            AppResult.Error(PhotoLibraryError.FileSystem(exception.message ?: "Unsupported quarantine delete failed"))
         }
     }
 

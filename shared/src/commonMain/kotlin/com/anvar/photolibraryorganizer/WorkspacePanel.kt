@@ -50,6 +50,8 @@ internal fun MainWorkspace(
     imagePreviewLoader: ImagePreviewLoader,
     duplicateActionMessage: String?,
     duplicateDeleteAwaitingConfirmation: Boolean,
+    unsupportedActionMessage: String?,
+    unsupportedDeleteAwaitingConfirmation: Boolean,
     importAvailability: ImportAvailability,
     issues: List<AppIssue>,
     selectedFile: PlannedMediaFile?,
@@ -63,6 +65,9 @@ internal fun MainWorkspace(
     onRequestDeleteQuarantineClick: () -> Unit,
     onConfirmDeleteQuarantineClick: () -> Unit,
     onCancelDeleteQuarantineClick: () -> Unit,
+    onRequestDeleteUnsupportedClick: () -> Unit,
+    onConfirmDeleteUnsupportedClick: () -> Unit,
+    onCancelDeleteUnsupportedClick: () -> Unit,
     onClearIssuesClick: () -> Unit,
     onImportModeSelected: (ImportMode) -> Unit,
     onImportRulesSelected: (ImportOrganizationRules) -> Unit,
@@ -138,6 +143,8 @@ internal fun MainWorkspace(
                 imagePreviewLoader = imagePreviewLoader,
                 duplicateActionMessage = duplicateActionMessage,
                 duplicateDeleteAwaitingConfirmation = duplicateDeleteAwaitingConfirmation,
+                unsupportedActionMessage = unsupportedActionMessage,
+                unsupportedDeleteAwaitingConfirmation = unsupportedDeleteAwaitingConfirmation,
                 issues = issues,
                 selectedFile = selectedFile,
                 onFileSelected = onFileSelected,
@@ -145,6 +152,9 @@ internal fun MainWorkspace(
                 onRequestDeleteQuarantineClick = onRequestDeleteQuarantineClick,
                 onConfirmDeleteQuarantineClick = onConfirmDeleteQuarantineClick,
                 onCancelDeleteQuarantineClick = onCancelDeleteQuarantineClick,
+                onRequestDeleteUnsupportedClick = onRequestDeleteUnsupportedClick,
+                onConfirmDeleteUnsupportedClick = onConfirmDeleteUnsupportedClick,
+                onCancelDeleteUnsupportedClick = onCancelDeleteUnsupportedClick,
                 onClearIssuesClick = onClearIssuesClick,
                 modifier = Modifier.weight(1f),
             )
@@ -257,6 +267,8 @@ private fun LibrarySection(
     imagePreviewLoader: ImagePreviewLoader,
     duplicateActionMessage: String?,
     duplicateDeleteAwaitingConfirmation: Boolean,
+    unsupportedActionMessage: String?,
+    unsupportedDeleteAwaitingConfirmation: Boolean,
     issues: List<AppIssue>,
     selectedFile: PlannedMediaFile?,
     onFileSelected: (PlannedMediaFile) -> Unit,
@@ -264,6 +276,9 @@ private fun LibrarySection(
     onRequestDeleteQuarantineClick: () -> Unit,
     onConfirmDeleteQuarantineClick: () -> Unit,
     onCancelDeleteQuarantineClick: () -> Unit,
+    onRequestDeleteUnsupportedClick: () -> Unit,
+    onConfirmDeleteUnsupportedClick: () -> Unit,
+    onCancelDeleteUnsupportedClick: () -> Unit,
     onClearIssuesClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -354,6 +369,22 @@ private fun LibrarySection(
             imagePreviewLoader = imagePreviewLoader,
             selectedFile = selectedFile,
             onFileSelected = onFileSelected,
+            actionText = unsupportedActionText(
+                unsupportedFiles = unsupportedFiles,
+                unsupportedDeleteAwaitingConfirmation = unsupportedDeleteAwaitingConfirmation,
+            ),
+            secondaryActionText = if (unsupportedDeleteAwaitingConfirmation && unsupportedFiles.isNotEmpty()) {
+                "Отмена"
+            } else {
+                null
+            },
+            actionMessage = unsupportedActionMessage,
+            onActionClick = when {
+                unsupportedDeleteAwaitingConfirmation && unsupportedFiles.isNotEmpty() -> onConfirmDeleteUnsupportedClick
+                unsupportedFiles.isNotEmpty() -> onRequestDeleteUnsupportedClick
+                else -> null
+            },
+            onSecondaryActionClick = onCancelDeleteUnsupportedClick,
             modifier = modifier,
         )
 
@@ -417,6 +448,17 @@ private fun List<PlannedMediaFile>.hasDuplicateGroups(): Boolean {
         .groupBy { it.contentHash }
         .values
         .any { it.size > 1 }
+}
+
+private fun unsupportedActionText(
+    unsupportedFiles: List<PlannedMediaFile>,
+    unsupportedDeleteAwaitingConfirmation: Boolean,
+): String? {
+    return when {
+        unsupportedDeleteAwaitingConfirmation && unsupportedFiles.isNotEmpty() -> "Подтвердить удаление"
+        unsupportedFiles.isNotEmpty() -> "Удалить файлы из Unsupported"
+        else -> null
+    }
 }
 
 private enum class MediaCategoryFilter(

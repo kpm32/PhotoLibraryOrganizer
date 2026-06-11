@@ -97,6 +97,8 @@ fun App(
         var unsupportedFiles by remember { mutableStateOf<List<PlannedMediaFile>>(emptyList()) }
         var duplicateActionMessage by remember { mutableStateOf<String?>(null) }
         var duplicateDeleteAwaitingConfirmation by remember { mutableStateOf(false) }
+        var unsupportedActionMessage by remember { mutableStateOf<String?>(null) }
+        var unsupportedDeleteAwaitingConfirmation by remember { mutableStateOf(false) }
         var imagePreviewUiState by remember { mutableStateOf<ImagePreviewUiState>(ImagePreviewUiState.Empty) }
         var issues by remember { mutableStateOf<List<AppIssue>>(emptyList()) }
         var nextIssueId by remember { mutableStateOf(1) }
@@ -185,6 +187,8 @@ fun App(
             imagePreviewLoader = cachedImagePreviewLoader,
             duplicateActionMessage = duplicateActionMessage,
             duplicateDeleteAwaitingConfirmation = duplicateDeleteAwaitingConfirmation,
+            unsupportedActionMessage = unsupportedActionMessage,
+            unsupportedDeleteAwaitingConfirmation = unsupportedDeleteAwaitingConfirmation,
             importAvailability = resolveImportAvailabilityUseCase(
                 importMode = importMode,
                 plannedFiles = (scanUiState as? ScanUiState.Success)?.plannedFiles.orEmpty(),
@@ -208,6 +212,8 @@ fun App(
                 lastImportReport = null
                 duplicateActionMessage = null
                 duplicateDeleteAwaitingConfirmation = false
+                unsupportedActionMessage = null
+                unsupportedDeleteAwaitingConfirmation = false
                 selectedFile = null
                 libraryFiles = emptyList()
                 duplicateFiles = emptyList()
@@ -232,6 +238,8 @@ fun App(
                 lastImportReport = null
                 duplicateActionMessage = null
                 duplicateDeleteAwaitingConfirmation = false
+                unsupportedActionMessage = null
+                unsupportedDeleteAwaitingConfirmation = false
                 selectedFile = null
                 coroutineScope.launch {
                     libraryFiles = refreshLibraryFiles(
@@ -279,6 +287,8 @@ fun App(
                     lastImportReport = null
                     duplicateActionMessage = null
                     duplicateDeleteAwaitingConfirmation = false
+                    unsupportedActionMessage = null
+                    unsupportedDeleteAwaitingConfirmation = false
                     libraryFiles = emptyList()
                     duplicateFiles = emptyList()
                     try {
@@ -614,6 +624,78 @@ fun App(
                         duplicateDeleteAwaitingConfirmation = false
                         val message = "Не удалось удалить файлы из папки дублей: ${exception.message ?: "без деталей"}"
                         addIssue("Дубликаты", message)
+                        message
+                    }
+                }
+            },
+            onRequestDeleteUnsupportedClick = {
+                if (unsupportedFiles.isEmpty()) {
+                    unsupportedActionMessage = "В папке Unsupported пока нет файлов для удаления."
+                    unsupportedDeleteAwaitingConfirmation = false
+                } else {
+                    unsupportedDeleteAwaitingConfirmation = true
+                    unsupportedActionMessage = "Будет удалено из Unsupported: ${unsupportedFiles.size}. Библиотеку и исходники не трогаем."
+                }
+            },
+            onCancelDeleteUnsupportedClick = {
+                unsupportedDeleteAwaitingConfirmation = false
+                unsupportedActionMessage = "Удаление отменено."
+            },
+            onConfirmDeleteUnsupportedClick = {
+                coroutineScope.launch {
+                    if (unsupportedFiles.isEmpty()) {
+                        unsupportedDeleteAwaitingConfirmation = false
+                        unsupportedActionMessage = "В папке Unsupported пока нет файлов для удаления."
+                        return@launch
+                    }
+
+                    unsupportedActionMessage = "Удаляю файлы из Unsupported..."
+                    unsupportedActionMessage = try {
+                        when (
+                            val result = withContext(Dispatchers.Default) {
+                                unsupportedFileQuarantineRepository.deleteFromQuarantine(
+                                    destinationFolder = destinationFolder,
+                                    quarantineFiles = unsupportedFiles,
+                                )
+                            }
+                        ) {
+                            is AppResult.Success -> {
+                                unsupportedDeleteAwaitingConfirmation = false
+                                unsupportedFiles = refreshUnsupportedFiles(
+                                    destinationFolder = destinationFolder,
+                                    photoSourceScanner = photoSourceScanner,
+                                )
+                                libraryFiles = refreshLibraryFiles(
+                                    destinationFolder = destinationFolder,
+                                    photoSourceScanner = photoSourceScanner,
+                                )
+                                duplicateFiles = refreshDuplicateFiles(
+                                    destinationFolder = destinationFolder,
+                                    photoSourceScanner = photoSourceScanner,
+                                )
+                                if (selectedFile?.sourcePath !in unsupportedFiles.map { it.sourcePath }) {
+                                    selectedFile = unsupportedFiles.firstOrNull() ?: libraryFiles.firstOrNull()
+                                }
+                                if (result.data.failedFiles > 0) {
+                                    addIssue(
+                                        title = "Неподдерживаемые",
+                                        detail = "Часть файлов из Unsupported не удалось удалить: ${result.data.failedFiles}.",
+                                    )
+                                }
+                                "Удалено из Unsupported: ${result.data.deletedFiles}, ошибок: ${result.data.failedFiles}."
+                            }
+
+                            is AppResult.Error -> {
+                                unsupportedDeleteAwaitingConfirmation = false
+                                val message = result.error.toUserMessage()
+                                addIssue("Неподдерживаемые", message)
+                                message
+                            }
+                        }
+                    } catch (exception: Throwable) {
+                        unsupportedDeleteAwaitingConfirmation = false
+                        val message = "Не удалось удалить файлы из Unsupported: ${exception.message ?: "без деталей"}"
+                        addIssue("Неподдерживаемые", message)
                         message
                     }
                 }

@@ -1,6 +1,8 @@
 package com.anvar.photolibraryorganizer.data.filesystem
 
 import com.anvar.photolibraryorganizer.domain.AppResult
+import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
+import com.anvar.photolibraryorganizer.domain.model.UnsupportedFileQuarantineDeleteResult
 import com.anvar.photolibraryorganizer.domain.model.UnsupportedFileQuarantineResult
 import com.anvar.photolibraryorganizer.domain.model.UnsupportedSourceFile
 import kotlinx.coroutines.test.runTest
@@ -48,5 +50,41 @@ class JvmUnsupportedFileQuarantineRepositoryTest {
         assertFalse(sourceFile.exists())
         assertTrue(targetFile.exists())
         assertEquals("cache", targetFile.readText())
+    }
+
+    @Test
+    fun deletesOnlyFilesInsideUnsupportedQuarantine() = runTest {
+        val tempFolder = Files.createTempDirectory("unsupported-delete-test")
+        val destinationFolder = tempFolder.resolve("library")
+        val quarantineFile = destinationFolder.resolve("Unsupported/db/thumb.db")
+        val outsideFile = tempFolder.resolve("outside.db")
+        quarantineFile.parent.createDirectories()
+        quarantineFile.writeText("delete me")
+        outsideFile.writeText("keep me")
+
+        val result = repository.deleteFromQuarantine(
+            destinationFolder = destinationFolder.toString(),
+            quarantineFiles = listOf(
+                PlannedMediaFile(
+                    sourcePath = quarantineFile.toString(),
+                    fileName = "thumb.db",
+                    targetRelativePath = quarantineFile.toString(),
+                    sizeBytes = 9,
+                ),
+                PlannedMediaFile(
+                    sourcePath = outsideFile.toString(),
+                    fileName = "outside.db",
+                    targetRelativePath = outsideFile.toString(),
+                    sizeBytes = 7,
+                ),
+            ),
+        )
+
+        val success = assertIs<AppResult.Success<UnsupportedFileQuarantineDeleteResult>>(result)
+        assertEquals(1, success.data.deletedFiles)
+        assertEquals(1, success.data.failedFiles)
+        assertFalse(quarantineFile.exists())
+        assertTrue(outsideFile.exists())
+        assertEquals("keep me", outsideFile.readText())
     }
 }
