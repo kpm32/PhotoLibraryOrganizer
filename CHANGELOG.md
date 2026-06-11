@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.0.0-preview.3 - 2026-06-11
+
+Hotfix preview build for large real photo archives.
+
+### Added
+
+- Added the `О программе` section with version, preview status, GitHub, license, Gatekeeper note, and safe testing guidance.
+
+### Changed
+
+- Library refresh no longer calculates SHA-256 hashes for every file during normal browsing.
+- Library refresh now shows an `Обновляю...` state and blocks repeated refresh clicks while reading.
+- AppleDouble sidecar files such as `._*.jpg` and `._*.mov` are treated as skipped service files, not media.
+
 ## 1.0.0-preview.2 - 2026-06-11
 
 Preview polish release.
