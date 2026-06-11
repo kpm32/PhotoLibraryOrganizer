@@ -2,6 +2,7 @@ package com.anvar.photolibraryorganizer.data.filesystem
 
 import com.anvar.photolibraryorganizer.domain.AppResult
 import com.anvar.photolibraryorganizer.domain.PhotoLibraryError
+import com.anvar.photolibraryorganizer.domain.model.ImportFailureDetail
 import com.anvar.photolibraryorganizer.domain.model.ImportMediaFilesProgress
 import com.anvar.photolibraryorganizer.domain.model.ImportMediaFilesResult
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
@@ -15,6 +16,8 @@ import java.nio.file.StandardCopyOption
 import kotlin.io.path.createDirectories
 import kotlin.io.path.deleteIfExists
 import kotlin.io.path.exists
+
+private const val MaxFailureDetails = 20
 
 class JvmMediaFileImporter(
     private val importedFileVerifier: ImportedFileVerifier = ImportedFileVerifier.Default,
@@ -43,6 +46,7 @@ class JvmMediaFileImporter(
             var movedFiles = 0
             var skippedFiles = 0
             var failedFiles = 0
+            val failureDetails = mutableListOf<ImportFailureDetail>()
 
             plannedFiles.forEachIndexed { index, plannedFile ->
                 currentCoroutineContext().ensureActive()
@@ -51,8 +55,15 @@ class JvmMediaFileImporter(
 
                 when {
                     targetPath.exists() -> skippedFiles += 1
-                    !sourcePath.exists() -> failedFiles += 1
+                    !sourcePath.exists() -> {
+                        failedFiles += 1
+                        failureDetails.addFailureDetail(
+                            plannedFile = plannedFile,
+                            reason = "Исходный файл не найден",
+                        )
+                    }
                     else -> {
+                        var failureReason = "Не удалось подтвердить целевой файл после импорта"
                         val imported = try {
                             val sourceSizeBytes = Files.size(sourcePath)
                             val targetParent = targetPath.parent
@@ -70,7 +81,8 @@ class JvmMediaFileImporter(
                                 expectedSizeBytes = sourceSizeBytes,
                                 moveSource = moveSource,
                             )
-                        } catch (_: Throwable) {
+                        } catch (exception: Throwable) {
+                            failureReason = exception.message ?: "Файловая операция завершилась ошибкой"
                             false
                         }
 
@@ -85,6 +97,10 @@ class JvmMediaFileImporter(
                                 targetPath.deleteIfExists()
                             }
                             failedFiles += 1
+                            failureDetails.addFailureDetail(
+                                plannedFile = plannedFile,
+                                reason = failureReason,
+                            )
                         }
                     }
                 }
@@ -106,6 +122,7 @@ class JvmMediaFileImporter(
                     movedFiles = movedFiles,
                     skippedFiles = skippedFiles,
                     failedFiles = failedFiles,
+                    failureDetails = failureDetails.toList(),
                 ),
             )
         } catch (exception: CancellationException) {
@@ -114,6 +131,20 @@ class JvmMediaFileImporter(
             AppResult.Error(PhotoLibraryError.FileSystem(exception.message ?: "File import failed"))
         }
     }
+}
+
+private fun MutableList<ImportFailureDetail>.addFailureDetail(
+    plannedFile: PlannedMediaFile,
+    reason: String,
+) {
+    if (size >= MaxFailureDetails) return
+    add(
+        ImportFailureDetail(
+            sourcePath = plannedFile.sourcePath,
+            targetPath = plannedFile.targetRelativePath,
+            reason = reason,
+        ),
+    )
 }
 
 fun interface ImportedFileVerifier {

@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import com.anvar.photolibraryorganizer.domain.ImportMode
 import com.anvar.photolibraryorganizer.domain.PhotoLibraryPlan
 import com.anvar.photolibraryorganizer.domain.model.ImportAvailability
+import com.anvar.photolibraryorganizer.domain.model.ImportFailureDetail
 import com.anvar.photolibraryorganizer.domain.model.ImportOrganizationRules
 import com.anvar.photolibraryorganizer.presentation.ImportReport
 import com.anvar.photolibraryorganizer.presentation.ImportRulesPreset
@@ -298,6 +299,7 @@ private fun ImportReportSummary(
             importResult?.let { result ->
                 CompactRuleRow("В Unsupported", result.quarantinedUnsupportedFiles.toString())
                 CompactRuleRow("Ошибок Unsupported", result.failedUnsupportedFiles.toString())
+                ImportFailureDetails(result.failureDetails)
             }
             CompactRuleRow("Всего найдено", lastImportReport.plannedFiles.toString())
             CompactRuleRow("Время", lastImportReport.createdAtEpochMillis.toReadableDateTime())
@@ -321,6 +323,44 @@ private fun ImportReportSummary(
                     Text("Duplicates")
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ImportFailureDetails(failureDetails: List<ImportFailureDetail>) {
+    if (failureDetails.isEmpty()) return
+
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(
+            text = "Ошибки импорта",
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold,
+        )
+        failureDetails.take(5).forEach { detail ->
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = detail.reason,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = detail.sourcePath,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        if (failureDetails.size > 5) {
+            Text(
+                text = "Еще ошибок: ${failureDetails.size - 5}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

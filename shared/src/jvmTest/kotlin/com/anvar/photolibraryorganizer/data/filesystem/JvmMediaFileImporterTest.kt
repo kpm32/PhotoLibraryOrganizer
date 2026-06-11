@@ -155,6 +155,8 @@ class JvmMediaFileImporterTest {
         val success = assertIs<AppResult.Success<ImportMediaFilesResult>>(result)
         assertEquals(0, success.data.copiedFiles)
         assertEquals(1, success.data.failedFiles)
+        assertEquals("Не удалось подтвердить целевой файл после импорта", success.data.failureDetails.single().reason)
+        assertEquals(sourceFile.toString(), success.data.failureDetails.single().sourcePath)
         assertTrue(sourceFile.exists())
         assertFalse(targetFile.exists())
     }
@@ -188,6 +190,8 @@ class JvmMediaFileImporterTest {
         val success = assertIs<AppResult.Success<ImportMediaFilesResult>>(result)
         assertEquals(1, success.data.copiedFiles)
         assertEquals(1, success.data.failedFiles)
+        assertEquals("Исходный файл не найден", success.data.failureDetails.single().reason)
+        assertEquals(firstSourceFile.toString(), success.data.failureDetails.single().sourcePath)
         assertFalse(firstTargetFile.exists())
         assertTrue(secondTargetFile.exists())
         assertEquals("second", secondTargetFile.readText())

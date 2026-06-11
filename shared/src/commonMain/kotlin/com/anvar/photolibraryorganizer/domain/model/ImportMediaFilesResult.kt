@@ -7,4 +7,11 @@ data class ImportMediaFilesResult(
     val skippedFiles: Int,
     val failedFiles: Int,
     val failedUnsupportedFiles: Int = 0,
+    val failureDetails: List<ImportFailureDetail> = emptyList(),
+)
+
+data class ImportFailureDetail(
+    val sourcePath: String,
+    val targetPath: String,
+    val reason: String,
 )
