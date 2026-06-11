@@ -7,4 +7,6 @@ data class PlannedMediaFile(
     val sizeBytes: Long,
     val targetStatus: ImportTargetStatus = ImportTargetStatus.NotChecked,
     val contentHash: String? = null,
+    val capturedAtEpochMillis: Long? = null,
+    val modifiedAtEpochMillis: Long? = null,
 )

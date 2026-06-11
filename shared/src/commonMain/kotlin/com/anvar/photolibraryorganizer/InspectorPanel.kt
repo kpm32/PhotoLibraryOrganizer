@@ -30,6 +30,9 @@ import com.anvar.photolibraryorganizer.domain.PhotoLibraryPlan
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
 import com.anvar.photolibraryorganizer.presentation.ImagePreviewUiState
 import com.anvar.photolibraryorganizer.presentation.ScanUiState
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Instant
 
 @Composable
 internal fun InspectorPanel(
@@ -172,7 +175,9 @@ private fun SelectedFilePreview(
             )
             SummaryRow("Файл", selectedFile.fileName)
             SummaryRow("Размер", selectedFile.sizeBytes.toReadableSize())
-            SummaryRow("Дата", selectedFile.libraryDateLabel())
+            SummaryRow("Дата съемки", selectedFile.capturedAtEpochMillis.toReadableDateTimeOrEmpty())
+            SummaryRow("Дата файла", selectedFile.modifiedAtEpochMillis.toReadableDateTimeOrEmpty())
+            SummaryRow("Использована для папки", selectedFile.libraryDateLabel())
             SummaryRow("SHA-256", selectedFile.contentHash?.take(12) ?: "Нет")
             Text(
                 text = selectedFile.targetRelativePath,
@@ -319,5 +324,24 @@ private fun PlannedMediaFile.libraryDateLabel(): String {
     val libraryPart = normalizedPath.substringAfter("Library/", missingDelimiterValue = "")
     val parts = libraryPart.split('/')
     val month = parts.getOrNull(1)
-    return month?.takeIf { it.length == 7 } ?: "Не определена"
+    val source = if (capturedAtEpochMillis != null) {
+        "дата съемки"
+    } else if (modifiedAtEpochMillis != null) {
+        "дата файла"
+    } else {
+        null
+    }
+    return month?.takeIf { it.length == 7 }
+        ?.let { value -> if (source == null) value else "$value ($source)" }
+        ?: "Не определена"
+}
+
+private fun Long?.toReadableDateTimeOrEmpty(): String {
+    if (this == null) return "Нет"
+    val dateTime = Instant.fromEpochMilliseconds(this).toLocalDateTime(TimeZone.currentSystemDefault())
+    val month = (dateTime.month.ordinal + 1).toString().padStart(2, '0')
+    val day = dateTime.day.toString().padStart(2, '0')
+    val hour = dateTime.hour.toString().padStart(2, '0')
+    val minute = dateTime.minute.toString().padStart(2, '0')
+    return "${dateTime.year}-$month-$day $hour:$minute"
 }

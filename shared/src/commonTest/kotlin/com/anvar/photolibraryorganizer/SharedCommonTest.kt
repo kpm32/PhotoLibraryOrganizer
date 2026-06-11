@@ -186,6 +186,31 @@ class SharedCommonTest {
     }
 
     @Test
+    fun carriesSourceDatesIntoImportPlan() {
+        val useCase = BuildMediaFilePlanUseCase()
+        val capturedAt = 1_577_836_800_000
+        val modifiedAt = 1_735_689_600_000
+
+        val result = useCase(
+            destinationFolder = "/library-root",
+            mediaFiles = listOf(
+                ScannedMediaFile(
+                    path = "/source/IMG_0001.JPG",
+                    fileName = "IMG_0001.JPG",
+                    extension = "jpg",
+                    category = MediaFileCategory.Image,
+                    sizeBytes = 1024,
+                    modifiedAtEpochMillis = modifiedAt,
+                    capturedAtEpochMillis = capturedAt,
+                ),
+            ),
+        )
+
+        assertEquals(capturedAt, result.first().capturedAtEpochMillis)
+        assertEquals(modifiedAt, result.first().modifiedAtEpochMillis)
+    }
+
+    @Test
     fun buildsTargetPathFromConfiguredImportRules() {
         val useCase = BuildMediaFilePlanUseCase()
 

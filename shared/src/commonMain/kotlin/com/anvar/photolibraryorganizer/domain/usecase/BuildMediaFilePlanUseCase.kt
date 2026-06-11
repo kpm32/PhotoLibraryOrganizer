@@ -46,6 +46,8 @@ class BuildMediaFilePlanUseCase {
                 targetRelativePath = "$destination/$targetFolder/$targetFileName",
                 sizeBytes = mediaFile.sizeBytes,
                 contentHash = mediaFile.contentHash,
+                capturedAtEpochMillis = mediaFile.capturedAtEpochMillis,
+                modifiedAtEpochMillis = mediaFile.modifiedAtEpochMillis,
             )
         }
     }
