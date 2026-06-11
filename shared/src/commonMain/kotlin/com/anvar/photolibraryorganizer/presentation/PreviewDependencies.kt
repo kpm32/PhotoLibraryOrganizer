@@ -2,6 +2,7 @@ package com.anvar.photolibraryorganizer.presentation
 
 import com.anvar.photolibraryorganizer.domain.AppResult
 import com.anvar.photolibraryorganizer.domain.model.MediaFileCategory
+import com.anvar.photolibraryorganizer.domain.model.ScanSourceFolderProgress
 import com.anvar.photolibraryorganizer.domain.model.ScanSourceFolderResult
 import com.anvar.photolibraryorganizer.domain.model.ScanSourceFolderSummary
 import com.anvar.photolibraryorganizer.domain.model.ScannedMediaFile
@@ -15,7 +16,10 @@ object PreviewFolderPicker : FolderPicker {
 }
 
 object PreviewPhotoSourceScanner : PhotoSourceScanner {
-    override suspend fun scanFolder(path: String): AppResult<ScanSourceFolderResult> {
+    override suspend fun scanFolder(
+        path: String,
+        onProgress: (ScanSourceFolderProgress) -> Unit,
+    ): AppResult<ScanSourceFolderResult> {
         val files = listOf(
             ScannedMediaFile(
                 path = "$path/IMG_0001.jpg",
@@ -32,6 +36,14 @@ object PreviewPhotoSourceScanner : PhotoSourceScanner {
                 category = MediaFileCategory.Video,
                 sizeBytes = 18_000_000,
                 modifiedAtEpochMillis = 1_735_693_200_000,
+            ),
+        )
+        onProgress(
+            ScanSourceFolderProgress(
+                scannedFiles = 3,
+                mediaFiles = files.size,
+                unsupportedFiles = 1,
+                unsupportedFileExtensions = mapOf("txt" to 1),
             ),
         )
         return AppResult.Success(

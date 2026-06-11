@@ -69,7 +69,7 @@ internal fun MediaList(
                     modifier = Modifier.weight(1f),
                 )
                 scanUiState == ScanUiState.Idle -> EmptyListText(emptyText)
-                scanUiState == ScanUiState.Loading -> EmptyListText("Сканирую папку...")
+                scanUiState is ScanUiState.Loading -> EmptyListText(scanUiState.progress.toMediaListProgressText())
                 scanUiState is ScanUiState.Error -> EmptyListText(scanUiState.message)
                 files.isEmpty() -> EmptyListText("Медиафайлы не найдены.")
                 else -> MediaGrid(
@@ -207,6 +207,14 @@ internal fun EmptyListText(text: String) {
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
+}
+
+private fun com.anvar.photolibraryorganizer.domain.model.ScanSourceFolderProgress?.toMediaListProgressText(): String {
+    return if (this == null) {
+        "Сканирую папку..."
+    } else {
+        "Просмотрено файлов: $scannedFiles. Найдено медиа: $mediaFiles. Пропущено: $unsupportedFiles."
+    }
 }
 
 internal data class LibraryDateGroup(

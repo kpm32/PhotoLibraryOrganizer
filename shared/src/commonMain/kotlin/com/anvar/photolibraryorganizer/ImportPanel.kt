@@ -10,6 +10,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -67,6 +68,7 @@ internal fun ImportPanel(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            ScanProgressIndicator(scanUiState)
             if (scanUiState is ScanUiState.Success) {
                 Text(
                     text = "Если в JPEG есть EXIF-дата съемки, используем ее. Для остальных файлов берем дату изменения.",
@@ -110,6 +112,29 @@ internal fun ImportPanel(
                     Text(if (importUiState is ImportUiState.Loading) "Импортирую..." else "Импорт")
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ScanProgressIndicator(scanUiState: ScanUiState) {
+    if (scanUiState !is ScanUiState.Loading) return
+
+    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+    scanUiState.progress?.let { progress ->
+        Text(
+            text = "Просмотрено: ${progress.scannedFiles}. Медиа: ${progress.mediaFiles}. Пропущено: ${progress.unsupportedFiles}.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (progress.unsupportedFileExtensions.isNotEmpty()) {
+            Text(
+                text = "Пропущенные типы: ${progress.unsupportedFileExtensions.toReadableUnsupportedExtensions()}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
@@ -380,10 +405,16 @@ private fun scanStatusText(
             "Выбери исходную папку и папку библиотеки, чтобы подготовить сканирование."
         }
 
-        ScanUiState.Loading -> "Сканирую папку и подпапки. Файлы не изменяются."
+        is ScanUiState.Loading -> "Сканирую папку и подпапки. Файлы не изменяются."
         is ScanUiState.Success -> "Сканирование завершено. Это только статистика, импорт пока не запускался."
         is ScanUiState.Error -> scanUiState.message
     }
+}
+
+private fun Map<String, Int>.toReadableUnsupportedExtensions(): String {
+    return entries
+        .take(5)
+        .joinToString { (extension, count) -> "$extension: $count" }
 }
 
 private fun String.toReadableFolderRule(): String {

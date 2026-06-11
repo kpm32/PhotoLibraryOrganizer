@@ -12,6 +12,7 @@ import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
 import com.anvar.photolibraryorganizer.domain.model.ScanSourceFolderResult
 import com.anvar.photolibraryorganizer.domain.model.ScanSourceFolderSummary
 import com.anvar.photolibraryorganizer.domain.model.ScannedMediaFile
+import com.anvar.photolibraryorganizer.domain.model.ScanSourceFolderProgress
 import com.anvar.photolibraryorganizer.domain.model.detectMediaFileType
 import com.anvar.photolibraryorganizer.domain.repository.MediaFileImporter
 import com.anvar.photolibraryorganizer.domain.repository.PhotoSourceScanner
@@ -268,7 +269,10 @@ class SharedCommonTest {
     private class FakePhotoSourceScanner : PhotoSourceScanner {
         var lastScannedPath: String? = null
 
-        override suspend fun scanFolder(path: String): AppResult<ScanSourceFolderResult> {
+        override suspend fun scanFolder(
+            path: String,
+            onProgress: (ScanSourceFolderProgress) -> Unit,
+        ): AppResult<ScanSourceFolderResult> {
             lastScannedPath = path
             return AppResult.Success(
                 ScanSourceFolderResult(

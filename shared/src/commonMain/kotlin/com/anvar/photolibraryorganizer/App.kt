@@ -73,6 +73,7 @@ fun App(
         var importRules by remember { mutableStateOf(ImportOrganizationRules.Default) }
         var selectedSection by remember { mutableStateOf(AppSection.AllPhotos) }
         var scanUiState by remember { mutableStateOf<ScanUiState>(ScanUiState.Idle) }
+        var scanRequestToken by remember { mutableStateOf(0) }
         var importUiState by remember { mutableStateOf<ImportUiState>(ImportUiState.Idle) }
         var lastImportReport by remember { mutableStateOf<ImportReport?>(null) }
         var selectedFile by remember { mutableStateOf<PlannedMediaFile?>(null) }
@@ -241,7 +242,9 @@ fun App(
             },
             onScanClick = {
                 coroutineScope.launch {
-                    scanUiState = ScanUiState.Loading
+                    val currentScanToken = scanRequestToken + 1
+                    scanRequestToken = currentScanToken
+                    scanUiState = ScanUiState.Loading()
                     importUiState = ImportUiState.Idle
                     lastImportReport = null
                     duplicateActionMessage = null
@@ -249,7 +252,17 @@ fun App(
                     libraryFiles = emptyList()
                     duplicateFiles = emptyList()
                     scanUiState = try {
-                        when (val result = withContext(Dispatchers.Default) { scanSourceFolderUseCase(sourceFolder) }) {
+                        when (
+                            val result = withContext(Dispatchers.Default) {
+                                scanSourceFolderUseCase(sourceFolder) { progress ->
+                                    coroutineScope.launch {
+                                        if (scanRequestToken == currentScanToken && scanUiState is ScanUiState.Loading) {
+                                            scanUiState = ScanUiState.Loading(progress)
+                                        }
+                                    }
+                                }
+                            }
+                        ) {
                             is AppResult.Success -> {
                                 val plannedFiles = buildMediaFilePlanUseCase(
                                     destinationFolder = destinationFolder,

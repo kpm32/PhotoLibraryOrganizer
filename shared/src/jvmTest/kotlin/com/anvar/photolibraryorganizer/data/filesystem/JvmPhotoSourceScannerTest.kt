@@ -28,7 +28,10 @@ class JvmPhotoSourceScannerTest {
         nestedFolder.resolve("sidecar.AAE").writeText("apple sidecar")
         nestedFolder.resolve("README").writeText("no extension")
 
-        val result = scanner.scanFolder(sourceFolder.toString())
+        val progressEvents = mutableListOf<Int>()
+        val result = scanner.scanFolder(sourceFolder.toString()) { progress ->
+            progressEvents += progress.scannedFiles
+        }
 
         val success = assertIs<AppResult.Success<ScanSourceFolderResult>>(result)
         val summary = success.data.summary
@@ -45,6 +48,7 @@ class JvmPhotoSourceScannerTest {
             ),
             summary.unsupportedFileExtensions,
         )
+        assertEquals(listOf(5), progressEvents)
     }
 
     @Test
@@ -52,7 +56,7 @@ class JvmPhotoSourceScannerTest {
         val sourceFolder = Files.createTempDirectory("photo-exif-test")
         sourceFolder.resolve("image.jpg").writeBytes(jpegWithDateTimeOriginal())
 
-        val result = scanner.scanFolder(sourceFolder.toString())
+        val result = scanner.scanFolder(sourceFolder.toString(), onProgress = {})
 
         val success = assertIs<AppResult.Success<ScanSourceFolderResult>>(result)
         val mediaFile = success.data.mediaFiles.single()
@@ -67,7 +71,7 @@ class JvmPhotoSourceScannerTest {
         sourceFolder.resolve("same-b.jpg").writeText("same-content")
         sourceFolder.resolve("different.jpg").writeText("different-content")
 
-        val result = scanner.scanFolder(sourceFolder.toString())
+        val result = scanner.scanFolder(sourceFolder.toString(), onProgress = {})
 
         val success = assertIs<AppResult.Success<ScanSourceFolderResult>>(result)
         val filesByName = success.data.mediaFiles.associateBy { it.fileName }
@@ -77,7 +81,7 @@ class JvmPhotoSourceScannerTest {
 
     @Test
     fun returnsTypedErrorWhenSourceFolderDoesNotExist() = runTest {
-        val result = scanner.scanFolder("/path/that/does/not/exist")
+        val result = scanner.scanFolder("/path/that/does/not/exist", onProgress = {})
 
         val error = assertIs<AppResult.Error>(result)
         assertIs<PhotoLibraryError.SourceFolderNotFound>(error.error)

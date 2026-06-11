@@ -3,6 +3,7 @@ package com.anvar.photolibraryorganizer.data.filesystem
 import com.anvar.photolibraryorganizer.domain.AppResult
 import com.anvar.photolibraryorganizer.domain.PhotoLibraryError
 import com.anvar.photolibraryorganizer.domain.model.MediaFileCategory
+import com.anvar.photolibraryorganizer.domain.model.ScanSourceFolderProgress
 import com.anvar.photolibraryorganizer.domain.model.ScanSourceFolderResult
 import com.anvar.photolibraryorganizer.domain.model.ScanSourceFolderSummary
 import com.anvar.photolibraryorganizer.domain.model.ScannedMediaFile
@@ -22,21 +23,27 @@ import kotlin.io.path.name
 class JvmPhotoSourceScanner : PhotoSourceScanner {
     private val jpegExifDateReader = JpegExifDateReader()
 
-    override suspend fun scanFolder(path: String): AppResult<ScanSourceFolderResult> {
+    override suspend fun scanFolder(
+        path: String,
+        onProgress: (ScanSourceFolderProgress) -> Unit,
+    ): AppResult<ScanSourceFolderResult> {
         return try {
             val sourcePath = Path.of(path)
 
             when {
                 !sourcePath.exists() -> AppResult.Error(PhotoLibraryError.SourceFolderNotFound(path))
                 !sourcePath.isDirectory() -> AppResult.Error(PhotoLibraryError.SourceFolderIsNotDirectory(path))
-                else -> scanExistingDirectory(sourcePath)
+                else -> scanExistingDirectory(sourcePath, onProgress)
             }
         } catch (exception: Throwable) {
             AppResult.Error(PhotoLibraryError.Unknown(exception.message))
         }
     }
 
-    private fun scanExistingDirectory(sourcePath: Path): AppResult<ScanSourceFolderResult> {
+    private fun scanExistingDirectory(
+        sourcePath: Path,
+        onProgress: (ScanSourceFolderProgress) -> Unit,
+    ): AppResult<ScanSourceFolderResult> {
         return try {
             val mediaFiles = mutableListOf<ScannedMediaFile>()
             val unsupportedFileExtensions = mutableMapOf<String, Int>()
@@ -66,8 +73,26 @@ class JvmPhotoSourceScanner : PhotoSourceScanner {
                                 contentHash = file.sha256(),
                             )
                         }
+                        if (scannedFiles % PROGRESS_EMIT_STEP == 0) {
+                            onProgress(
+                                ScanSourceFolderProgress(
+                                    scannedFiles = scannedFiles,
+                                    mediaFiles = mediaFiles.size,
+                                    unsupportedFiles = unsupportedFiles,
+                                    unsupportedFileExtensions = unsupportedFileExtensions.toSortedUnsupportedExtensions(),
+                                ),
+                            )
+                        }
                     }
             }
+            onProgress(
+                ScanSourceFolderProgress(
+                    scannedFiles = scannedFiles,
+                    mediaFiles = mediaFiles.size,
+                    unsupportedFiles = unsupportedFiles,
+                    unsupportedFileExtensions = unsupportedFileExtensions.toSortedUnsupportedExtensions(),
+                ),
+            )
 
             AppResult.Success(
                 ScanSourceFolderResult(
@@ -81,10 +106,7 @@ class JvmPhotoSourceScanner : PhotoSourceScanner {
                         capturedDateFiles = mediaFiles.count { it.capturedAtEpochMillis != null },
                         unsupportedFiles = unsupportedFiles,
                         totalMediaBytes = mediaFiles.sumOf { it.sizeBytes },
-                        unsupportedFileExtensions = unsupportedFileExtensions
-                            .toList()
-                            .sortedWith(compareByDescending<Pair<String, Int>> { it.second }.thenBy { it.first })
-                            .toMap(),
+                        unsupportedFileExtensions = unsupportedFileExtensions.toSortedUnsupportedExtensions(),
                     ),
                 ),
             )
@@ -101,6 +123,12 @@ class JvmPhotoSourceScanner : PhotoSourceScanner {
         return substringAfterLast('.', missingDelimiterValue = "")
             .lowercase()
             .ifBlank { "без расширения" }
+    }
+
+    private fun Map<String, Int>.toSortedUnsupportedExtensions(): Map<String, Int> {
+        return toList()
+            .sortedWith(compareByDescending<Pair<String, Int>> { it.second }.thenBy { it.first })
+            .toMap()
     }
 
     private fun Path.readCapturedAtEpochMillis(category: MediaFileCategory): Long? {
@@ -124,5 +152,9 @@ class JvmPhotoSourceScanner : PhotoSourceScanner {
         return digest.digest().joinToString(separator = "") { byte ->
             "%02x".format(byte)
         }
+    }
+
+    private companion object {
+        const val PROGRESS_EMIT_STEP = 250
     }
 }
