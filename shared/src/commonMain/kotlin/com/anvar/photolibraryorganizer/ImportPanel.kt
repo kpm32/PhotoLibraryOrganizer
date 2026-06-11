@@ -317,7 +317,7 @@ private fun ImportStatus(importUiState: ImportUiState) {
             "Импорт остановлен: обработано ${progress.processedFiles} из ${progress.totalFiles}. Копий ${progress.copiedFiles}, переносов ${progress.movedFiles}, пропусков ${progress.skippedFiles}, ошибок ${progress.failedFiles}."
         } ?: "Импорт остановлен. Уже обработанные файлы оставлены на месте."
         is ImportUiState.Success -> {
-            "Импорт завершен: скопировано ${importUiState.result.copiedFiles}, перенесено ${importUiState.result.movedFiles}, пропущено ${importUiState.result.skippedFiles}, ошибок ${importUiState.result.failedFiles}."
+            "Импорт завершен: скопировано ${importUiState.result.copiedFiles}, перенесено ${importUiState.result.movedFiles}, в Unsupported ${importUiState.result.quarantinedUnsupportedFiles}, пропущено ${importUiState.result.skippedFiles}, ошибок ${importUiState.result.failedFiles + importUiState.result.failedUnsupportedFiles}."
         }
         is ImportUiState.Error -> importUiState.message
     }
@@ -453,7 +453,14 @@ private fun importConfirmationText(
     }
     val sourceNote = when (selectedMode) {
         ImportMode.Copy -> "Исходники останутся на месте."
-        ImportMode.Move -> "Исходники исчезнут из старой папки после успешного переноса."
+        ImportMode.Move -> {
+            val unsupportedNote = if (importUiState.unsupportedFileCount > 0) {
+                " Неподдерживаемые файлы уйдут в Unsupported: ${importUiState.unsupportedFileCount}."
+            } else {
+                ""
+            }
+            "Исходники исчезнут из старой папки после успешного переноса.$unsupportedNote"
+        }
         ImportMode.ScanOnly -> "Файлы не изменяются."
     }
     return "$action: ${importUiState.readyFileCount}. Уже есть: ${importUiState.existingFileCount}. $sourceNote"

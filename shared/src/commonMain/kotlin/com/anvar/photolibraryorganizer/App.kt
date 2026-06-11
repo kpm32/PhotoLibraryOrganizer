@@ -19,11 +19,14 @@ import com.anvar.photolibraryorganizer.domain.PhotoLibraryPlan
 import com.anvar.photolibraryorganizer.domain.model.ImportTargetStatus
 import com.anvar.photolibraryorganizer.domain.model.ImportOrganizationRules
 import com.anvar.photolibraryorganizer.domain.model.ImportMediaFilesProgress
+import com.anvar.photolibraryorganizer.domain.model.ImportMediaFilesResult
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
+import com.anvar.photolibraryorganizer.domain.model.UnsupportedFileQuarantineResult
 import com.anvar.photolibraryorganizer.domain.repository.DuplicateQuarantineRepository
 import com.anvar.photolibraryorganizer.domain.repository.MediaFileImporter
 import com.anvar.photolibraryorganizer.domain.repository.ImportPlanTargetResolver
 import com.anvar.photolibraryorganizer.domain.repository.PhotoSourceScanner
+import com.anvar.photolibraryorganizer.domain.repository.UnsupportedFileQuarantineRepository
 import com.anvar.photolibraryorganizer.domain.usecase.BuildMediaFilePlanUseCase
 import com.anvar.photolibraryorganizer.domain.usecase.ImportMediaFilesUseCase
 import com.anvar.photolibraryorganizer.domain.usecase.ResolveImportAvailabilityUseCase
@@ -49,6 +52,7 @@ import com.anvar.photolibraryorganizer.presentation.PreviewImportPlanTargetResol
 import com.anvar.photolibraryorganizer.presentation.PreviewImagePreviewLoader
 import com.anvar.photolibraryorganizer.presentation.PreviewMediaFileImporter
 import com.anvar.photolibraryorganizer.presentation.PreviewPhotoSourceScanner
+import com.anvar.photolibraryorganizer.presentation.PreviewUnsupportedFileQuarantineRepository
 import com.anvar.photolibraryorganizer.presentation.ScanUiState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -64,6 +68,7 @@ fun App(
     mediaFileImporter: MediaFileImporter = PreviewMediaFileImporter,
     importPlanTargetResolver: ImportPlanTargetResolver = PreviewImportPlanTargetResolver,
     duplicateQuarantineRepository: DuplicateQuarantineRepository = PreviewDuplicateQuarantineRepository,
+    unsupportedFileQuarantineRepository: UnsupportedFileQuarantineRepository = PreviewUnsupportedFileQuarantineRepository,
     imagePreviewLoader: ImagePreviewLoader = PreviewImagePreviewLoader,
     appSettingsStorage: AppSettingsStorage = PreviewAppSettingsStorage,
     importHistoryStorage: ImportHistoryStorage = PreviewImportHistoryStorage,
@@ -287,6 +292,7 @@ fun App(
                                 ScanUiState.Success(
                                     summary = result.data.summary,
                                     plannedFiles = resolvedFiles,
+                                    unsupportedFiles = result.data.unsupportedFiles,
                                 ).also {
                                     scanUiState = it
                                     selectedFile = it.plannedFiles.firstOrNull()
@@ -330,6 +336,7 @@ fun App(
                 importUiState = ImportUiState.AwaitingConfirmation(
                     readyFileCount = plannedFiles.count { it.targetStatus != ImportTargetStatus.AlreadyExists },
                     existingFileCount = plannedFiles.count { it.targetStatus == ImportTargetStatus.AlreadyExists },
+                    unsupportedFileCount = (scanUiState as? ScanUiState.Success)?.unsupportedFiles.orEmpty().size,
                 )
             },
             onCancelImportClick = {
@@ -339,6 +346,7 @@ fun App(
                 importJob?.cancel()
                 importJob = coroutineScope.launch {
                     val plannedFiles = (scanUiState as? ScanUiState.Success)?.plannedFiles.orEmpty()
+                    val unsupportedFiles = (scanUiState as? ScanUiState.Success)?.unsupportedFiles.orEmpty()
                     val readyFileCount = plannedFiles.count { it.targetStatus != ImportTargetStatus.AlreadyExists }
                     val existingFileCount = plannedFiles.count { it.targetStatus == ImportTargetStatus.AlreadyExists }
                     lastImportProgress = null
@@ -357,15 +365,29 @@ fun App(
                             }
                         ) {
                             is AppResult.Success -> {
+                                val unsupportedQuarantineResult = if (importMode == ImportMode.Move && unsupportedFiles.isNotEmpty()) {
+                                    withContext(Dispatchers.Default) {
+                                        unsupportedFileQuarantineRepository.moveToQuarantine(
+                                            destinationFolder = destinationFolder,
+                                            unsupportedFiles = unsupportedFiles,
+                                        )
+                                    }
+                                } else {
+                                    null
+                                }
+                                val finalImportResult = result.data.withUnsupportedQuarantine(
+                                    result = unsupportedQuarantineResult,
+                                    fallbackFailedFiles = unsupportedFiles.size,
+                                )
                                 val report = ImportReport(
                                     importMode = importMode,
                                     plannedFiles = plannedFiles.size,
                                     readyFiles = readyFileCount,
                                     existingFiles = existingFileCount,
-                                    copiedFiles = result.data.copiedFiles,
-                                    movedFiles = result.data.movedFiles,
-                                    skippedFiles = result.data.skippedFiles,
-                                    failedFiles = result.data.failedFiles,
+                                    copiedFiles = finalImportResult.copiedFiles,
+                                    movedFiles = finalImportResult.movedFiles,
+                                    skippedFiles = finalImportResult.skippedFiles,
+                                    failedFiles = finalImportResult.failedFiles + finalImportResult.failedUnsupportedFiles,
                                     createdAtEpochMillis = Clock.System.now().toEpochMilliseconds(),
                                 )
                                 lastImportReport = report
@@ -380,13 +402,13 @@ fun App(
                                     photoSourceScanner = photoSourceScanner,
                                 )
                                 selectedFile = libraryFiles.firstOrNull() ?: selectedFile
-                                if (result.data.failedFiles > 0) {
+                                if (finalImportResult.failedFiles > 0 || finalImportResult.failedUnsupportedFiles > 0) {
                                     addIssue(
                                         title = "Импорт",
-                                        detail = "Импорт завершился с ошибками: ${result.data.failedFiles}.",
+                                        detail = "Импорт завершился с ошибками: ${finalImportResult.failedFiles + finalImportResult.failedUnsupportedFiles}.",
                                     )
                                 }
-                                importUiState = ImportUiState.Success(result.data)
+                                importUiState = ImportUiState.Success(finalImportResult)
                             }
 
                             is AppResult.Error -> {
@@ -604,6 +626,20 @@ private fun PhotoLibraryError.toUserMessage(): String {
         PhotoLibraryError.UnsupportedImportMode -> "Этот режим импорта пока не поддерживается."
         is PhotoLibraryError.FileSystem -> "Не удалось выполнить файловую операцию: $message"
         is PhotoLibraryError.Unknown -> "Неизвестная ошибка: ${message ?: "без деталей"}"
+    }
+}
+
+private fun ImportMediaFilesResult.withUnsupportedQuarantine(
+    result: AppResult<UnsupportedFileQuarantineResult>?,
+    fallbackFailedFiles: Int,
+): ImportMediaFilesResult {
+    return when (result) {
+        null -> this
+        is AppResult.Success -> copy(
+            quarantinedUnsupportedFiles = result.data.movedFiles,
+            failedUnsupportedFiles = result.data.failedFiles,
+        )
+        is AppResult.Error -> copy(failedUnsupportedFiles = failedUnsupportedFiles + fallbackFailedFiles)
     }
 }
 

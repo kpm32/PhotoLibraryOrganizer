@@ -82,6 +82,15 @@ class SharedCommonTest {
     }
 
     @Test
+    fun detectsLegacyAndCameraVideoFileTypes() {
+        listOf("clip.MPG", "camera.MTS", "stream.m2ts").forEach { fileName ->
+            val mediaType = detectMediaFileType(fileName)
+
+            assertEquals(MediaFileCategory.Video, mediaType?.category)
+        }
+    }
+
+    @Test
     fun ignoresUnsupportedFileType() {
         assertEquals(null, detectMediaFileType("notes.txt"))
     }

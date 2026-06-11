@@ -4,4 +4,5 @@ data class ScanSourceFolderResult(
     val sourceFolder: String,
     val summary: ScanSourceFolderSummary,
     val mediaFiles: List<ScannedMediaFile>,
+    val unsupportedFiles: List<UnsupportedSourceFile> = emptyList(),
 )

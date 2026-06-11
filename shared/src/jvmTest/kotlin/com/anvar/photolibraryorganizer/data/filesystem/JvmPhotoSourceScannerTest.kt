@@ -48,6 +48,10 @@ class JvmPhotoSourceScannerTest {
             ),
             summary.unsupportedFileExtensions,
         )
+        assertEquals(
+            listOf("sidecar.AAE", "README", "notes.txt").sorted(),
+            success.data.unsupportedFiles.map { it.fileName }.sorted(),
+        )
         assertEquals(listOf(5), progressEvents)
     }
 

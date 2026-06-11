@@ -8,6 +8,7 @@ sealed interface ImportUiState {
     data class AwaitingConfirmation(
         val readyFileCount: Int,
         val existingFileCount: Int,
+        val unsupportedFileCount: Int = 0,
     ) : ImportUiState
     data class Loading(val progress: ImportMediaFilesProgress? = null) : ImportUiState
     data class Canceled(val progress: ImportMediaFilesProgress? = null) : ImportUiState

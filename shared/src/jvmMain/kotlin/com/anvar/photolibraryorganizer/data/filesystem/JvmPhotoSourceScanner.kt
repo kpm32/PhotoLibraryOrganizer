@@ -7,6 +7,7 @@ import com.anvar.photolibraryorganizer.domain.model.ScanSourceFolderProgress
 import com.anvar.photolibraryorganizer.domain.model.ScanSourceFolderResult
 import com.anvar.photolibraryorganizer.domain.model.ScanSourceFolderSummary
 import com.anvar.photolibraryorganizer.domain.model.ScannedMediaFile
+import com.anvar.photolibraryorganizer.domain.model.UnsupportedSourceFile
 import com.anvar.photolibraryorganizer.domain.model.detectMediaFileType
 import com.anvar.photolibraryorganizer.domain.repository.PhotoSourceScanner
 import kotlinx.coroutines.CancellationException
@@ -51,6 +52,7 @@ class JvmPhotoSourceScanner : PhotoSourceScanner {
     ): AppResult<ScanSourceFolderResult> {
         return try {
             val mediaFiles = mutableListOf<ScannedMediaFile>()
+            val unsupportedSourceFiles = mutableListOf<UnsupportedSourceFile>()
             val unsupportedFileExtensions = mutableMapOf<String, Int>()
             var scannedFiles = 0
             var unsupportedFiles = 0
@@ -69,6 +71,14 @@ class JvmPhotoSourceScanner : PhotoSourceScanner {
                         unsupportedFiles += 1
                         val extension = file.name.unsupportedExtensionLabel()
                         unsupportedFileExtensions[extension] = unsupportedFileExtensions.getOrDefault(extension, 0) + 1
+                        unsupportedSourceFiles += UnsupportedSourceFile(
+                            path = file.toAbsolutePath().toString(),
+                            relativePath = sourcePath.relativize(file).toString(),
+                            fileName = file.name,
+                            extensionLabel = extension,
+                            sizeBytes = file.fileSize(),
+                            modifiedAtEpochMillis = file.getLastModifiedTime().toMillis(),
+                        )
                     } else {
                         mediaFiles += ScannedMediaFile(
                             path = file.toAbsolutePath().toString(),
@@ -106,6 +116,7 @@ class JvmPhotoSourceScanner : PhotoSourceScanner {
                 ScanSourceFolderResult(
                     sourceFolder = sourcePath.toAbsolutePath().toString(),
                     mediaFiles = mediaFiles,
+                    unsupportedFiles = unsupportedSourceFiles,
                     summary = ScanSourceFolderSummary(
                         scannedFiles = scannedFiles,
                         mediaFiles = mediaFiles.size,

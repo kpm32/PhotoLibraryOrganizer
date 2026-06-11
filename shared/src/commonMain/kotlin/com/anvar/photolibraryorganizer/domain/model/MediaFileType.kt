@@ -17,7 +17,7 @@ fun detectMediaFileType(fileName: String): MediaFileType? {
         "raf", "pef", "srw", "x3f", "rwl", "3fr", "fff", "iiq", "mos", "mef" ->
             MediaFileType(extension = extension, category = MediaFileCategory.Image)
 
-        "mp4", "mov", "m4v", "avi", "mkv", "webm", "3gp" ->
+        "mp4", "mov", "m4v", "avi", "mkv", "webm", "3gp", "mpg", "mpeg", "mts", "m2ts", "ts" ->
             MediaFileType(extension = extension, category = MediaFileCategory.Video)
 
         else -> null

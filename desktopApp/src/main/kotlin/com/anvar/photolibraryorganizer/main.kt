@@ -5,6 +5,7 @@ import com.anvar.photolibraryorganizer.data.filesystem.JvmDuplicateQuarantineRep
 import com.anvar.photolibraryorganizer.data.filesystem.JvmImportPlanTargetResolver
 import com.anvar.photolibraryorganizer.data.filesystem.JvmMediaFileImporter
 import com.anvar.photolibraryorganizer.data.filesystem.JvmPhotoSourceScanner
+import com.anvar.photolibraryorganizer.data.filesystem.JvmUnsupportedFileQuarantineRepository
 import com.anvar.photolibraryorganizer.presentation.JvmAppSettingsStorage
 import com.anvar.photolibraryorganizer.presentation.JvmFileRevealHandler
 import com.anvar.photolibraryorganizer.presentation.JvmImagePreviewLoader
@@ -28,6 +29,7 @@ fun main() {
                 mediaFileImporter = JvmMediaFileImporter(),
                 importPlanTargetResolver = JvmImportPlanTargetResolver(),
                 duplicateQuarantineRepository = JvmDuplicateQuarantineRepository(),
+                unsupportedFileQuarantineRepository = JvmUnsupportedFileQuarantineRepository(),
                 imagePreviewLoader = JvmImagePreviewLoader(),
                 appSettingsStorage = JvmAppSettingsStorage(),
                 importHistoryStorage = JvmImportHistoryStorage(),
