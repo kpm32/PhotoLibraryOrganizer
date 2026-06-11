@@ -10,13 +10,20 @@ The app keeps photos as normal files on disk. It scans folders, shows an import 
 - Imports photos and videos into `Library/YYYY/YYYY-MM`.
 - Supports safe modes: scan only, copy, and move.
 - Reads JPEG EXIF capture dates when available.
+- Reads HEIC and video dates through macOS metadata when available.
 - Falls back to file modified dates when capture dates are missing.
+- Recognizes common photo, RAW, camera video, and legacy video formats.
 - Detects exact duplicates with SHA-256.
 - Moves duplicates into `Duplicates`.
 - Moves unsupported files into `Unsupported` during move import.
-- Shows unsupported file types and counts.
+- Shows unsupported file groups with counts and total size.
+- Opens unsupported type folders in Finder.
 - Lets you review and safely delete files from `Duplicates` and `Unsupported`.
-- Shows a photo grid, file inspector, search, filters, and basic navigation.
+- Shows a photo grid, grouped library views, file inspector, search, filters, and basic navigation.
+- Shows captured date, file date, and the date used for folder placement.
+- Shows per-file import failure details when something goes wrong.
+- Supports re-running import after interruption by skipping already imported target files.
+- Provides a large preview overlay and keyboard navigation.
 - Uses macOS QuickLook as a fallback for video thumbnails.
 
 ## Library Layout
@@ -69,6 +76,20 @@ The DMG is written to:
 desktopApp/build/compose/binaries/main/dmg/
 ```
 
+## Release Checklist
+
+Before publishing a DMG, run the release test plan:
+
+```text
+docs/RELEASE_TEST_PLAN.md
+```
+
+The product finish checklist is:
+
+```text
+docs/PROFESSIONAL_FINISH_CHECKLIST.md
+```
+
 ## Tech Stack
 
 - Kotlin Multiplatform
@@ -79,7 +100,7 @@ desktopApp/build/compose/binaries/main/dmg/
 
 ## Project Status
 
-Early desktop MVP. The app is usable for local archive cleanup, but releases should still be treated as preview builds until more real-world archives are tested.
+Preview desktop app. The main workflow is usable for local archive cleanup, but public releases should still be treated as preview builds until more real-world archives are tested.
 
 ## License
 
