@@ -28,7 +28,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.anvar.photolibraryorganizer.domain.model.ImportTargetStatus
+import com.anvar.photolibraryorganizer.domain.model.MediaFileCategory
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
+import com.anvar.photolibraryorganizer.domain.model.detectMediaFileType
 import com.anvar.photolibraryorganizer.presentation.ImagePreviewLoader
 
 @Composable
@@ -98,7 +100,7 @@ private fun MediaGridTile(
                         contentScale = ContentScale.Crop,
                     )
                 } ?: run {
-                    Text("Фото", style = MaterialTheme.typography.labelSmall)
+                    Text(plannedFile.previewPlaceholder(), style = MaterialTheme.typography.labelSmall)
                 }
             }
             Text(
@@ -116,6 +118,14 @@ private fun MediaGridTile(
                 overflow = TextOverflow.Ellipsis,
             )
         }
+    }
+}
+
+private fun PlannedMediaFile.previewPlaceholder(): String {
+    return when (detectMediaFileType(fileName)?.category) {
+        MediaFileCategory.Image -> "Фото"
+        MediaFileCategory.Video -> "Видео"
+        null -> "Файл"
     }
 }
 
