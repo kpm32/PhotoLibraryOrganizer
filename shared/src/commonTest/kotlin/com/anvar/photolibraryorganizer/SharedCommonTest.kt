@@ -8,6 +8,7 @@ import com.anvar.photolibraryorganizer.domain.model.ImportAvailability
 import com.anvar.photolibraryorganizer.domain.model.ImportOrganizationRules
 import com.anvar.photolibraryorganizer.domain.model.ImportMediaFilesResult
 import com.anvar.photolibraryorganizer.domain.model.ImportMediaFilesProgress
+import com.anvar.photolibraryorganizer.domain.model.ImportTargetStatus
 import com.anvar.photolibraryorganizer.domain.model.MediaFileCategory
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
 import com.anvar.photolibraryorganizer.domain.model.ScanSourceFolderResult
@@ -273,6 +274,45 @@ class SharedCommonTest {
 
         assertIs<AppResult.Success<ImportMediaFilesResult>>(result)
         assertEquals(1, importer.lastMovedFiles.size)
+    }
+
+    @Test
+    fun importUseCaseSkipsAlreadyExistingTargetsBeforeImporter() = runTest {
+        val importer = FakeMediaFileImporter()
+        val useCase = ImportMediaFilesUseCase(importer)
+
+        val result = useCase(
+            importMode = ImportMode.Copy,
+            plannedFiles = listOf(
+                fakePlannedMediaFile().copy(targetStatus = ImportTargetStatus.Ready),
+                fakePlannedMediaFile().copy(
+                    sourcePath = "/source/existing.jpg",
+                    targetStatus = ImportTargetStatus.AlreadyExists,
+                ),
+            ),
+        )
+
+        val success = assertIs<AppResult.Success<ImportMediaFilesResult>>(result)
+        assertEquals(1, importer.lastPlannedFiles.size)
+        assertEquals(1, success.data.copiedFiles)
+        assertEquals(1, success.data.skippedFiles)
+    }
+
+    @Test
+    fun importUseCaseReturnsSkippedResultWhenEverythingAlreadyExists() = runTest {
+        val importer = FakeMediaFileImporter()
+        val useCase = ImportMediaFilesUseCase(importer)
+
+        val result = useCase(
+            importMode = ImportMode.Copy,
+            plannedFiles = listOf(fakePlannedMediaFile().copy(targetStatus = ImportTargetStatus.AlreadyExists)),
+        )
+
+        val success = assertIs<AppResult.Success<ImportMediaFilesResult>>(result)
+        assertEquals(0, importer.lastPlannedFiles.size)
+        assertEquals(0, success.data.copiedFiles)
+        assertEquals(1, success.data.skippedFiles)
+        assertEquals(0, success.data.failedFiles)
     }
 
     private fun fakePlannedMediaFile(): PlannedMediaFile {

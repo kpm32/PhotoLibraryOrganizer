@@ -380,7 +380,14 @@ fun App(
             onConfirmImportClick = {
                 importJob?.cancel()
                 importJob = coroutineScope.launch {
-                    val plannedFiles = (scanUiState as? ScanUiState.Success)?.plannedFiles.orEmpty()
+                    val currentScanSuccess = scanUiState as? ScanUiState.Success
+                    val scannedPlannedFiles = currentScanSuccess?.plannedFiles.orEmpty()
+                    val plannedFiles = withContext(Dispatchers.Default) {
+                        importPlanTargetResolver.resolve(scannedPlannedFiles)
+                    }
+                    if (currentScanSuccess != null) {
+                        scanUiState = currentScanSuccess.copy(plannedFiles = plannedFiles)
+                    }
                     val unsupportedSourceFiles = (scanUiState as? ScanUiState.Success)?.unsupportedFiles.orEmpty()
                     val readyFileCount = plannedFiles.count { it.targetStatus != ImportTargetStatus.AlreadyExists }
                     val existingFileCount = plannedFiles.count { it.targetStatus == ImportTargetStatus.AlreadyExists }
