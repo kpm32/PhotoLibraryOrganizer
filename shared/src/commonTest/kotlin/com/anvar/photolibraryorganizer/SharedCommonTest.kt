@@ -66,6 +66,14 @@ class SharedCommonTest {
     }
 
     @Test
+    fun detectsRawImageFileTypeIgnoringCase() {
+        val mediaType = detectMediaFileType("Camera.NEF")
+
+        assertEquals(MediaFileCategory.Image, mediaType?.category)
+        assertEquals("nef", mediaType?.extension)
+    }
+
+    @Test
     fun detectsVideoFileTypeIgnoringCase() {
         val mediaType = detectMediaFileType("Family.MOV")
 
