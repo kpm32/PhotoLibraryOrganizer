@@ -331,11 +331,17 @@ fun App(
                     val plannedFiles = (scanUiState as? ScanUiState.Success)?.plannedFiles.orEmpty()
                     val readyFileCount = plannedFiles.count { it.targetStatus != ImportTargetStatus.AlreadyExists }
                     val existingFileCount = plannedFiles.count { it.targetStatus == ImportTargetStatus.AlreadyExists }
-                    importUiState = ImportUiState.Loading
+                    importUiState = ImportUiState.Loading()
                     importUiState = try {
                         when (
                             val result = withContext(Dispatchers.Default) {
-                                importMediaFilesUseCase(importMode, plannedFiles)
+                                importMediaFilesUseCase(importMode, plannedFiles) { progress ->
+                                    coroutineScope.launch {
+                                        if (importUiState is ImportUiState.Loading) {
+                                            importUiState = ImportUiState.Loading(progress)
+                                        }
+                                    }
+                                }
                             }
                         ) {
                             is AppResult.Success -> {

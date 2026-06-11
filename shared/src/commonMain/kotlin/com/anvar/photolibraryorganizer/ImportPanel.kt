@@ -271,18 +271,32 @@ private fun ImportStatus(importUiState: ImportUiState) {
     val text = when (importUiState) {
         ImportUiState.Idle -> return
         is ImportUiState.AwaitingConfirmation -> return
-        ImportUiState.Loading -> "Выполняю импорт по выбранному режиму."
+        is ImportUiState.Loading -> importUiState.progress?.let { progress ->
+            "Импорт: ${progress.processedFiles} из ${progress.totalFiles}. Копий ${progress.copiedFiles}, переносов ${progress.movedFiles}, пропусков ${progress.skippedFiles}, ошибок ${progress.failedFiles}."
+        } ?: "Выполняю импорт по выбранному режиму."
         is ImportUiState.Success -> {
             "Импорт завершен: скопировано ${importUiState.result.copiedFiles}, перенесено ${importUiState.result.movedFiles}, пропущено ${importUiState.result.skippedFiles}, ошибок ${importUiState.result.failedFiles}."
         }
         is ImportUiState.Error -> importUiState.message
     }
 
-    Text(
-        text = text,
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        if (importUiState is ImportUiState.Loading) {
+            LinearProgressIndicator(
+                progress = {
+                    importUiState.progress?.let { progress ->
+                        if (progress.totalFiles > 0) progress.processedFiles.toFloat() / progress.totalFiles else 0f
+                    } ?: 0f
+                },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
 }
 
 @Composable

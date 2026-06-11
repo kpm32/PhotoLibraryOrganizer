@@ -7,6 +7,7 @@ import com.anvar.photolibraryorganizer.domain.PhotoLibraryPlan
 import com.anvar.photolibraryorganizer.domain.model.ImportAvailability
 import com.anvar.photolibraryorganizer.domain.model.ImportOrganizationRules
 import com.anvar.photolibraryorganizer.domain.model.ImportMediaFilesResult
+import com.anvar.photolibraryorganizer.domain.model.ImportMediaFilesProgress
 import com.anvar.photolibraryorganizer.domain.model.MediaFileCategory
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
 import com.anvar.photolibraryorganizer.domain.model.ScanSourceFolderResult
@@ -296,7 +297,10 @@ class SharedCommonTest {
         var lastPlannedFiles: List<PlannedMediaFile> = emptyList()
         var lastMovedFiles: List<PlannedMediaFile> = emptyList()
 
-        override suspend fun copyFiles(plannedFiles: List<PlannedMediaFile>): AppResult<ImportMediaFilesResult> {
+        override suspend fun copyFiles(
+            plannedFiles: List<PlannedMediaFile>,
+            onProgress: (ImportMediaFilesProgress) -> Unit,
+        ): AppResult<ImportMediaFilesResult> {
             lastPlannedFiles = plannedFiles
             return AppResult.Success(
                 ImportMediaFilesResult(
@@ -307,7 +311,10 @@ class SharedCommonTest {
             )
         }
 
-        override suspend fun moveFiles(plannedFiles: List<PlannedMediaFile>): AppResult<ImportMediaFilesResult> {
+        override suspend fun moveFiles(
+            plannedFiles: List<PlannedMediaFile>,
+            onProgress: (ImportMediaFilesProgress) -> Unit,
+        ): AppResult<ImportMediaFilesResult> {
             lastMovedFiles = plannedFiles
             return AppResult.Success(
                 ImportMediaFilesResult(

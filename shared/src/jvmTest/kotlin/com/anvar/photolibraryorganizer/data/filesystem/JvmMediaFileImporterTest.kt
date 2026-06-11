@@ -44,6 +44,41 @@ class JvmMediaFileImporterTest {
     }
 
     @Test
+    fun reportsProgressWhileCopyingFiles() = runTest {
+        val tempFolder = Files.createTempDirectory("photo-import-progress-test")
+        val firstSourceFile = tempFolder.resolve("first.jpg")
+        val secondSourceFile = tempFolder.resolve("second.jpg")
+        val firstTargetFile = tempFolder.resolve("library/first.jpg")
+        val secondTargetFile = tempFolder.resolve("library/second.jpg")
+        firstSourceFile.writeText("first")
+        secondSourceFile.writeText("second")
+        val processedCounts = mutableListOf<Int>()
+
+        val result = importer.copyFiles(
+            listOf(
+                PlannedMediaFile(
+                    sourcePath = firstSourceFile.toString(),
+                    fileName = "first.jpg",
+                    targetRelativePath = firstTargetFile.toString(),
+                    sizeBytes = 5,
+                ),
+                PlannedMediaFile(
+                    sourcePath = secondSourceFile.toString(),
+                    fileName = "second.jpg",
+                    targetRelativePath = secondTargetFile.toString(),
+                    sizeBytes = 6,
+                ),
+            ),
+        ) { progress ->
+            processedCounts += progress.processedFiles
+        }
+
+        val success = assertIs<AppResult.Success<ImportMediaFilesResult>>(result)
+        assertEquals(2, success.data.copiedFiles)
+        assertEquals(listOf(1, 2), processedCounts)
+    }
+
+    @Test
     fun skipsExistingTargetFilesWithoutOverwritingThem() = runTest {
         val tempFolder = Files.createTempDirectory("photo-import-existing-test")
         val sourceFile = tempFolder.resolve("source.jpg")
