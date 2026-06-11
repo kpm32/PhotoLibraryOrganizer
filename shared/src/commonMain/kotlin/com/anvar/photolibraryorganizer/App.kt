@@ -778,7 +778,7 @@ fun App(
                 openLibrarySubfolder(
                     destinationFolder = destinationFolder,
                     subfolder = "Unsupported",
-                    title = "Unsupported",
+                    title = "Пропущенные",
                     fileRevealHandler = fileRevealHandler,
                     addIssue = ::addIssue,
                 )
@@ -796,7 +796,7 @@ fun App(
                 openLibrarySubfolder(
                     destinationFolder = destinationFolder,
                     subfolder = "Duplicates",
-                    title = "Duplicates",
+                    title = "Дубли",
                     fileRevealHandler = fileRevealHandler,
                     addIssue = ::addIssue,
                 )
