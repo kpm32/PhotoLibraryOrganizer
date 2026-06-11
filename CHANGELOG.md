@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.0-preview.2 - 2026-06-11
+
+Preview polish release.
+
+### Changed
+
+- Improved first launch window size and minimum window size.
+- Updated the visible window title to `Photo Library Organizer`.
+- Polished Russian UI labels and folder action issue titles.
+
 ## 1.0.0-preview - 2026-06-11
 
 Early desktop MVP for local photo archive cleanup.
