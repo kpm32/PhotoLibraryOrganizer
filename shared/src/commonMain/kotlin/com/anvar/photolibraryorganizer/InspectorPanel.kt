@@ -39,6 +39,7 @@ internal fun InspectorPanel(
     selectedFileIndex: Int,
     navigationFileCount: Int,
     imagePreviewUiState: ImagePreviewUiState,
+    onOpenPreviewClick: () -> Unit,
     onOpenFileClick: () -> Unit,
     onRevealFileClick: () -> Unit,
     onPreviousFileClick: () -> Unit,
@@ -70,6 +71,7 @@ internal fun InspectorPanel(
                 selectedFileIndex = selectedFileIndex,
                 navigationFileCount = navigationFileCount,
                 imagePreviewUiState = imagePreviewUiState,
+                onOpenPreviewClick = onOpenPreviewClick,
                 onOpenFileClick = onOpenFileClick,
                 onRevealFileClick = onRevealFileClick,
                 onPreviousFileClick = onPreviousFileClick,
@@ -133,6 +135,7 @@ private fun SelectedFilePreview(
     selectedFileIndex: Int,
     navigationFileCount: Int,
     imagePreviewUiState: ImagePreviewUiState,
+    onOpenPreviewClick: () -> Unit,
     onOpenFileClick: () -> Unit,
     onRevealFileClick: () -> Unit,
     onPreviousFileClick: () -> Unit,
@@ -180,15 +183,27 @@ private fun SelectedFilePreview(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                OutlinedButton(
+                    onClick = onOpenPreviewClick,
+                    modifier = Modifier.weight(1f),
+                    enabled = imagePreviewUiState is ImagePreviewUiState.Success,
+                ) {
+                    Text("Крупно")
+                }
                 Button(
                     onClick = onOpenFileClick,
                     modifier = Modifier.weight(1f),
                 ) {
                     Text("Открыть")
                 }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 OutlinedButton(
                     onClick = onRevealFileClick,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text("В папке")
                 }

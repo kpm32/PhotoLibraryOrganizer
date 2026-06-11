@@ -1,6 +1,7 @@
 package com.anvar.photolibraryorganizer
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -16,7 +17,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -97,10 +101,17 @@ internal fun PhotoLibraryOrganizerApp(
     onFileSelected: (PlannedMediaFile) -> Unit,
 ) {
     val focusRequester = remember { FocusRequester() }
+    var isViewerOpen by remember { mutableStateOf(false) }
     val canNavigateSelectedFile = navigationFileCount > 1 && selectedFileIndex >= 0
 
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
+    }
+
+    LaunchedEffect(selectedFile) {
+        if (selectedFile == null) {
+            isViewerOpen = false
+        }
     }
 
     Surface(
@@ -109,97 +120,129 @@ internal fun PhotoLibraryOrganizerApp(
             .focusRequester(focusRequester)
             .focusable()
             .onKeyEvent { event ->
-                if (!canNavigateSelectedFile || event.type != KeyEventType.KeyDown) {
+                if (event.type != KeyEventType.KeyDown) {
                     return@onKeyEvent false
                 }
 
                 when (event.key) {
+                    Key.Escape -> {
+                        if (isViewerOpen) {
+                            isViewerOpen = false
+                            true
+                        } else {
+                            false
+                        }
+                    }
                     Key.DirectionLeft -> {
-                        onPreviousFileClick()
-                        true
+                        if (canNavigateSelectedFile) {
+                            onPreviousFileClick()
+                            true
+                        } else {
+                            false
+                        }
                     }
                     Key.DirectionRight -> {
-                        onNextFileClick()
-                        true
+                        if (canNavigateSelectedFile) {
+                            onNextFileClick()
+                            true
+                        } else {
+                            false
+                        }
                     }
                     else -> false
                 }
             },
         color = MaterialTheme.colorScheme.background,
     ) {
-        Row(
-            modifier = Modifier
-                .background(MaterialTheme.colorScheme.surface)
-                .safeContentPadding()
-                .fillMaxSize()
-                .padding(start = 14.dp, top = 16.dp, end = 14.dp, bottom = 14.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            LibrarySidebar(
-                selectedSection = selectedSection,
-                onSectionSelected = onSectionSelected,
-            )
-            MainWorkspace(
-                plan = plan,
-                scanUiState = scanUiState,
-                importUiState = importUiState,
-                lastImportReport = lastImportReport,
-                emptyFolderCleanupMessage = emptyFolderCleanupMessage,
-                emptyFolderCleanupAwaitingConfirmation = emptyFolderCleanupAwaitingConfirmation,
-                importHistory = importHistory,
-                libraryFiles = libraryFiles,
-                duplicateFiles = duplicateFiles,
-                unsupportedFiles = unsupportedFiles,
-                selectedSection = selectedSection,
-                imagePreviewLoader = imagePreviewLoader,
-                duplicateActionMessage = duplicateActionMessage,
-                duplicateDeleteAwaitingConfirmation = duplicateDeleteAwaitingConfirmation,
-                unsupportedActionMessage = unsupportedActionMessage,
-                unsupportedDeleteAwaitingConfirmation = unsupportedDeleteAwaitingConfirmation,
-                importAvailability = importAvailability,
-                issues = issues,
-                selectedFile = selectedFile,
-                selectedMode = plan.importMode,
-                onScanClick = onScanClick,
-                onCancelScanClick = onCancelScanClick,
-                onImportClick = onImportClick,
-                onConfirmImportClick = onConfirmImportClick,
-                onCancelImportClick = onCancelImportClick,
-                onCancelRunningImportClick = onCancelRunningImportClick,
-                onRequestEmptyFolderCleanupClick = onRequestEmptyFolderCleanupClick,
-                onConfirmEmptyFolderCleanupClick = onConfirmEmptyFolderCleanupClick,
-                onCancelEmptyFolderCleanupClick = onCancelEmptyFolderCleanupClick,
-                onOpenLibraryFolderClick = onOpenLibraryFolderClick,
-                onOpenUnsupportedFolderClick = onOpenUnsupportedFolderClick,
-                onOpenDuplicatesFolderClick = onOpenDuplicatesFolderClick,
-                onMoveDuplicatesClick = onMoveDuplicatesClick,
-                onRequestDeleteQuarantineClick = onRequestDeleteQuarantineClick,
-                onConfirmDeleteQuarantineClick = onConfirmDeleteQuarantineClick,
-                onCancelDeleteQuarantineClick = onCancelDeleteQuarantineClick,
-                onRequestDeleteUnsupportedClick = onRequestDeleteUnsupportedClick,
-                onConfirmDeleteUnsupportedClick = onConfirmDeleteUnsupportedClick,
-                onCancelDeleteUnsupportedClick = onCancelDeleteUnsupportedClick,
-                onClearIssuesClick = onClearIssuesClick,
-                onImportModeSelected = onImportModeSelected,
-                onImportRulesSelected = onImportRulesSelected,
-                onFileSelected = onFileSelected,
-                modifier = Modifier.weight(1f),
-            )
-            InspectorPanel(
-                plan = plan,
-                scanUiState = scanUiState,
-                selectedFile = selectedFile,
-                selectedFileIndex = selectedFileIndex,
-                navigationFileCount = navigationFileCount,
-                imagePreviewUiState = imagePreviewUiState,
-                onOpenFileClick = onOpenFileClick,
-                onRevealFileClick = onRevealFileClick,
-                onPreviousFileClick = onPreviousFileClick,
-                onNextFileClick = onNextFileClick,
-                onSourceFolderClick = onSourceFolderClick,
-                onDestinationFolderClick = onDestinationFolderClick,
-                onRefreshLibraryClick = onRefreshLibraryClick,
-            )
+        Box(modifier = Modifier.fillMaxSize()) {
+            Row(
+                modifier = Modifier
+                    .background(MaterialTheme.colorScheme.surface)
+                    .safeContentPadding()
+                    .fillMaxSize()
+                    .padding(start = 14.dp, top = 16.dp, end = 14.dp, bottom = 14.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                LibrarySidebar(
+                    selectedSection = selectedSection,
+                    onSectionSelected = onSectionSelected,
+                )
+                MainWorkspace(
+                    plan = plan,
+                    scanUiState = scanUiState,
+                    importUiState = importUiState,
+                    lastImportReport = lastImportReport,
+                    emptyFolderCleanupMessage = emptyFolderCleanupMessage,
+                    emptyFolderCleanupAwaitingConfirmation = emptyFolderCleanupAwaitingConfirmation,
+                    importHistory = importHistory,
+                    libraryFiles = libraryFiles,
+                    duplicateFiles = duplicateFiles,
+                    unsupportedFiles = unsupportedFiles,
+                    selectedSection = selectedSection,
+                    imagePreviewLoader = imagePreviewLoader,
+                    duplicateActionMessage = duplicateActionMessage,
+                    duplicateDeleteAwaitingConfirmation = duplicateDeleteAwaitingConfirmation,
+                    unsupportedActionMessage = unsupportedActionMessage,
+                    unsupportedDeleteAwaitingConfirmation = unsupportedDeleteAwaitingConfirmation,
+                    importAvailability = importAvailability,
+                    issues = issues,
+                    selectedFile = selectedFile,
+                    selectedMode = plan.importMode,
+                    onScanClick = onScanClick,
+                    onCancelScanClick = onCancelScanClick,
+                    onImportClick = onImportClick,
+                    onConfirmImportClick = onConfirmImportClick,
+                    onCancelImportClick = onCancelImportClick,
+                    onCancelRunningImportClick = onCancelRunningImportClick,
+                    onRequestEmptyFolderCleanupClick = onRequestEmptyFolderCleanupClick,
+                    onConfirmEmptyFolderCleanupClick = onConfirmEmptyFolderCleanupClick,
+                    onCancelEmptyFolderCleanupClick = onCancelEmptyFolderCleanupClick,
+                    onOpenLibraryFolderClick = onOpenLibraryFolderClick,
+                    onOpenUnsupportedFolderClick = onOpenUnsupportedFolderClick,
+                    onOpenDuplicatesFolderClick = onOpenDuplicatesFolderClick,
+                    onMoveDuplicatesClick = onMoveDuplicatesClick,
+                    onRequestDeleteQuarantineClick = onRequestDeleteQuarantineClick,
+                    onConfirmDeleteQuarantineClick = onConfirmDeleteQuarantineClick,
+                    onCancelDeleteQuarantineClick = onCancelDeleteQuarantineClick,
+                    onRequestDeleteUnsupportedClick = onRequestDeleteUnsupportedClick,
+                    onConfirmDeleteUnsupportedClick = onConfirmDeleteUnsupportedClick,
+                    onCancelDeleteUnsupportedClick = onCancelDeleteUnsupportedClick,
+                    onClearIssuesClick = onClearIssuesClick,
+                    onImportModeSelected = onImportModeSelected,
+                    onImportRulesSelected = onImportRulesSelected,
+                    onFileSelected = onFileSelected,
+                    modifier = Modifier.weight(1f),
+                )
+                InspectorPanel(
+                    plan = plan,
+                    scanUiState = scanUiState,
+                    selectedFile = selectedFile,
+                    selectedFileIndex = selectedFileIndex,
+                    navigationFileCount = navigationFileCount,
+                    imagePreviewUiState = imagePreviewUiState,
+                    onOpenPreviewClick = { isViewerOpen = true },
+                    onOpenFileClick = onOpenFileClick,
+                    onRevealFileClick = onRevealFileClick,
+                    onPreviousFileClick = onPreviousFileClick,
+                    onNextFileClick = onNextFileClick,
+                    onSourceFolderClick = onSourceFolderClick,
+                    onDestinationFolderClick = onDestinationFolderClick,
+                    onRefreshLibraryClick = onRefreshLibraryClick,
+                )
+            }
+            if (isViewerOpen && selectedFile != null) {
+                MediaViewerOverlay(
+                    selectedFile = selectedFile,
+                    selectedFileIndex = selectedFileIndex,
+                    navigationFileCount = navigationFileCount,
+                    imagePreviewUiState = imagePreviewUiState,
+                    onCloseClick = { isViewerOpen = false },
+                    onPreviousFileClick = onPreviousFileClick,
+                    onNextFileClick = onNextFileClick,
+                    onOpenFileClick = onOpenFileClick,
+                    onRevealFileClick = onRevealFileClick,
+                )
+            }
         }
     }
 }
