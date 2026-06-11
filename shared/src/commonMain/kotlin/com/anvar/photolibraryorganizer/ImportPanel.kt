@@ -38,6 +38,8 @@ internal fun ImportPanel(
     scanUiState: ScanUiState,
     importUiState: ImportUiState,
     lastImportReport: ImportReport?,
+    emptyFolderCleanupMessage: String?,
+    emptyFolderCleanupAwaitingConfirmation: Boolean,
     importHistory: List<ImportReport>,
     importAvailability: ImportAvailability,
     selectedMode: ImportMode,
@@ -46,6 +48,9 @@ internal fun ImportPanel(
     onConfirmImportClick: () -> Unit,
     onCancelImportClick: () -> Unit,
     onCancelRunningImportClick: () -> Unit,
+    onRequestEmptyFolderCleanupClick: () -> Unit,
+    onConfirmEmptyFolderCleanupClick: () -> Unit,
+    onCancelEmptyFolderCleanupClick: () -> Unit,
     onImportModeSelected: (ImportMode) -> Unit,
     onImportRulesSelected: (ImportOrganizationRules) -> Unit,
     onCancelScanClick: () -> Unit,
@@ -88,6 +93,14 @@ internal fun ImportPanel(
                 onCancelImportClick = onCancelImportClick,
             )
             ImportReportSummary(lastImportReport)
+            EmptyFolderCleanupAction(
+                lastImportReport = lastImportReport,
+                message = emptyFolderCleanupMessage,
+                awaitingConfirmation = emptyFolderCleanupAwaitingConfirmation,
+                onRequestClick = onRequestEmptyFolderCleanupClick,
+                onConfirmClick = onConfirmEmptyFolderCleanupClick,
+                onCancelClick = onCancelEmptyFolderCleanupClick,
+            )
             ImportHistorySummary(importHistory)
             ImportRulesSummary(plan.importRules)
             ImportRulesPresetPicker(
@@ -268,6 +281,63 @@ private fun ImportReportSummary(lastImportReport: ImportReport?) {
             )
             CompactRuleRow("Всего найдено", lastImportReport.plannedFiles.toString())
             CompactRuleRow("Время", lastImportReport.createdAtEpochMillis.toReadableDateTime())
+        }
+    }
+}
+
+@Composable
+private fun EmptyFolderCleanupAction(
+    lastImportReport: ImportReport?,
+    message: String?,
+    awaitingConfirmation: Boolean,
+    onRequestClick: () -> Unit,
+    onConfirmClick: () -> Unit,
+    onCancelClick: () -> Unit,
+) {
+    if (lastImportReport?.importMode != ImportMode.Move) return
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        shape = MaterialTheme.shapes.small,
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = "Пустые папки источника",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = message ?: "После переноса можно удалить пустые подпапки во входящей папке. Файлы не удаляются.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (awaitingConfirmation) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(
+                        onClick = onCancelClick,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text("Отмена")
+                    }
+                    Button(
+                        onClick = onConfirmClick,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text("Удалить пустые")
+                    }
+                }
+            } else {
+                OutlinedButton(
+                    onClick = onRequestClick,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Очистить пустые папки")
+                }
+            }
         }
     }
 }

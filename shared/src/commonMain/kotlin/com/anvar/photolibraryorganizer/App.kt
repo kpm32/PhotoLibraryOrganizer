@@ -23,6 +23,7 @@ import com.anvar.photolibraryorganizer.domain.model.ImportMediaFilesResult
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
 import com.anvar.photolibraryorganizer.domain.model.UnsupportedFileQuarantineResult
 import com.anvar.photolibraryorganizer.domain.repository.DuplicateQuarantineRepository
+import com.anvar.photolibraryorganizer.domain.repository.EmptyFolderCleanupRepository
 import com.anvar.photolibraryorganizer.domain.repository.MediaFileImporter
 import com.anvar.photolibraryorganizer.domain.repository.ImportPlanTargetResolver
 import com.anvar.photolibraryorganizer.domain.repository.PhotoSourceScanner
@@ -44,6 +45,7 @@ import com.anvar.photolibraryorganizer.presentation.ImportHistoryStorage
 import com.anvar.photolibraryorganizer.presentation.ImportReport
 import com.anvar.photolibraryorganizer.presentation.ImportUiState
 import com.anvar.photolibraryorganizer.presentation.PreviewDuplicateQuarantineRepository
+import com.anvar.photolibraryorganizer.presentation.PreviewEmptyFolderCleanupRepository
 import com.anvar.photolibraryorganizer.presentation.PreviewAppSettingsStorage
 import com.anvar.photolibraryorganizer.presentation.PreviewFileRevealHandler
 import com.anvar.photolibraryorganizer.presentation.PreviewFolderPicker
@@ -69,6 +71,7 @@ fun App(
     importPlanTargetResolver: ImportPlanTargetResolver = PreviewImportPlanTargetResolver,
     duplicateQuarantineRepository: DuplicateQuarantineRepository = PreviewDuplicateQuarantineRepository,
     unsupportedFileQuarantineRepository: UnsupportedFileQuarantineRepository = PreviewUnsupportedFileQuarantineRepository,
+    emptyFolderCleanupRepository: EmptyFolderCleanupRepository = PreviewEmptyFolderCleanupRepository,
     imagePreviewLoader: ImagePreviewLoader = PreviewImagePreviewLoader,
     appSettingsStorage: AppSettingsStorage = PreviewAppSettingsStorage,
     importHistoryStorage: ImportHistoryStorage = PreviewImportHistoryStorage,
@@ -90,6 +93,8 @@ fun App(
         var lastImportProgress by remember { mutableStateOf<ImportMediaFilesProgress?>(null) }
         var importUiState by remember { mutableStateOf<ImportUiState>(ImportUiState.Idle) }
         var lastImportReport by remember { mutableStateOf<ImportReport?>(null) }
+        var emptyFolderCleanupMessage by remember { mutableStateOf<String?>(null) }
+        var emptyFolderCleanupAwaitingConfirmation by remember { mutableStateOf(false) }
         var importHistory by remember { mutableStateOf<List<ImportReport>>(emptyList()) }
         var selectedFile by remember { mutableStateOf<PlannedMediaFile?>(null) }
         var libraryFiles by remember { mutableStateOf<List<PlannedMediaFile>>(emptyList()) }
@@ -179,6 +184,8 @@ fun App(
             scanUiState = scanUiState,
             importUiState = importUiState,
             lastImportReport = lastImportReport,
+            emptyFolderCleanupMessage = emptyFolderCleanupMessage,
+            emptyFolderCleanupAwaitingConfirmation = emptyFolderCleanupAwaitingConfirmation,
             importHistory = importHistory,
             libraryFiles = libraryFiles,
             duplicateFiles = duplicateFiles,
@@ -210,6 +217,8 @@ fun App(
                 scanUiState = ScanUiState.Idle
                 importUiState = ImportUiState.Idle
                 lastImportReport = null
+                emptyFolderCleanupMessage = null
+                emptyFolderCleanupAwaitingConfirmation = false
                 duplicateActionMessage = null
                 duplicateDeleteAwaitingConfirmation = false
                 unsupportedActionMessage = null
@@ -236,6 +245,8 @@ fun App(
                 scanUiState = ScanUiState.Idle
                 importUiState = ImportUiState.Idle
                 lastImportReport = null
+                emptyFolderCleanupMessage = null
+                emptyFolderCleanupAwaitingConfirmation = false
                 duplicateActionMessage = null
                 duplicateDeleteAwaitingConfirmation = false
                 unsupportedActionMessage = null
@@ -285,6 +296,8 @@ fun App(
                     scanUiState = ScanUiState.Loading()
                     importUiState = ImportUiState.Idle
                     lastImportReport = null
+                    emptyFolderCleanupMessage = null
+                    emptyFolderCleanupAwaitingConfirmation = false
                     duplicateActionMessage = null
                     duplicateDeleteAwaitingConfirmation = false
                     unsupportedActionMessage = null
@@ -413,6 +426,8 @@ fun App(
                                     createdAtEpochMillis = Clock.System.now().toEpochMilliseconds(),
                                 )
                                 lastImportReport = report
+                                emptyFolderCleanupMessage = null
+                                emptyFolderCleanupAwaitingConfirmation = false
                                 importHistoryStorage.appendReport(report)
                                 importHistory = importHistoryStorage.loadHistory()
                                 libraryFiles = refreshLibraryFiles(
@@ -696,6 +711,49 @@ fun App(
                         unsupportedDeleteAwaitingConfirmation = false
                         val message = "Не удалось удалить файлы из Unsupported: ${exception.message ?: "без деталей"}"
                         addIssue("Неподдерживаемые", message)
+                        message
+                    }
+                }
+            },
+            onRequestEmptyFolderCleanupClick = {
+                emptyFolderCleanupAwaitingConfirmation = true
+                emptyFolderCleanupMessage = "Будут удалены только пустые подпапки внутри исходной папки. Файлы не удаляются."
+            },
+            onCancelEmptyFolderCleanupClick = {
+                emptyFolderCleanupAwaitingConfirmation = false
+                emptyFolderCleanupMessage = "Очистка пустых папок отменена."
+            },
+            onConfirmEmptyFolderCleanupClick = {
+                coroutineScope.launch {
+                    emptyFolderCleanupMessage = "Удаляю пустые папки источника..."
+                    emptyFolderCleanupMessage = try {
+                        when (
+                            val result = withContext(Dispatchers.Default) {
+                                emptyFolderCleanupRepository.deleteEmptyFolders(sourceFolder)
+                            }
+                        ) {
+                            is AppResult.Success -> {
+                                emptyFolderCleanupAwaitingConfirmation = false
+                                if (result.data.failedFolders > 0) {
+                                    addIssue(
+                                        title = "Пустые папки",
+                                        detail = "Часть пустых папок не удалось удалить: ${result.data.failedFolders}.",
+                                    )
+                                }
+                                "Удалено пустых папок: ${result.data.deletedFolders}, ошибок: ${result.data.failedFolders}."
+                            }
+
+                            is AppResult.Error -> {
+                                emptyFolderCleanupAwaitingConfirmation = false
+                                val message = result.error.toUserMessage()
+                                addIssue("Пустые папки", message)
+                                message
+                            }
+                        }
+                    } catch (exception: Throwable) {
+                        emptyFolderCleanupAwaitingConfirmation = false
+                        val message = "Не удалось удалить пустые папки: ${exception.message ?: "без деталей"}"
+                        addIssue("Пустые папки", message)
                         message
                     }
                 }
