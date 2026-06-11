@@ -13,9 +13,12 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 import kotlin.io.path.createDirectories
+import kotlin.io.path.deleteIfExists
 import kotlin.io.path.exists
 
-class JvmMediaFileImporter : MediaFileImporter {
+class JvmMediaFileImporter(
+    private val importedFileVerifier: ImportedFileVerifier = ImportedFileVerifier.Default,
+) : MediaFileImporter {
     override suspend fun copyFiles(
         plannedFiles: List<PlannedMediaFile>,
         onProgress: (ImportMediaFilesProgress) -> Unit,
@@ -50,16 +53,38 @@ class JvmMediaFileImporter : MediaFileImporter {
                     targetPath.exists() -> skippedFiles += 1
                     !sourcePath.exists() -> failedFiles += 1
                     else -> {
-                        val targetParent = targetPath.parent
-                        if (targetParent != null) {
-                            targetParent.createDirectories()
+                        val imported = try {
+                            val sourceSizeBytes = Files.size(sourcePath)
+                            val targetParent = targetPath.parent
+                            if (targetParent != null) {
+                                targetParent.createDirectories()
+                            }
+                            if (moveSource) {
+                                Files.move(sourcePath, targetPath)
+                            } else {
+                                Files.copy(sourcePath, targetPath, StandardCopyOption.COPY_ATTRIBUTES)
+                            }
+                            importedFileVerifier.isImported(
+                                sourcePath = sourcePath,
+                                targetPath = targetPath,
+                                expectedSizeBytes = sourceSizeBytes,
+                                moveSource = moveSource,
+                            )
+                        } catch (_: Throwable) {
+                            false
                         }
-                        if (moveSource) {
-                            Files.move(sourcePath, targetPath)
-                            movedFiles += 1
+
+                        if (imported) {
+                            if (moveSource) {
+                                movedFiles += 1
+                            } else {
+                                copiedFiles += 1
+                            }
                         } else {
-                            Files.copy(sourcePath, targetPath, StandardCopyOption.COPY_ATTRIBUTES)
-                            copiedFiles += 1
+                            if (!moveSource) {
+                                targetPath.deleteIfExists()
+                            }
+                            failedFiles += 1
                         }
                     }
                 }
@@ -87,6 +112,28 @@ class JvmMediaFileImporter : MediaFileImporter {
             throw exception
         } catch (exception: Throwable) {
             AppResult.Error(PhotoLibraryError.FileSystem(exception.message ?: "File import failed"))
+        }
+    }
+}
+
+fun interface ImportedFileVerifier {
+    fun isImported(
+        sourcePath: Path,
+        targetPath: Path,
+        expectedSizeBytes: Long,
+        moveSource: Boolean,
+    ): Boolean
+
+    object Default : ImportedFileVerifier {
+        override fun isImported(
+            sourcePath: Path,
+            targetPath: Path,
+            expectedSizeBytes: Long,
+            moveSource: Boolean,
+        ): Boolean {
+            return targetPath.exists() &&
+                Files.size(targetPath) == expectedSizeBytes &&
+                (!moveSource || !sourcePath.exists())
         }
     }
 }

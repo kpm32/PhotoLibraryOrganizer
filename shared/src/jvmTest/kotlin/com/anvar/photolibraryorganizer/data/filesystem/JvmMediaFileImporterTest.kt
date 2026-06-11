@@ -130,4 +130,66 @@ class JvmMediaFileImporterTest {
         assertTrue(targetFile.exists())
         assertEquals("photo", targetFile.readText())
     }
+
+    @Test
+    fun reportsFailedFileWhenCopiedTargetFailsVerification() = runTest {
+        val importer = JvmMediaFileImporter(
+            importedFileVerifier = ImportedFileVerifier { _, _, _, _ -> false },
+        )
+        val tempFolder = Files.createTempDirectory("photo-import-verification-test")
+        val sourceFile = tempFolder.resolve("source.jpg")
+        val targetFile = tempFolder.resolve("library/source.jpg")
+        sourceFile.writeText("photo")
+
+        val result = importer.copyFiles(
+            listOf(
+                PlannedMediaFile(
+                    sourcePath = sourceFile.toString(),
+                    fileName = "source.jpg",
+                    targetRelativePath = targetFile.toString(),
+                    sizeBytes = 5,
+                ),
+            ),
+        )
+
+        val success = assertIs<AppResult.Success<ImportMediaFilesResult>>(result)
+        assertEquals(0, success.data.copiedFiles)
+        assertEquals(1, success.data.failedFiles)
+        assertTrue(sourceFile.exists())
+        assertFalse(targetFile.exists())
+    }
+
+    @Test
+    fun continuesImportAfterSingleFileFailure() = runTest {
+        val tempFolder = Files.createTempDirectory("photo-import-partial-failure-test")
+        val firstSourceFile = tempFolder.resolve("missing.jpg")
+        val secondSourceFile = tempFolder.resolve("second.jpg")
+        val firstTargetFile = tempFolder.resolve("library/missing.jpg")
+        val secondTargetFile = tempFolder.resolve("library/second.jpg")
+        secondSourceFile.writeText("second")
+
+        val result = importer.copyFiles(
+            listOf(
+                PlannedMediaFile(
+                    sourcePath = firstSourceFile.toString(),
+                    fileName = "missing.jpg",
+                    targetRelativePath = firstTargetFile.toString(),
+                    sizeBytes = 7,
+                ),
+                PlannedMediaFile(
+                    sourcePath = secondSourceFile.toString(),
+                    fileName = "second.jpg",
+                    targetRelativePath = secondTargetFile.toString(),
+                    sizeBytes = 6,
+                ),
+            ),
+        )
+
+        val success = assertIs<AppResult.Success<ImportMediaFilesResult>>(result)
+        assertEquals(1, success.data.copiedFiles)
+        assertEquals(1, success.data.failedFiles)
+        assertFalse(firstTargetFile.exists())
+        assertTrue(secondTargetFile.exists())
+        assertEquals("second", secondTargetFile.readText())
+    }
 }
