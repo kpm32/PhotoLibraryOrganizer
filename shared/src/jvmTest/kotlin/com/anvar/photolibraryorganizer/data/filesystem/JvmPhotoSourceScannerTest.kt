@@ -25,16 +25,26 @@ class JvmPhotoSourceScannerTest {
         sourceFolder.resolve("image.JPG").writeText("fake image")
         nestedFolder.resolve("video.MOV").writeText("fake video")
         nestedFolder.resolve("notes.txt").writeText("not media")
+        nestedFolder.resolve("sidecar.AAE").writeText("apple sidecar")
+        nestedFolder.resolve("README").writeText("no extension")
 
         val result = scanner.scanFolder(sourceFolder.toString())
 
         val success = assertIs<AppResult.Success<ScanSourceFolderResult>>(result)
         val summary = success.data.summary
-        assertEquals(3, summary.scannedFiles)
+        assertEquals(5, summary.scannedFiles)
         assertEquals(2, summary.mediaFiles)
         assertEquals(1, summary.imageFiles)
         assertEquals(1, summary.videoFiles)
-        assertEquals(1, summary.unsupportedFiles)
+        assertEquals(3, summary.unsupportedFiles)
+        assertEquals(
+            mapOf(
+                "aae" to 1,
+                "без расширения" to 1,
+                "txt" to 1,
+            ),
+            summary.unsupportedFileExtensions,
+        )
     }
 
     @Test

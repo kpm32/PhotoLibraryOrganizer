@@ -8,4 +8,5 @@ data class ScanSourceFolderSummary(
     val capturedDateFiles: Int,
     val unsupportedFiles: Int,
     val totalMediaBytes: Long,
+    val unsupportedFileExtensions: Map<String, Int> = emptyMap(),
 )

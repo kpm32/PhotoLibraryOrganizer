@@ -39,6 +39,7 @@ class JvmPhotoSourceScanner : PhotoSourceScanner {
     private fun scanExistingDirectory(sourcePath: Path): AppResult<ScanSourceFolderResult> {
         return try {
             val mediaFiles = mutableListOf<ScannedMediaFile>()
+            val unsupportedFileExtensions = mutableMapOf<String, Int>()
             var scannedFiles = 0
             var unsupportedFiles = 0
 
@@ -51,6 +52,8 @@ class JvmPhotoSourceScanner : PhotoSourceScanner {
                         val mediaType = detectMediaFileType(file.name)
                         if (mediaType == null) {
                             unsupportedFiles += 1
+                            val extension = file.name.unsupportedExtensionLabel()
+                            unsupportedFileExtensions[extension] = unsupportedFileExtensions.getOrDefault(extension, 0) + 1
                         } else {
                             mediaFiles += ScannedMediaFile(
                                 path = file.toAbsolutePath().toString(),
@@ -78,6 +81,10 @@ class JvmPhotoSourceScanner : PhotoSourceScanner {
                         capturedDateFiles = mediaFiles.count { it.capturedAtEpochMillis != null },
                         unsupportedFiles = unsupportedFiles,
                         totalMediaBytes = mediaFiles.sumOf { it.sizeBytes },
+                        unsupportedFileExtensions = unsupportedFileExtensions
+                            .toList()
+                            .sortedWith(compareByDescending<Pair<String, Int>> { it.second }.thenBy { it.first })
+                            .toMap(),
                     ),
                 ),
             )
@@ -88,6 +95,12 @@ class JvmPhotoSourceScanner : PhotoSourceScanner {
         } catch (exception: Throwable) {
             AppResult.Error(PhotoLibraryError.Unknown(exception.message))
         }
+    }
+
+    private fun String.unsupportedExtensionLabel(): String {
+        return substringAfterLast('.', missingDelimiterValue = "")
+            .lowercase()
+            .ifBlank { "без расширения" }
     }
 
     private fun Path.readCapturedAtEpochMillis(category: MediaFileCategory): Long? {

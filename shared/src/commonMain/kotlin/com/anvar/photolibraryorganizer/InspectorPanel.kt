@@ -255,7 +255,23 @@ private fun ScanSummaryRows(scanUiState: ScanUiState.Success) {
         SummaryRow("Видео", scanUiState.summary.videoFiles.toString())
         SummaryRow("С датой съемки", scanUiState.summary.capturedDateFiles.toString())
         SummaryRow("Неподдерживаемые", scanUiState.summary.unsupportedFiles.toString())
+        UnsupportedExtensionsRows(scanUiState.summary.unsupportedFileExtensions)
         SummaryRow("Размер медиа", scanUiState.summary.totalMediaBytes.toReadableSize())
+    }
+}
+
+@Composable
+private fun UnsupportedExtensionsRows(unsupportedFileExtensions: Map<String, Int>) {
+    if (unsupportedFileExtensions.isEmpty()) return
+
+    val visibleExtensions = unsupportedFileExtensions.entries.take(8)
+    SummaryRow(
+        label = "Типы пропущенных",
+        value = visibleExtensions.joinToString { (extension, count) -> "$extension: $count" },
+    )
+    val hiddenCount = unsupportedFileExtensions.size - visibleExtensions.size
+    if (hiddenCount > 0) {
+        SummaryRow("Еще типов", hiddenCount.toString())
     }
 }
 

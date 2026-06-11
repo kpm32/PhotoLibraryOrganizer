@@ -46,6 +46,7 @@ object PreviewPhotoSourceScanner : PhotoSourceScanner {
                     capturedDateFiles = 0,
                     unsupportedFiles = 1,
                     totalMediaBytes = files.sumOf { it.sizeBytes },
+                    unsupportedFileExtensions = mapOf("txt" to 1),
                 ),
             ),
         )
