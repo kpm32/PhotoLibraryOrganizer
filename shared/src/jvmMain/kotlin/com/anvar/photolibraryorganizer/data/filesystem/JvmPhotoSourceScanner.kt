@@ -146,6 +146,8 @@ class JvmPhotoSourceScanner(
     }
 
     private fun String.unsupportedExtensionLabel(): String {
+        if (startsWith("._")) return "appledouble"
+
         return substringAfterLast('.', missingDelimiterValue = "")
             .lowercase()
             .ifBlank { "без расширения" }

@@ -97,6 +97,12 @@ class SharedCommonTest {
     }
 
     @Test
+    fun ignoresAppleDoubleSidecarEvenWhenExtensionLooksLikeMedia() {
+        assertEquals(null, detectMediaFileType("._IMG_0001.JPG"))
+        assertEquals(null, detectMediaFileType("._video.mov"))
+    }
+
+    @Test
     fun scanUseCaseRejectsBlankSourceFolder() = runTest {
         val useCase = ScanSourceFolderUseCase(FakePhotoSourceScanner())
 

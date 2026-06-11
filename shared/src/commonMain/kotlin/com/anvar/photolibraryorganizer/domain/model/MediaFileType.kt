@@ -6,6 +6,8 @@ data class MediaFileType(
 )
 
 fun detectMediaFileType(fileName: String): MediaFileType? {
+    if (fileName.startsWith("._")) return null
+
     val extension = fileName.substringAfterLast('.', missingDelimiterValue = "")
         .lowercase()
         .takeIf { it.isNotBlank() }

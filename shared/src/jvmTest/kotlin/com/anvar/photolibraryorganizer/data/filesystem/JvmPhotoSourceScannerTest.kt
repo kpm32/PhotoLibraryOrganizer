@@ -28,6 +28,7 @@ class JvmPhotoSourceScannerTest {
         nestedFolder.resolve("video.MOV").writeText("fake video")
         nestedFolder.resolve("notes.txt").writeText("not media")
         nestedFolder.resolve("sidecar.AAE").writeText("apple sidecar")
+        nestedFolder.resolve("._image.JPG").writeText("appledouble sidecar")
         nestedFolder.resolve("README").writeText("no extension")
 
         val progressEvents = mutableListOf<Int>()
@@ -37,24 +38,25 @@ class JvmPhotoSourceScannerTest {
 
         val success = assertIs<AppResult.Success<ScanSourceFolderResult>>(result)
         val summary = success.data.summary
-        assertEquals(5, summary.scannedFiles)
+        assertEquals(6, summary.scannedFiles)
         assertEquals(2, summary.mediaFiles)
         assertEquals(1, summary.imageFiles)
         assertEquals(1, summary.videoFiles)
-        assertEquals(3, summary.unsupportedFiles)
+        assertEquals(4, summary.unsupportedFiles)
         assertEquals(
             mapOf(
                 "aae" to 1,
+                "appledouble" to 1,
                 "без расширения" to 1,
                 "txt" to 1,
             ),
             summary.unsupportedFileExtensions,
         )
         assertEquals(
-            listOf("sidecar.AAE", "README", "notes.txt").sorted(),
+            listOf("sidecar.AAE", "README", "notes.txt", "._image.JPG").sorted(),
             success.data.unsupportedFiles.map { it.fileName }.sorted(),
         )
-        assertEquals(listOf(5), progressEvents)
+        assertEquals(listOf(6), progressEvents)
     }
 
     @Test
