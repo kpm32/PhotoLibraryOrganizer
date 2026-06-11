@@ -2,6 +2,7 @@ package com.anvar.photolibraryorganizer.presentation
 
 enum class AppSection(
     val title: String,
+    val navigationTitle: String = title,
 ) {
     AllPhotos("Все фото"),
     Years("Годы"),
@@ -9,6 +10,6 @@ enum class AppSection(
     WithoutDate("Без даты"),
     Import("Импорт"),
     Duplicates("Дубликаты"),
-    Unsupported("Неподдерживаемые"),
+    Unsupported("Неподдерживаемые", navigationTitle = "Пропущенные"),
     Errors("Ошибки"),
 }

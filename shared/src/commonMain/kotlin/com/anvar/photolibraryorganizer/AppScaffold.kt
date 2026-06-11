@@ -321,7 +321,7 @@ private fun SidebarSection(
                 shape = MaterialTheme.shapes.small,
             ) {
                 Text(
-                    text = item.title,
+                    text = item.navigationTitle,
                     modifier = Modifier.padding(vertical = 6.dp, horizontal = 8.dp),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = if (item == selectedSection) FontWeight.SemiBold else FontWeight.Normal,
