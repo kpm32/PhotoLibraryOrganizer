@@ -1,5 +1,8 @@
 package com.anvar.photolibraryorganizer.domain.model
 
+/**
+ * Final import summary shown to the user and stored in import history.
+ */
 data class ImportMediaFilesResult(
     val copiedFiles: Int,
     val movedFiles: Int = 0,
@@ -10,6 +13,9 @@ data class ImportMediaFilesResult(
     val failureDetails: List<ImportFailureDetail> = emptyList(),
 )
 
+/**
+ * Compact per-file error detail for the first failures in an import batch.
+ */
 data class ImportFailureDetail(
     val sourcePath: String,
     val targetPath: String,

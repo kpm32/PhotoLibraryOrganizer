@@ -30,6 +30,9 @@ import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
 import com.anvar.photolibraryorganizer.presentation.ImagePreviewLoader
 import com.anvar.photolibraryorganizer.presentation.ScanUiState
 
+/**
+ * Simple media list used by sections that do not need grouping controls.
+ */
 @Composable
 internal fun MediaList(
     title: String,
@@ -86,6 +89,10 @@ internal fun MediaList(
     }
 }
 
+/**
+ * Grouped media browser for years, months, unsupported types, and similar
+ * section-specific groupings.
+ */
 @Composable
 internal fun GroupedMediaList(
     title: String,

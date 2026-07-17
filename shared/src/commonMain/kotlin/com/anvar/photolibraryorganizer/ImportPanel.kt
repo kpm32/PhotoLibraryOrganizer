@@ -33,6 +33,10 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Instant
 
+/**
+ * Import workflow panel: source scan, plan review, copy/move execution, and
+ * last-import diagnostics.
+ */
 @Composable
 internal fun ImportPanel(
     plan: PhotoLibraryPlan,

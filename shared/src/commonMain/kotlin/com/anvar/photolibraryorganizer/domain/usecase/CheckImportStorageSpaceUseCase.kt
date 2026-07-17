@@ -5,6 +5,12 @@ import com.anvar.photolibraryorganizer.domain.model.ImportTargetStatus
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
 import com.anvar.photolibraryorganizer.domain.repository.StorageSpaceProvider
 
+/**
+ * Estimates whether the destination has enough free space for a copy import.
+ *
+ * Files that already exist at the target are excluded because the importer will
+ * skip them instead of writing another copy.
+ */
 class CheckImportStorageSpaceUseCase(
     private val storageSpaceProvider: StorageSpaceProvider,
 ) {

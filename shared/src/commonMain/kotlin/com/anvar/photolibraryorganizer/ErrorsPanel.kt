@@ -22,6 +22,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.anvar.photolibraryorganizer.presentation.AppIssue
 
+/**
+ * User-visible list of recoverable application issues collected during scans,
+ * imports, refreshes, and file actions.
+ */
 @Composable
 internal fun ErrorsPanel(
     issues: List<AppIssue>,

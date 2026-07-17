@@ -13,6 +13,7 @@
 - Replaced the app icon with a more polished macOS-style photo archive icon and rebuilt the `.icns` asset.
 - Library index saves now use unique temporary files, avoiding `library-index.tsv.tmp` collisions during concurrent refreshes.
 - Selected-file Trash no longer waits for a full library index refresh before showing success and re-enabling the inspector action.
+- Added KDoc to key domain contracts, use cases, JVM filesystem adapters, and large UI entry points; removed obsolete Trash mover implementations.
 
 ## 1.0.0-preview.8 - 2026-07-17
 

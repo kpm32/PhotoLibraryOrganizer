@@ -19,6 +19,12 @@ import kotlin.io.path.exists
 
 private const val MaxFailureDetails = 20
 
+/**
+ * Filesystem importer for copy and move modes.
+ *
+ * Each file is handled independently so one failed copy/move is reported in the
+ * final result without stopping the whole import batch.
+ */
 class JvmMediaFileImporter(
     private val importedFileVerifier: ImportedFileVerifier = ImportedFileVerifier.Default,
 ) : MediaFileImporter {
@@ -36,6 +42,12 @@ class JvmMediaFileImporter(
         return importFiles(plannedFiles, moveSource = true, onProgress = onProgress)
     }
 
+    /**
+     * Executes the common import loop for copy and move.
+     *
+     * The target file is verified after writing because external drives can
+     * report success before data is actually usable.
+     */
     private suspend fun importFiles(
         plannedFiles: List<PlannedMediaFile>,
         moveSource: Boolean,

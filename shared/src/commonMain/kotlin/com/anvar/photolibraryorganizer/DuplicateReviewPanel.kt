@@ -29,6 +29,9 @@ import androidx.compose.ui.unit.dp
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
 import com.anvar.photolibraryorganizer.presentation.ImagePreviewLoader
 
+/**
+ * Shows duplicate groups and quarantine groups with shared review actions.
+ */
 @Composable
 internal fun DuplicateReviewPanel(
     title: String,

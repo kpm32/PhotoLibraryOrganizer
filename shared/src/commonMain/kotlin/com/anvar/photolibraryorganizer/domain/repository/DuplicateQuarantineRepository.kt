@@ -5,6 +5,12 @@ import com.anvar.photolibraryorganizer.domain.model.DuplicateQuarantineDeleteRes
 import com.anvar.photolibraryorganizer.domain.model.DuplicateQuarantineResult
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
 
+/**
+ * Manages exact duplicate files after they have been identified by content hash.
+ *
+ * The repository separates two operations on purpose: moving duplicate candidates
+ * into `Duplicates`, then later moving the reviewed quarantine files to Trash.
+ */
 interface DuplicateQuarantineRepository {
     suspend fun moveToQuarantine(
         destinationFolder: String?,

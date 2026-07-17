@@ -25,6 +25,9 @@ import androidx.compose.ui.unit.dp
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
 import com.anvar.photolibraryorganizer.presentation.ImagePreviewUiState
 
+/**
+ * Lightweight modal viewer for the currently selected media item.
+ */
 @Composable
 internal fun MediaViewerOverlay(
     selectedFile: PlannedMediaFile,

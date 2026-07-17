@@ -7,6 +7,13 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Instant
 
+/**
+ * Converts scanned media metadata into a deterministic import plan.
+ *
+ * The use case applies folder/name templates, prefers captured dates when they
+ * are available, and resolves name collisions within the same plan before any
+ * filesystem writes are attempted.
+ */
 class BuildMediaFilePlanUseCase {
     operator fun invoke(
         destinationFolder: String?,

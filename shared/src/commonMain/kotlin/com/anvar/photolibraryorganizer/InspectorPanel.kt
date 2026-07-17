@@ -42,6 +42,13 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Instant
 
+/**
+ * Right-side inspector for the selected file and the active source/library
+ * folders.
+ *
+ * Dangerous actions here are intentionally single-file actions and require
+ * confirmation before moving anything to Trash.
+ */
 @Composable
 internal fun InspectorPanel(
     plan: PhotoLibraryPlan,

@@ -7,6 +7,10 @@ import java.nio.file.Path
 import java.time.LocalDateTime
 import java.time.ZoneId
 
+/**
+ * Minimal JPEG EXIF date reader used to avoid pulling a heavy metadata library
+ * into the first desktop preview.
+ */
 internal class JpegExifDateReader {
     fun readCapturedAtEpochMillis(path: Path): Long? {
         return runCatching {

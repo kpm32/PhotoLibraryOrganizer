@@ -15,6 +15,12 @@ import java.nio.file.Path
 import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
 
+/**
+ * JVM implementation of the unsupported-file quarantine.
+ *
+ * It only deletes files that are already inside the library's `Unsupported`
+ * folder, which keeps source folders and organized media out of bulk cleanup.
+ */
 class JvmUnsupportedFileQuarantineRepository(
     private val trashFileMover: TrashFileMover = SystemTrashFileMover,
 ) : UnsupportedFileQuarantineRepository {

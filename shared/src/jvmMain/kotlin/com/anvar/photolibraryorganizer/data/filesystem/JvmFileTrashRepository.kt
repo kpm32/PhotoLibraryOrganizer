@@ -6,6 +6,12 @@ import kotlinx.coroutines.withContext
 import java.nio.file.Files
 import java.nio.file.Path
 
+/**
+ * JVM adapter for moving one selected library file to the OS Trash.
+ *
+ * The repository only accepts an existing regular file and delegates the
+ * platform-specific operation to [TrashFileMover].
+ */
 class JvmFileTrashRepository(
     private val trashFileMover: TrashFileMover = SystemTrashFileMover,
 ) : FileTrashRepository {

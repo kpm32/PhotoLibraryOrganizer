@@ -11,6 +11,12 @@ import java.nio.file.Path
 import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
 
+/**
+ * JVM implementation of duplicate quarantine management.
+ *
+ * Exact duplicate candidates are grouped by hash prefix under `Duplicates`;
+ * later cleanup only moves files from that quarantine area to Trash.
+ */
 class JvmDuplicateQuarantineRepository(
     private val trashFileMover: TrashFileMover = SystemTrashFileMover,
 ) : DuplicateQuarantineRepository {

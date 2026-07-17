@@ -45,6 +45,9 @@ import com.anvar.photolibraryorganizer.presentation.ImagePreviewLoader
 import com.anvar.photolibraryorganizer.presentation.LibraryRefreshProgress
 import com.anvar.photolibraryorganizer.presentation.ScanUiState
 
+/**
+ * Top-level desktop layout: sidebar, workspace, inspector, and optional viewer.
+ */
 @Composable
 internal fun PhotoLibraryOrganizerApp(
     plan: PhotoLibraryPlan,

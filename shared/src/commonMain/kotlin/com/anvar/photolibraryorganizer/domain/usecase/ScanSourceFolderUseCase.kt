@@ -6,6 +6,12 @@ import com.anvar.photolibraryorganizer.domain.model.ScanSourceFolderProgress
 import com.anvar.photolibraryorganizer.domain.model.ScanSourceFolderResult
 import com.anvar.photolibraryorganizer.domain.repository.PhotoSourceScanner
 
+/**
+ * Validates the selected source folder and delegates recursive scanning.
+ *
+ * Keeping the null/blank source check here lets the UI stay thin and keeps
+ * scanner implementations focused on filesystem traversal.
+ */
 class ScanSourceFolderUseCase(
     private val photoSourceScanner: PhotoSourceScanner,
 ) {

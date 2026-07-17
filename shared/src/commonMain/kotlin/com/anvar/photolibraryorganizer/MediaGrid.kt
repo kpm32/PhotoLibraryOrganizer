@@ -33,6 +33,9 @@ import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
 import com.anvar.photolibraryorganizer.domain.model.detectMediaFileType
 import com.anvar.photolibraryorganizer.presentation.ImagePreviewLoader
 
+/**
+ * Reusable thumbnail grid for import previews and organized library sections.
+ */
 @Composable
 internal fun MediaGrid(
     files: List<PlannedMediaFile>,

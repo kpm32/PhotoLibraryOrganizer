@@ -4,6 +4,9 @@ import com.anvar.photolibraryorganizer.domain.ImportMode
 import com.anvar.photolibraryorganizer.domain.model.ImportAvailability
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
 
+/**
+ * Centralizes the UI-facing rules for enabling the import button.
+ */
 class ResolveImportAvailabilityUseCase {
     operator fun invoke(
         importMode: ImportMode,

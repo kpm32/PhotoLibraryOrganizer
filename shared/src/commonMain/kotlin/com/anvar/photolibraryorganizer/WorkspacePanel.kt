@@ -36,6 +36,10 @@ import com.anvar.photolibraryorganizer.presentation.ImportReport
 import com.anvar.photolibraryorganizer.presentation.ImportUiState
 import com.anvar.photolibraryorganizer.presentation.ScanUiState
 
+/**
+ * Central work area that switches between import, browsing, duplicates,
+ * unsupported files, errors, and about sections.
+ */
 @Composable
 internal fun MainWorkspace(
     plan: PhotoLibraryPlan,

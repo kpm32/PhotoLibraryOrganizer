@@ -15,6 +15,12 @@ import kotlin.io.path.exists
 import kotlin.io.path.readLines
 import kotlin.io.path.writeLines
 
+/**
+ * TSV-backed local library index for the desktop app.
+ *
+ * The index is intentionally simple and rebuildable. Saves use unique temporary
+ * files so overlapping refreshes cannot fight over a shared `.tmp` path.
+ */
 class JvmLibraryIndexStorage(
     private val indexPath: Path = defaultIndexPath(),
 ) : LibraryIndexStorage {

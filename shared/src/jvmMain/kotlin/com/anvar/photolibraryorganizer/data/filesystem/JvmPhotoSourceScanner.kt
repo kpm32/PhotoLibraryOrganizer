@@ -26,6 +26,12 @@ import kotlin.io.path.isDirectory
 import kotlin.io.path.getLastModifiedTime
 import kotlin.io.path.name
 
+/**
+ * JVM filesystem scanner used by the desktop app.
+ *
+ * It classifies files by extension, reads capture dates where possible, and can
+ * optionally calculate SHA-256 hashes for duplicate detection.
+ */
 class JvmPhotoSourceScanner(
     private val metadataDateReader: CapturedDateReader = MacMetadataDateReader(),
 ) : PhotoSourceScanner {
@@ -51,6 +57,12 @@ class JvmPhotoSourceScanner(
         }
     }
 
+    /**
+     * Walks the folder tree without allowing one unreadable file to abort the scan.
+     *
+     * External drives and cloud folders can change while the scan is running, so
+     * per-file failures are counted as skipped work rather than global failure.
+     */
     private suspend fun scanExistingDirectory(
         sourcePath: Path,
         onProgress: (ScanSourceFolderProgress) -> Unit,

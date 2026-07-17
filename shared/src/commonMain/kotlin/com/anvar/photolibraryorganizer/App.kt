@@ -75,6 +75,13 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.time.Clock
 
+/**
+ * Root Compose entry point that wires domain use cases, repositories, persisted
+ * settings, and UI state together.
+ *
+ * The app currently keeps orchestration state here while domain rules live in
+ * use cases and filesystem details live behind repository interfaces.
+ */
 @Composable
 @Preview
 fun App(
@@ -1063,6 +1070,10 @@ private suspend fun refreshLibraryFiles(
     return refreshPlannedFiles(libraryFolder, photoSourceScanner, LibraryRefreshSection.Library, onProgress)
 }
 
+/**
+ * Rebuilds the lightweight library index by scanning the organized library,
+ * duplicate quarantine, and unsupported quarantine folders.
+ */
 private suspend fun refreshLibraryIndexSnapshot(
     destinationFolder: String?,
     photoSourceScanner: PhotoSourceScanner,
@@ -1104,6 +1115,9 @@ private suspend fun refreshUnsupportedFiles(
     return refreshAllFiles(unsupportedFolder, photoSourceScanner, LibraryRefreshSection.Unsupported, onProgress)
 }
 
+/**
+ * Scans a folder as supported media and maps the result into UI/library items.
+ */
 private suspend fun refreshPlannedFiles(
     folder: String,
     photoSourceScanner: PhotoSourceScanner,
@@ -1202,6 +1216,10 @@ private fun List<PlannedMediaFile>.duplicateQuarantineCandidates(): List<Planned
         .flatMap { files -> files.sortedBy { it.targetRelativePath }.drop(1) }
 }
 
+/**
+ * Returns the active ordered file list used by inspector navigation and the
+ * large preview overlay.
+ */
 private fun navigationFilesForSection(
     selectedSection: AppSection,
     scanUiState: ScanUiState,

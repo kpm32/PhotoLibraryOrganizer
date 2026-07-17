@@ -5,6 +5,10 @@ import java.nio.file.Path
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 
+/**
+ * Reads capture dates from macOS Spotlight metadata for formats where EXIF
+ * parsing is not implemented locally, especially HEIC and video files.
+ */
 internal class MacMetadataDateReader(
     private val metadataOutputProvider: (Path) -> String? = ::readMdlsOutput,
 ) : CapturedDateReader {

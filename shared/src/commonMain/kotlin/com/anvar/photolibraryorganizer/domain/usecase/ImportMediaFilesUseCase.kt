@@ -9,6 +9,12 @@ import com.anvar.photolibraryorganizer.domain.model.ImportTargetStatus
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
 import com.anvar.photolibraryorganizer.domain.repository.MediaFileImporter
 
+/**
+ * Runs a copy or move import after the user has reviewed the plan.
+ *
+ * Existing target files are skipped here rather than delegated to the low-level
+ * importer, keeping overwrite protection in the domain flow.
+ */
 class ImportMediaFilesUseCase(
     private val mediaFileImporter: MediaFileImporter,
 ) {

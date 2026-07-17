@@ -12,6 +12,12 @@ import kotlin.io.path.exists
 import kotlin.io.path.isRegularFile
 import kotlin.io.path.name
 
+/**
+ * Loads previews for the inspector and grid.
+ *
+ * Images are decoded directly through Skia. Video thumbnails fall back to macOS
+ * QuickLook because Compose Desktop does not provide native video frame decoding.
+ */
 class JvmImagePreviewLoader : ImagePreviewLoader {
     override suspend fun loadImage(path: String): ImageBitmap? {
         return withContext(Dispatchers.IO) {
