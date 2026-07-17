@@ -12,7 +12,7 @@ import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
 
 class JvmDuplicateQuarantineRepository(
-    private val trashFileMover: TrashFileMover = DesktopTrashFileMover,
+    private val trashFileMover: TrashFileMover = SystemTrashFileMover,
 ) : DuplicateQuarantineRepository {
     override suspend fun moveToQuarantine(
         destinationFolder: String?,

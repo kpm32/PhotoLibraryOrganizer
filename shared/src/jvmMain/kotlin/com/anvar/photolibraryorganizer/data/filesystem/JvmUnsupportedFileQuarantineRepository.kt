@@ -16,7 +16,7 @@ import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
 
 class JvmUnsupportedFileQuarantineRepository(
-    private val trashFileMover: TrashFileMover = DesktopTrashFileMover,
+    private val trashFileMover: TrashFileMover = SystemTrashFileMover,
 ) : UnsupportedFileQuarantineRepository {
     override suspend fun moveToQuarantine(
         destinationFolder: String?,

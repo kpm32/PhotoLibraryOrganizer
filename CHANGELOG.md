@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.0-preview.7 - 2026-07-17
+
+Hotfix preview build for macOS Trash reliability.
+
+### Fixed
+
+- Selected-file, duplicate, and unsupported cleanup now fall back to macOS Finder Trash when Java `Desktop.moveToTrash` is unavailable or returns failure.
+
 ## 1.0.0-preview.6 - 2026-07-17
 
 Preview build focused on safer real-archive cleanup and faster startup for large libraries.

@@ -7,7 +7,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 class JvmFileTrashRepository(
-    private val trashFileMover: TrashFileMover = DesktopTrashFileMover,
+    private val trashFileMover: TrashFileMover = SystemTrashFileMover,
 ) : FileTrashRepository {
     override suspend fun moveToTrash(path: String): Boolean = withContext(Dispatchers.IO) {
         val sourcePath = Path.of(path).toAbsolutePath().normalize()
