@@ -20,6 +20,7 @@ import com.anvar.photolibraryorganizer.domain.model.ImportTargetStatus
 import com.anvar.photolibraryorganizer.domain.model.ImportOrganizationRules
 import com.anvar.photolibraryorganizer.domain.model.ImportMediaFilesProgress
 import com.anvar.photolibraryorganizer.domain.model.ImportMediaFilesResult
+import com.anvar.photolibraryorganizer.domain.model.ImportStorageSpace
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
 import com.anvar.photolibraryorganizer.domain.model.UnsupportedFileQuarantineResult
 import com.anvar.photolibraryorganizer.domain.repository.DuplicateQuarantineRepository
@@ -28,7 +29,9 @@ import com.anvar.photolibraryorganizer.domain.repository.MediaFileImporter
 import com.anvar.photolibraryorganizer.domain.repository.ImportPlanTargetResolver
 import com.anvar.photolibraryorganizer.domain.repository.PhotoSourceScanner
 import com.anvar.photolibraryorganizer.domain.repository.UnsupportedFileQuarantineRepository
+import com.anvar.photolibraryorganizer.domain.repository.StorageSpaceProvider
 import com.anvar.photolibraryorganizer.domain.usecase.BuildMediaFilePlanUseCase
+import com.anvar.photolibraryorganizer.domain.usecase.CheckImportStorageSpaceUseCase
 import com.anvar.photolibraryorganizer.domain.usecase.ImportMediaFilesUseCase
 import com.anvar.photolibraryorganizer.domain.usecase.ResolveImportAvailabilityUseCase
 import com.anvar.photolibraryorganizer.domain.usecase.ScanSourceFolderUseCase
@@ -55,6 +58,7 @@ import com.anvar.photolibraryorganizer.presentation.PreviewImagePreviewLoader
 import com.anvar.photolibraryorganizer.presentation.PreviewMediaFileImporter
 import com.anvar.photolibraryorganizer.presentation.PreviewPhotoSourceScanner
 import com.anvar.photolibraryorganizer.presentation.PreviewUnsupportedFileQuarantineRepository
+import com.anvar.photolibraryorganizer.presentation.PreviewStorageSpaceProvider
 import com.anvar.photolibraryorganizer.presentation.ScanUiState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -69,6 +73,7 @@ fun App(
     photoSourceScanner: PhotoSourceScanner = PreviewPhotoSourceScanner,
     mediaFileImporter: MediaFileImporter = PreviewMediaFileImporter,
     importPlanTargetResolver: ImportPlanTargetResolver = PreviewImportPlanTargetResolver,
+    storageSpaceProvider: StorageSpaceProvider = PreviewStorageSpaceProvider,
     duplicateQuarantineRepository: DuplicateQuarantineRepository = PreviewDuplicateQuarantineRepository,
     unsupportedFileQuarantineRepository: UnsupportedFileQuarantineRepository = PreviewUnsupportedFileQuarantineRepository,
     emptyFolderCleanupRepository: EmptyFolderCleanupRepository = PreviewEmptyFolderCleanupRepository,
@@ -121,6 +126,9 @@ fun App(
         val importMediaFilesUseCase = remember(mediaFileImporter) {
             ImportMediaFilesUseCase(mediaFileImporter)
         }
+        val checkImportStorageSpaceUseCase = remember(storageSpaceProvider) {
+            CheckImportStorageSpaceUseCase(storageSpaceProvider)
+        }
         val buildMediaFilePlanUseCase = remember { BuildMediaFilePlanUseCase() }
         val resolveImportAvailabilityUseCase = remember { ResolveImportAvailabilityUseCase() }
         val cachedImagePreviewLoader = remember(imagePreviewLoader) {
@@ -133,26 +141,6 @@ fun App(
             sourceFolder = settings.sourceFolder
             destinationFolder = settings.destinationFolder
             importRules = settings.importRules
-            if (!settings.destinationFolder.isNullOrBlank()) {
-                isLibraryRefreshing = true
-                try {
-                    libraryFiles = refreshLibraryFiles(
-                        destinationFolder = settings.destinationFolder,
-                        photoSourceScanner = photoSourceScanner,
-                    )
-                    duplicateFiles = refreshDuplicateFiles(
-                        destinationFolder = settings.destinationFolder,
-                        photoSourceScanner = photoSourceScanner,
-                    )
-                    unsupportedFiles = refreshUnsupportedFiles(
-                        destinationFolder = settings.destinationFolder,
-                        photoSourceScanner = photoSourceScanner,
-                    )
-                    selectedFile = libraryFiles.firstOrNull()
-                } finally {
-                    isLibraryRefreshing = false
-                }
-            }
         }
 
         LaunchedEffect(selectedFile) {
@@ -379,12 +367,65 @@ fun App(
                 }
             },
             onImportClick = {
-                val plannedFiles = (scanUiState as? ScanUiState.Success)?.plannedFiles.orEmpty()
-                importUiState = ImportUiState.AwaitingConfirmation(
-                    readyFileCount = plannedFiles.count { it.targetStatus != ImportTargetStatus.AlreadyExists },
-                    existingFileCount = plannedFiles.count { it.targetStatus == ImportTargetStatus.AlreadyExists },
-                    unsupportedFileCount = (scanUiState as? ScanUiState.Success)?.unsupportedFiles.orEmpty().size,
-                )
+                val targetFolder = destinationFolder
+                if (targetFolder.isNullOrBlank()) {
+                    importUiState = ImportUiState.Error("Не выбрана папка библиотеки.")
+                } else {
+                    importUiState = ImportUiState.CheckingStorageSpace
+                    coroutineScope.launch {
+                        try {
+                            val currentScanSuccess = scanUiState as? ScanUiState.Success
+                            val plannedFiles = withContext(Dispatchers.Default) {
+                                importPlanTargetResolver.resolve(currentScanSuccess?.plannedFiles.orEmpty())
+                            }
+                            if (currentScanSuccess != null) {
+                                scanUiState = currentScanSuccess.copy(plannedFiles = plannedFiles)
+                            }
+                            val space = if (importMode == ImportMode.Copy) {
+                                withContext(Dispatchers.IO) {
+                                    checkImportStorageSpaceUseCase(targetFolder, plannedFiles)
+                                }
+                            } else {
+                                null
+                            }
+                            when (space) {
+                                is ImportStorageSpace.Insufficient -> {
+                                    importUiState = ImportUiState.Error(
+                                        "Недостаточно места в папке библиотеки: нужно ${space.requiredBytes.toReadableSize()}, свободно ${space.availableBytes.toReadableSize()}.",
+                                    )
+                                }
+
+                                ImportStorageSpace.Unavailable -> {
+                                    importUiState = ImportUiState.Error(
+                                        "Не удалось определить свободное место в папке библиотеки. Проверь доступ к диску.",
+                                    )
+                                }
+
+                                is ImportStorageSpace.Available -> {
+                                    importUiState = ImportUiState.AwaitingConfirmation(
+                                        readyFileCount = plannedFiles.count { it.targetStatus != ImportTargetStatus.AlreadyExists },
+                                        existingFileCount = plannedFiles.count { it.targetStatus == ImportTargetStatus.AlreadyExists },
+                                        unsupportedFileCount = currentScanSuccess?.unsupportedFiles.orEmpty().size,
+                                        requiredBytes = space.requiredBytes,
+                                        availableBytes = space.availableBytes,
+                                    )
+                                }
+
+                                null -> {
+                                    importUiState = ImportUiState.AwaitingConfirmation(
+                                        readyFileCount = plannedFiles.count { it.targetStatus != ImportTargetStatus.AlreadyExists },
+                                        existingFileCount = plannedFiles.count { it.targetStatus == ImportTargetStatus.AlreadyExists },
+                                        unsupportedFileCount = currentScanSuccess?.unsupportedFiles.orEmpty().size,
+                                    )
+                                }
+                            }
+                        } catch (exception: Throwable) {
+                            val message = "Не удалось подготовить импорт: ${exception.message ?: "без деталей"}"
+                            addIssue("Импорт", message)
+                            importUiState = ImportUiState.Error(message)
+                        }
+                    }
+                }
             },
             onCancelImportClick = {
                 importUiState = ImportUiState.Idle
@@ -399,6 +440,27 @@ fun App(
                     }
                     if (currentScanSuccess != null) {
                         scanUiState = currentScanSuccess.copy(plannedFiles = plannedFiles)
+                    }
+                    if (importMode == ImportMode.Copy) {
+                        when (val space = withContext(Dispatchers.IO) {
+                            checkImportStorageSpaceUseCase(destinationFolder.orEmpty(), plannedFiles)
+                        }) {
+                            is ImportStorageSpace.Insufficient -> {
+                                importUiState = ImportUiState.Error(
+                                    "Недостаточно места в папке библиотеки: нужно ${space.requiredBytes.toReadableSize()}, свободно ${space.availableBytes.toReadableSize()}.",
+                                )
+                                return@launch
+                            }
+
+                            ImportStorageSpace.Unavailable -> {
+                                importUiState = ImportUiState.Error(
+                                    "Не удалось определить свободное место в папке библиотеки. Проверь доступ к диску.",
+                                )
+                                return@launch
+                            }
+
+                            is ImportStorageSpace.Available -> Unit
+                        }
                     }
                     val unsupportedSourceFiles = (scanUiState as? ScanUiState.Success)?.unsupportedFiles.orEmpty()
                     val readyFileCount = plannedFiles.count { it.targetStatus != ImportTargetStatus.AlreadyExists }
@@ -441,7 +503,8 @@ fun App(
                                     copiedFiles = finalImportResult.copiedFiles,
                                     movedFiles = finalImportResult.movedFiles,
                                     skippedFiles = finalImportResult.skippedFiles,
-                                    failedFiles = finalImportResult.failedFiles + finalImportResult.failedUnsupportedFiles,
+                                    failedFiles = finalImportResult.failedFiles,
+                                    failedUnsupportedFiles = finalImportResult.failedUnsupportedFiles,
                                     createdAtEpochMillis = Clock.System.now().toEpochMilliseconds(),
                                 )
                                 lastImportReport = report
@@ -465,7 +528,7 @@ fun App(
                                 if (finalImportResult.failedFiles > 0 || finalImportResult.failedUnsupportedFiles > 0) {
                                     addIssue(
                                         title = "Импорт",
-                                        detail = "Импорт завершился с ошибками: ${finalImportResult.failedFiles + finalImportResult.failedUnsupportedFiles}.",
+                                        detail = "Ошибки медиа: ${finalImportResult.failedFiles}. Ошибки неподдерживаемых: ${finalImportResult.failedUnsupportedFiles}.",
                                     )
                                 }
                                 importUiState = ImportUiState.Success(finalImportResult)
@@ -599,26 +662,26 @@ fun App(
             },
             onRequestDeleteQuarantineClick = {
                 if (duplicateFiles.isEmpty()) {
-                    duplicateActionMessage = "В папке дублей пока нет файлов для удаления."
+                    duplicateActionMessage = "В папке дублей пока нет файлов для переноса в Корзину."
                     duplicateDeleteAwaitingConfirmation = false
                 } else {
                     duplicateDeleteAwaitingConfirmation = true
-                    duplicateActionMessage = "Будет удалено из папки дублей: ${duplicateFiles.size}. Библиотеку не трогаем."
+                    duplicateActionMessage = "Будет перемещено в Корзину из папки дублей: ${duplicateFiles.size}. Библиотеку не трогаем."
                 }
             },
             onCancelDeleteQuarantineClick = {
                 duplicateDeleteAwaitingConfirmation = false
-                duplicateActionMessage = "Удаление отменено."
+                duplicateActionMessage = "Перенос в Корзину отменен."
             },
             onConfirmDeleteQuarantineClick = {
                 coroutineScope.launch {
                     if (duplicateFiles.isEmpty()) {
                         duplicateDeleteAwaitingConfirmation = false
-                        duplicateActionMessage = "В папке дублей пока нет файлов для удаления."
+                        duplicateActionMessage = "В папке дублей пока нет файлов для переноса в Корзину."
                         return@launch
                     }
 
-                    duplicateActionMessage = "Удаляю файлы из папки дублей..."
+                    duplicateActionMessage = "Перемещаю файлы из папки дублей в Корзину..."
                     duplicateActionMessage = try {
                         when (
                             val result = withContext(Dispatchers.Default) {
@@ -646,10 +709,10 @@ fun App(
                                 if (result.data.failedFiles > 0) {
                                     addIssue(
                                         title = "Дубликаты",
-                                        detail = "Часть файлов из папки дублей не удалось удалить: ${result.data.failedFiles}.",
+                                        detail = "Часть файлов из папки дублей не удалось переместить в Корзину: ${result.data.failedFiles}.",
                                     )
                                 }
-                                "Удалено из папки дублей: ${result.data.deletedFiles}, ошибок: ${result.data.failedFiles}."
+                                "Перемещено в Корзину из папки дублей: ${result.data.deletedFiles}, ошибок: ${result.data.failedFiles}."
                             }
 
                             is AppResult.Error -> {
@@ -661,7 +724,7 @@ fun App(
                         }
                     } catch (exception: Throwable) {
                         duplicateDeleteAwaitingConfirmation = false
-                        val message = "Не удалось удалить файлы из папки дублей: ${exception.message ?: "без деталей"}"
+                        val message = "Не удалось переместить файлы из папки дублей в Корзину: ${exception.message ?: "без деталей"}"
                         addIssue("Дубликаты", message)
                         message
                     }
@@ -669,26 +732,26 @@ fun App(
             },
             onRequestDeleteUnsupportedClick = {
                 if (unsupportedFiles.isEmpty()) {
-                    unsupportedActionMessage = "В папке пропущенных файлов пока нечего удалять."
+                    unsupportedActionMessage = "В папке пропущенных файлов пока нечего переносить в Корзину."
                     unsupportedDeleteAwaitingConfirmation = false
                 } else {
                     unsupportedDeleteAwaitingConfirmation = true
-                    unsupportedActionMessage = "Будет удалено пропущенных файлов: ${unsupportedFiles.size}. Библиотеку и исходники не трогаем."
+                    unsupportedActionMessage = "Будет перемещено в Корзину пропущенных файлов: ${unsupportedFiles.size}. Библиотеку и исходники не трогаем."
                 }
             },
             onCancelDeleteUnsupportedClick = {
                 unsupportedDeleteAwaitingConfirmation = false
-                unsupportedActionMessage = "Удаление отменено."
+                unsupportedActionMessage = "Перенос в Корзину отменен."
             },
             onConfirmDeleteUnsupportedClick = {
                 coroutineScope.launch {
                     if (unsupportedFiles.isEmpty()) {
                         unsupportedDeleteAwaitingConfirmation = false
-                        unsupportedActionMessage = "В папке пропущенных файлов пока нечего удалять."
+                        unsupportedActionMessage = "В папке пропущенных файлов пока нечего переносить в Корзину."
                         return@launch
                     }
 
-                    unsupportedActionMessage = "Удаляю пропущенные файлы..."
+                    unsupportedActionMessage = "Перемещаю пропущенные файлы в Корзину..."
                     unsupportedActionMessage = try {
                         when (
                             val result = withContext(Dispatchers.Default) {
@@ -718,10 +781,10 @@ fun App(
                                 if (result.data.failedFiles > 0) {
                                     addIssue(
                                         title = "Неподдерживаемые",
-                                        detail = "Часть пропущенных файлов не удалось удалить: ${result.data.failedFiles}.",
+                                        detail = "Часть пропущенных файлов не удалось переместить в Корзину: ${result.data.failedFiles}.",
                                     )
                                 }
-                                "Удалено пропущенных файлов: ${result.data.deletedFiles}, ошибок: ${result.data.failedFiles}."
+                                "Перемещено в Корзину пропущенных файлов: ${result.data.deletedFiles}, ошибок: ${result.data.failedFiles}."
                             }
 
                             is AppResult.Error -> {
@@ -733,7 +796,7 @@ fun App(
                         }
                     } catch (exception: Throwable) {
                         unsupportedDeleteAwaitingConfirmation = false
-                        val message = "Не удалось удалить пропущенные файлы: ${exception.message ?: "без деталей"}"
+                        val message = "Не удалось переместить пропущенные файлы в Корзину: ${exception.message ?: "без деталей"}"
                         addIssue("Неподдерживаемые", message)
                         message
                     }

@@ -9,7 +9,10 @@ sealed interface ImportUiState {
         val readyFileCount: Int,
         val existingFileCount: Int,
         val unsupportedFileCount: Int = 0,
+        val requiredBytes: Long? = null,
+        val availableBytes: Long? = null,
     ) : ImportUiState
+    data object CheckingStorageSpace : ImportUiState
     data class Loading(val progress: ImportMediaFilesProgress? = null) : ImportUiState
     data class Canceled(val progress: ImportMediaFilesProgress? = null) : ImportUiState
     data class Success(val result: ImportMediaFilesResult) : ImportUiState

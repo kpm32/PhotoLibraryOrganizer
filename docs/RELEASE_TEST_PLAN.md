@@ -26,6 +26,8 @@ Run this checklist before publishing a DMG.
 4. Run scan again and let it finish.
 5. Confirm counts for photos, videos, unsupported files, and total size look plausible.
 6. Confirm supported HEIC/video files appear as media when possible.
+7. Scan a folder that contains an inaccessible or removed file, if the test environment permits it.
+8. Confirm the scan completes and records the problem without losing the remaining files.
 
 ## Import Copy
 
@@ -55,7 +57,7 @@ Run this checklist before publishing a DMG.
 3. Open duplicate section.
 4. Move duplicates into `Duplicates`.
 5. Confirm originals remain in `Library`.
-6. Confirm deleting from `Duplicates` requires confirmation.
+6. Confirm moving files from `Duplicates` to macOS Trash requires confirmation.
 
 ## Unsupported
 
@@ -64,7 +66,7 @@ Run this checklist before publishing a DMG.
 3. Confirm groups show count and total size.
 4. Select a group.
 5. Open the group folder in Finder.
-6. Confirm deleting from `Unsupported` requires confirmation.
+6. Confirm moving files from `Unsupported` to macOS Trash requires confirmation.
 
 ## Viewing
 

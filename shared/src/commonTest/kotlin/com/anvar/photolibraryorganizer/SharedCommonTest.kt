@@ -8,6 +8,7 @@ import com.anvar.photolibraryorganizer.domain.model.ImportAvailability
 import com.anvar.photolibraryorganizer.domain.model.ImportOrganizationRules
 import com.anvar.photolibraryorganizer.domain.model.ImportMediaFilesResult
 import com.anvar.photolibraryorganizer.domain.model.ImportMediaFilesProgress
+import com.anvar.photolibraryorganizer.domain.model.ImportStorageSpace
 import com.anvar.photolibraryorganizer.domain.model.ImportTargetStatus
 import com.anvar.photolibraryorganizer.domain.model.MediaFileCategory
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
@@ -18,7 +19,9 @@ import com.anvar.photolibraryorganizer.domain.model.ScanSourceFolderProgress
 import com.anvar.photolibraryorganizer.domain.model.detectMediaFileType
 import com.anvar.photolibraryorganizer.domain.repository.MediaFileImporter
 import com.anvar.photolibraryorganizer.domain.repository.PhotoSourceScanner
+import com.anvar.photolibraryorganizer.domain.repository.StorageSpaceProvider
 import com.anvar.photolibraryorganizer.domain.usecase.BuildMediaFilePlanUseCase
+import com.anvar.photolibraryorganizer.domain.usecase.CheckImportStorageSpaceUseCase
 import com.anvar.photolibraryorganizer.domain.usecase.ImportMediaFilesUseCase
 import com.anvar.photolibraryorganizer.domain.usecase.ResolveImportAvailabilityUseCase
 import com.anvar.photolibraryorganizer.domain.usecase.ScanSourceFolderUseCase
@@ -170,6 +173,37 @@ class SharedCommonTest {
     }
 
     @Test
+    fun givesCollidingPlanTargetsDistinctFileNames() {
+        val useCase = BuildMediaFilePlanUseCase()
+        val date = 1_735_689_600_000
+
+        val result = useCase(
+            destinationFolder = "/library-root",
+            mediaFiles = listOf(
+                ScannedMediaFile(
+                    path = "/source/camera-a/IMG_0001.JPG",
+                    fileName = "IMG_0001.JPG",
+                    extension = "jpg",
+                    category = MediaFileCategory.Image,
+                    sizeBytes = 1_024,
+                    modifiedAtEpochMillis = date,
+                ),
+                ScannedMediaFile(
+                    path = "/source/camera-b/IMG_0001.JPG",
+                    fileName = "IMG_0001.JPG",
+                    extension = "jpg",
+                    category = MediaFileCategory.Image,
+                    sizeBytes = 2_048,
+                    modifiedAtEpochMillis = date,
+                ),
+            ),
+        )
+
+        assertEquals(2, result.map { it.targetRelativePath }.toSet().size)
+        assertTrue(result[1].targetRelativePath.endsWith("_IMG_0001 (2).JPG"))
+    }
+
+    @Test
     fun carriesContentHashIntoImportPlan() {
         val useCase = BuildMediaFilePlanUseCase()
 
@@ -280,6 +314,33 @@ class SharedCommonTest {
     }
 
     @Test
+    fun storageCheckReportsAvailableSpaceForFilesThatWillBeCopied() = runTest {
+        val useCase = CheckImportStorageSpaceUseCase(FakeStorageSpaceProvider(3_000))
+
+        val result = useCase(
+            destinationFolder = "/library",
+            plannedFiles = listOf(
+                fakePlannedMediaFile().copy(sizeBytes = 1_000),
+                fakePlannedMediaFile().copy(sizeBytes = 2_000, targetStatus = ImportTargetStatus.AlreadyExists),
+            ),
+        )
+
+        assertEquals(ImportStorageSpace.Available(requiredBytes = 1_000, availableBytes = 3_000), result)
+    }
+
+    @Test
+    fun storageCheckBlocksCopyWhenDestinationSpaceIsInsufficient() = runTest {
+        val useCase = CheckImportStorageSpaceUseCase(FakeStorageSpaceProvider(999))
+
+        val result = useCase(
+            destinationFolder = "/library",
+            plannedFiles = listOf(fakePlannedMediaFile().copy(sizeBytes = 1_000)),
+        )
+
+        assertEquals(ImportStorageSpace.Insufficient(requiredBytes = 1_000, availableBytes = 999), result)
+    }
+
+    @Test
     fun importUseCaseDelegatesCopyModeToImporter() = runTest {
         val importer = FakeMediaFileImporter()
         val useCase = ImportMediaFilesUseCase(importer)
@@ -380,6 +441,12 @@ class SharedCommonTest {
                 ),
             )
         }
+    }
+
+    private class FakeStorageSpaceProvider(
+        private val availableBytes: Long?,
+    ) : StorageSpaceProvider {
+        override suspend fun availableBytes(path: String): Long? = availableBytes
     }
 
     private class FakeMediaFileImporter : MediaFileImporter {

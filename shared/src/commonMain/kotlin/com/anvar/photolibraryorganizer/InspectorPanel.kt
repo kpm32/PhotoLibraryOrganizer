@@ -15,11 +15,17 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -101,6 +107,7 @@ internal fun InspectorPanel(
                 Text(if (isLibraryRefreshing) "Обновляю..." else "Обновить библиотеку")
             }
             if (isLibraryRefreshing) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                 Text(
                     text = "Читаю папки библиотеки. Окно можно оставить открытым.",
                     style = MaterialTheme.typography.bodySmall,
@@ -292,14 +299,26 @@ private fun ScanSummaryRows(scanUiState: ScanUiState.Success) {
 private fun UnsupportedExtensionsRows(unsupportedFileExtensions: Map<String, Int>) {
     if (unsupportedFileExtensions.isEmpty()) return
 
-    val visibleExtensions = unsupportedFileExtensions.entries.take(8)
-    SummaryRow(
-        label = "Типы пропущенных",
-        value = visibleExtensions.joinToString { (extension, count) -> "$extension: $count" },
-    )
-    val hiddenCount = unsupportedFileExtensions.size - visibleExtensions.size
-    if (hiddenCount > 0) {
-        SummaryRow("Еще типов", hiddenCount.toString())
+    var expanded by rememberSaveable(unsupportedFileExtensions) { mutableStateOf(false) }
+    val sortedExtensions = unsupportedFileExtensions.entries.sortedByDescending { it.value }
+    val initialVisibleCount = 5
+    val visibleExtensions = if (expanded) sortedExtensions else sortedExtensions.take(initialVisibleCount)
+
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(
+            text = "Типы пропущенных",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        visibleExtensions.forEach { (extension, count) ->
+            SummaryRow(extension, count.toString())
+        }
+        val hiddenCount = sortedExtensions.size - initialVisibleCount
+        if (hiddenCount > 0) {
+            TextButton(onClick = { expanded = !expanded }) {
+                Text(if (expanded) "Свернуть" else "Показать еще $hiddenCount")
+            }
+        }
     }
 }
 

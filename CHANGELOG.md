@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.0.0-preview.5 - 2026-07-10
+
+Preview build that completes the scan-reliability hotfix for external and changing archives.
+
+### Changed
+
+- Large libraries are no longer refreshed automatically on startup; refresh is now a manual action with visible progress.
+- Cleanup from `Duplicates` and `Unsupported` now moves files to macOS Trash after confirmation instead of permanently deleting them.
+- GitHub instructions now document preview download, Gatekeeper, large-library refresh, and Trash behavior.
+
+### Fixed
+
+- File traversal now uses `walkFileTree`, so an unreadable file or folder on an external drive does not terminate the scan iterator.
+- Scan errors caused by disappeared files, permissions, or I/O are skipped per item while the rest of the archive continues scanning.
+
 ## 1.0.0-preview.4 - 2026-06-11
 
 Hotfix preview build for real archive scan reliability.
@@ -48,7 +63,7 @@ Early desktop MVP for local photo archive cleanup.
 - Exact duplicate detection with SHA-256.
 - Duplicate quarantine in `Duplicates`.
 - Unsupported file quarantine in `Unsupported`.
-- Safe deletion from `Duplicates` and `Unsupported`.
+- Safe cleanup from `Duplicates` and `Unsupported` through macOS Trash.
 - Unsupported groups with counts, total size, and Finder opening by type.
 - Empty source subfolder cleanup after move import.
 - Import result verification and per-file failure details.

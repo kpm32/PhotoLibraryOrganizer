@@ -15,7 +15,9 @@ import java.nio.file.Path
 import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
 
-class JvmUnsupportedFileQuarantineRepository : UnsupportedFileQuarantineRepository {
+class JvmUnsupportedFileQuarantineRepository(
+    private val trashFileMover: TrashFileMover = DesktopTrashFileMover,
+) : UnsupportedFileQuarantineRepository {
     override suspend fun moveToQuarantine(
         destinationFolder: String?,
         unsupportedFiles: List<UnsupportedSourceFile>,
@@ -30,18 +32,24 @@ class JvmUnsupportedFileQuarantineRepository : UnsupportedFileQuarantineReposito
 
             unsupportedFiles.forEach { unsupportedFile ->
                 currentCoroutineContext().ensureActive()
-                val sourcePath = Path.of(unsupportedFile.path)
-                if (!sourcePath.exists() || !Files.isRegularFile(sourcePath)) {
-                    failedFiles += 1
-                    return@forEach
-                }
+                try {
+                    val sourcePath = Path.of(unsupportedFile.path)
+                    if (!sourcePath.exists() || !Files.isRegularFile(sourcePath)) {
+                        failedFiles += 1
+                        return@forEach
+                    }
 
-                val typeFolder = quarantineRoot.resolve(unsupportedFile.extensionLabel.toFolderName())
-                val relativeParent = Path.of(unsupportedFile.relativePath).parent
-                val targetFolder = if (relativeParent == null) typeFolder else typeFolder.resolve(relativeParent)
-                targetFolder.createDirectories()
-                Files.move(sourcePath, targetFolder.uniqueTargetFor(unsupportedFile.fileName))
-                movedFiles += 1
+                    val typeFolder = quarantineRoot.resolve(unsupportedFile.extensionLabel.toFolderName())
+                    val relativeParent = Path.of(unsupportedFile.relativePath).parent
+                    val targetFolder = if (relativeParent == null) typeFolder else typeFolder.resolve(relativeParent)
+                    targetFolder.createDirectories()
+                    Files.move(sourcePath, targetFolder.uniqueTargetFor(unsupportedFile.fileName))
+                    movedFiles += 1
+                } catch (exception: CancellationException) {
+                    throw exception
+                } catch (exception: Throwable) {
+                    failedFiles += 1
+                }
             }
 
             AppResult.Success(
@@ -77,7 +85,10 @@ class JvmUnsupportedFileQuarantineRepository : UnsupportedFileQuarantineReposito
                     return@forEach
                 }
 
-                Files.delete(sourcePath)
+                if (!trashFileMover.moveToTrash(sourcePath)) {
+                    failedFiles += 1
+                    return@forEach
+                }
                 deletedFiles += 1
             }
 

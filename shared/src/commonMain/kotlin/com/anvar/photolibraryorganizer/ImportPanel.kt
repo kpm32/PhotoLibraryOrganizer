@@ -141,6 +141,7 @@ internal fun ImportPanel(
                     onClick = onImportClick,
                     modifier = Modifier.fillMaxWidth(),
                     enabled = importAvailability is ImportAvailability.Available &&
+                        importUiState !is ImportUiState.CheckingStorageSpace &&
                         importUiState !is ImportUiState.AwaitingConfirmation &&
                         importUiState !is ImportUiState.Loading,
                 ) {
@@ -203,7 +204,7 @@ private fun ImportHistorySummary(importHistory: List<ImportReport>) {
             importHistory.take(3).forEach { report ->
                 CompactRuleRow(
                     label = report.createdAtEpochMillis.toReadableDateTime(),
-                    value = "${report.importMode.title}: ${report.readyFiles} файлов, ошибок ${report.failedFiles}",
+                    value = "${report.importMode.title}: ${report.readyFiles} файлов, ошибок ${report.totalFailedFiles}",
                 )
             }
         }
@@ -294,8 +295,10 @@ private fun ImportReportSummary(
             )
             CompactRuleRow(
                 label = "Итог",
-                value = "копий ${lastImportReport.copiedFiles}, переносов ${lastImportReport.movedFiles}, пропусков ${lastImportReport.skippedFiles}, ошибок ${lastImportReport.failedFiles}",
+                value = "копий ${lastImportReport.copiedFiles}, переносов ${lastImportReport.movedFiles}, пропусков ${lastImportReport.skippedFiles}, ошибок ${lastImportReport.totalFailedFiles}",
             )
+            CompactRuleRow("Ошибки медиа", lastImportReport.failedFiles.toString())
+            CompactRuleRow("Ошибки пропущенных", lastImportReport.failedUnsupportedFiles.toString())
             importResult?.let { result ->
                 CompactRuleRow("В пропущенные", result.quarantinedUnsupportedFiles.toString())
                 CompactRuleRow("Ошибок пропущенных", result.failedUnsupportedFiles.toString())
@@ -460,6 +463,7 @@ private fun ImportStatus(importUiState: ImportUiState) {
     val text = when (importUiState) {
         ImportUiState.Idle -> return
         is ImportUiState.AwaitingConfirmation -> return
+        ImportUiState.CheckingStorageSpace -> "Проверяю свободное место в папке библиотеки."
         is ImportUiState.Loading -> importUiState.progress?.let { progress ->
             "Импорт: ${progress.processedFiles} из ${progress.totalFiles}. Копий ${progress.copiedFiles}, переносов ${progress.movedFiles}, пропусков ${progress.skippedFiles}, ошибок ${progress.failedFiles}."
         } ?: "Выполняю импорт по выбранному режиму."
@@ -467,7 +471,7 @@ private fun ImportStatus(importUiState: ImportUiState) {
             "Импорт остановлен: обработано ${progress.processedFiles} из ${progress.totalFiles}. Копий ${progress.copiedFiles}, переносов ${progress.movedFiles}, пропусков ${progress.skippedFiles}, ошибок ${progress.failedFiles}."
         } ?: "Импорт остановлен. Уже обработанные файлы оставлены на месте."
         is ImportUiState.Success -> {
-                "Импорт завершен: скопировано ${importUiState.result.copiedFiles}, перенесено ${importUiState.result.movedFiles}, в пропущенные ${importUiState.result.quarantinedUnsupportedFiles}, пропущено ${importUiState.result.skippedFiles}, ошибок ${importUiState.result.failedFiles + importUiState.result.failedUnsupportedFiles}."
+                "Импорт завершен: скопировано ${importUiState.result.copiedFiles}, перенесено ${importUiState.result.movedFiles}, в пропущенные ${importUiState.result.quarantinedUnsupportedFiles}, пропущено ${importUiState.result.skippedFiles}, ошибок медиа ${importUiState.result.failedFiles}, ошибок пропущенных ${importUiState.result.failedUnsupportedFiles}."
         }
         is ImportUiState.Error -> importUiState.message
     }
@@ -517,6 +521,10 @@ private fun ImportConfirmation(
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
             )
+            if (selectedMode == ImportMode.Copy && importUiState.requiredBytes != null && importUiState.availableBytes != null) {
+                CompactRuleRow("Нужно места", importUiState.requiredBytes.toReadableSize())
+                CompactRuleRow("Свободно", importUiState.availableBytes.toReadableSize())
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(
                     onClick = onCancelImportClick,

@@ -42,12 +42,13 @@ class JvmImportHistoryStorage(
             movedFiles,
             skippedFiles,
             failedFiles,
+            failedUnsupportedFiles,
         ).joinToString(separator = "\t")
     }
 
     private fun String.toImportReportOrNull(): ImportReport? {
         val parts = split('\t')
-        if (parts.size != HISTORY_FIELD_COUNT) return null
+        if (parts.size !in LEGACY_HISTORY_FIELD_COUNT..HISTORY_FIELD_COUNT) return null
         return try {
             ImportReport(
                 createdAtEpochMillis = parts[0].toLong(),
@@ -59,6 +60,7 @@ class JvmImportHistoryStorage(
                 movedFiles = parts[6].toInt(),
                 skippedFiles = parts[7].toInt(),
                 failedFiles = parts[8].toInt(),
+                failedUnsupportedFiles = parts.getOrNull(9)?.toInt() ?: 0,
             )
         } catch (exception: Throwable) {
             null
@@ -66,7 +68,8 @@ class JvmImportHistoryStorage(
     }
 
     private companion object {
-        const val HISTORY_FIELD_COUNT = 9
+        const val LEGACY_HISTORY_FIELD_COUNT = 9
+        const val HISTORY_FIELD_COUNT = 10
         const val MAX_HISTORY_ENTRIES = 200
 
         fun defaultHistoryPath(): Path {

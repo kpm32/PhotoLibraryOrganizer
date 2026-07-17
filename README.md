@@ -18,7 +18,7 @@ The app keeps photos as normal files on disk. It scans folders, shows an import 
 - Moves unsupported files into `Unsupported` during move import.
 - Shows unsupported file groups with counts and total size.
 - Opens unsupported type folders in Finder.
-- Lets you review and safely delete files from `Duplicates` and `Unsupported`.
+- Lets you review and move files from `Duplicates` and `Unsupported` to macOS Trash.
 - Shows a photo grid, grouped library views, file inspector, search, filters, and basic navigation.
 - Shows captured date, file date, and the date used for folder placement.
 - Shows per-file import failure details when something goes wrong.
@@ -49,8 +49,28 @@ The app is designed around explicit confirmation:
 - Move removes source files only after moving them into the target library.
 - Existing target files are skipped, not overwritten.
 - Unsupported files are moved to `Unsupported`, not deleted.
-- Duplicate and unsupported cleanup require confirmation.
+- Duplicate and unsupported cleanup move files to macOS Trash after confirmation.
+- Preview builds do not permanently delete duplicate or unsupported files.
+- Large libraries are not refreshed automatically on startup; click `Обновить библиотеку` when you want to read the current library folders.
 - Empty source folder cleanup removes only empty subfolders, not files and not the source root.
+
+## Download macOS Preview
+
+Download the latest preview DMG from GitHub Releases:
+
+```text
+https://github.com/kpm32/PhotoLibraryOrganizer/releases
+```
+
+Current preview line: `v1.0.0-preview.5`.
+
+The preview DMG is unsigned. On first launch macOS Gatekeeper may block it; use right click -> Open or System Settings -> Privacy & Security -> Open Anyway.
+
+## Large Libraries
+
+The app remembers the selected source and library folders, but it does not scan the whole library automatically on every launch. This keeps startup responsive for archives with tens of thousands of files.
+
+Use `Обновить библиотеку` when you want to reload `Library`, `Duplicates`, and `Unsupported`. While reading folders, the inspector shows `Обновляю...` with a progress indicator.
 
 ## Run From Source
 

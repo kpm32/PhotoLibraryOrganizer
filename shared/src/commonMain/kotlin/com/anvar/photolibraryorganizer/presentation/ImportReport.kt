@@ -11,5 +11,9 @@ data class ImportReport(
     val movedFiles: Int,
     val skippedFiles: Int,
     val failedFiles: Int,
+    val failedUnsupportedFiles: Int = 0,
     val createdAtEpochMillis: Long,
-)
+) {
+    val totalFailedFiles: Int
+        get() = failedFiles + failedUnsupportedFiles
+}

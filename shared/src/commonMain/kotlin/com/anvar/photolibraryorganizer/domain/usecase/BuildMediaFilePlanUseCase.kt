@@ -16,6 +16,7 @@ class BuildMediaFilePlanUseCase {
         val destination = destinationFolder?.trim()?.trimEnd('/')
             ?: return emptyList()
 
+        val assignedTargetPaths = mutableSetOf<String>()
         return mediaFiles.map { mediaFile ->
             val dateTime = Instant.fromEpochMilliseconds(
                 mediaFile.capturedAtEpochMillis ?: mediaFile.modifiedAtEpochMillis,
@@ -40,10 +41,15 @@ class BuildMediaFilePlanUseCase {
             val targetFolder = "${importRules.libraryFolderName}/${importRules.folderTemplate.applyTokens(tokens)}"
             val targetFileName = importRules.fileNameTemplate.applyTokens(tokens)
 
+            val targetPath = uniqueTargetPath(
+                targetPath = "$destination/$targetFolder/$targetFileName",
+                assignedTargetPaths = assignedTargetPaths,
+            )
+
             PlannedMediaFile(
                 sourcePath = mediaFile.path,
                 fileName = mediaFile.fileName,
-                targetRelativePath = "$destination/$targetFolder/$targetFileName",
+                targetRelativePath = targetPath,
                 sizeBytes = mediaFile.sizeBytes,
                 contentHash = mediaFile.contentHash,
                 capturedAtEpochMillis = mediaFile.capturedAtEpochMillis,
@@ -55,6 +61,23 @@ class BuildMediaFilePlanUseCase {
     private fun String.applyTokens(tokens: Map<String, String>): String {
         return tokens.entries.fold(this) { result, token ->
             result.replace(token.key, token.value)
+        }
+    }
+
+    private fun uniqueTargetPath(
+        targetPath: String,
+        assignedTargetPaths: MutableSet<String>,
+    ): String {
+        if (assignedTargetPaths.add(targetPath)) return targetPath
+
+        val extensionStart = targetPath.lastIndexOf('.').takeIf { it > targetPath.lastIndexOf('/') }
+        val basePath = extensionStart?.let { targetPath.substring(0, it) } ?: targetPath
+        val extension = extensionStart?.let { targetPath.substring(it) }.orEmpty()
+        var copyNumber = 2
+        while (true) {
+            val candidatePath = "$basePath ($copyNumber)$extension"
+            if (assignedTargetPaths.add(candidatePath)) return candidatePath
+            copyNumber += 1
         }
     }
 }

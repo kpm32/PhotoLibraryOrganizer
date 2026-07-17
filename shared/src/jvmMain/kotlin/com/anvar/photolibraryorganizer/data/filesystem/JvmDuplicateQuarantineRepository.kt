@@ -11,7 +11,9 @@ import java.nio.file.Path
 import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
 
-class JvmDuplicateQuarantineRepository : DuplicateQuarantineRepository {
+class JvmDuplicateQuarantineRepository(
+    private val trashFileMover: TrashFileMover = DesktopTrashFileMover,
+) : DuplicateQuarantineRepository {
     override suspend fun moveToQuarantine(
         destinationFolder: String?,
         duplicateFiles: List<PlannedMediaFile>,
@@ -69,7 +71,10 @@ class JvmDuplicateQuarantineRepository : DuplicateQuarantineRepository {
                     return@forEach
                 }
 
-                Files.delete(sourcePath)
+                if (!trashFileMover.moveToTrash(sourcePath)) {
+                    failedFiles += 1
+                    return@forEach
+                }
                 deletedFiles += 1
             }
 

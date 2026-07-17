@@ -6,6 +6,7 @@ import com.anvar.photolibraryorganizer.domain.model.DuplicateQuarantineResult
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
 import kotlinx.coroutines.test.runTest
 import java.nio.file.Files
+import java.nio.file.Path
 import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
 import kotlin.io.path.writeText
@@ -47,10 +48,12 @@ class JvmDuplicateQuarantineRepositoryTest {
     }
 
     @Test
-    fun deletesOnlyFilesInsideQuarantineFolder() = runTest {
+    fun movesOnlyFilesInsideQuarantineFolderToTrash() = runTest {
         val destination = Files.createTempDirectory("duplicate-delete-test")
         val quarantineFile = destination.resolve("Duplicates/abcdef123456/photo-copy.jpg")
         val libraryFile = destination.resolve("Library/2026/2026-06/photo.jpg")
+        val trashFileMover = FakeTrashFileMover()
+        val repository = JvmDuplicateQuarantineRepository(trashFileMover)
         quarantineFile.parent.createDirectories()
         libraryFile.parent.createDirectories()
         quarantineFile.writeText("duplicate")
@@ -79,7 +82,18 @@ class JvmDuplicateQuarantineRepositoryTest {
         val success = assertIs<AppResult.Success<DuplicateQuarantineDeleteResult>>(result)
         assertEquals(1, success.data.deletedFiles)
         assertEquals(1, success.data.failedFiles)
+        assertEquals(listOf(quarantineFile.toAbsolutePath().normalize()), trashFileMover.movedPaths)
         assertFalse(quarantineFile.exists())
         assertTrue(libraryFile.exists())
+    }
+
+    private class FakeTrashFileMover : TrashFileMover {
+        val movedPaths = mutableListOf<Path>()
+
+        override fun moveToTrash(path: Path): Boolean {
+            movedPaths.add(path)
+            Files.deleteIfExists(path)
+            return true
+        }
     }
 }

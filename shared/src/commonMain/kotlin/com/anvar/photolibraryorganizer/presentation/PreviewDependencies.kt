@@ -7,12 +7,17 @@ import com.anvar.photolibraryorganizer.domain.model.ScanSourceFolderResult
 import com.anvar.photolibraryorganizer.domain.model.ScanSourceFolderSummary
 import com.anvar.photolibraryorganizer.domain.model.ScannedMediaFile
 import com.anvar.photolibraryorganizer.domain.repository.PhotoSourceScanner
+import com.anvar.photolibraryorganizer.domain.repository.StorageSpaceProvider
 
 object PreviewFolderPicker : FolderPicker {
     override fun chooseFolder(title: String): String = when {
         title.contains("исход", ignoreCase = true) -> "/Users/anvardzan/Pictures/Unsorted archive"
         else -> "/Users/anvardzan/Pictures/PhotoLibrary"
     }
+}
+
+object PreviewStorageSpaceProvider : StorageSpaceProvider {
+    override suspend fun availableBytes(path: String): Long = 100_000_000_000
 }
 
 object PreviewPhotoSourceScanner : PhotoSourceScanner {

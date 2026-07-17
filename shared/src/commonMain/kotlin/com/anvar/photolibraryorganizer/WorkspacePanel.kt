@@ -452,7 +452,7 @@ private fun AboutPanel(
                 fontWeight = FontWeight.SemiBold,
             )
             HorizontalDivider()
-            AboutRow("Версия", "1.0.0-preview.2")
+            AboutRow("Версия", "1.0.0-preview.5")
             AboutRow("Статус", "Preview-релиз для macOS")
             AboutRow("Интерфейс", "Русский")
             AboutRow("Лицензия", "MIT")
@@ -521,8 +521,8 @@ private fun duplicateActionText(
     duplicateDeleteAwaitingConfirmation: Boolean,
 ): String? {
     return when {
-        duplicateDeleteAwaitingConfirmation && duplicateFiles.isNotEmpty() -> "Подтвердить удаление"
-        duplicateFiles.isNotEmpty() -> "Удалить файлы из папки дублей"
+        duplicateDeleteAwaitingConfirmation && duplicateFiles.isNotEmpty() -> "Подтвердить перенос"
+        duplicateFiles.isNotEmpty() -> "В Корзину из папки дублей"
         libraryFiles.hasDuplicateGroups() -> "Перенести дубли в папку дублей"
         else -> null
     }
@@ -541,8 +541,8 @@ private fun unsupportedActionText(
     unsupportedDeleteAwaitingConfirmation: Boolean,
 ): String? {
     return when {
-        unsupportedDeleteAwaitingConfirmation && unsupportedFiles.isNotEmpty() -> "Подтвердить удаление"
-        unsupportedFiles.isNotEmpty() -> "Удалить пропущенные файлы"
+        unsupportedDeleteAwaitingConfirmation && unsupportedFiles.isNotEmpty() -> "Подтвердить перенос"
+        unsupportedFiles.isNotEmpty() -> "В Корзину пропущенные файлы"
         else -> null
     }
 }
