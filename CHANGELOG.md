@@ -8,6 +8,7 @@
 - Selected-file Trash now has a UI timeout instead of leaving the inspector in an endless moving state.
 - Library refresh now shows the current section and file counters, and can be canceled from the inspector.
 - macOS Trash now uses only the Finder operation with a short timeout, avoiding slow direct `.Trashes` moves on external drives.
+- macOS Trash now finishes as soon as the source file disappears, even if the AppleScript process is still waiting.
 
 ## 1.0.0-preview.8 - 2026-07-17
 

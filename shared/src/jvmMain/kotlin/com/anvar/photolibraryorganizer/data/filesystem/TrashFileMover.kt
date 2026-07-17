@@ -130,12 +130,7 @@ object MacOsFinderTrashFileMover : TrashFileMover {
                 .redirectErrorStream(true)
                 .start()
 
-            if (!process.waitFor(FINDER_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-                process.destroyForcibly()
-                return false
-            }
-
-            process.exitValue() == 0
+            process.waitForExitOrMoved(path)
         } catch (exception: Throwable) {
             false
         }
@@ -151,5 +146,24 @@ object MacOsFinderTrashFileMover : TrashFileMover {
         return replace("\\", "\\\\").replace("\"", "\\\"")
     }
 
+    private fun Process.waitForExitOrMoved(path: Path): Boolean {
+        val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(FINDER_TIMEOUT_SECONDS)
+        while (isAlive && System.nanoTime() < deadline) {
+            if (!Files.exists(path)) {
+                destroyForcibly()
+                return true
+            }
+            Thread.sleep(FINDER_POLL_INTERVAL_MILLIS)
+        }
+
+        if (isAlive) {
+            destroyForcibly()
+            return !Files.exists(path)
+        }
+
+        return exitValue() == 0 || !Files.exists(path)
+    }
+
     private const val FINDER_TIMEOUT_SECONDS = 5L
+    private const val FINDER_POLL_INTERVAL_MILLIS = 100L
 }
