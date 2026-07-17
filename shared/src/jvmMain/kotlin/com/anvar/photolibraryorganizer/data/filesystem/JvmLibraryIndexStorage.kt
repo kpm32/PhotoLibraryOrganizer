@@ -7,6 +7,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.StandardCopyOption
 import java.util.Base64
 import kotlin.io.path.createDirectories
@@ -52,8 +53,9 @@ class JvmLibraryIndexStorage(
 
     override suspend fun save(snapshot: LibraryIndexSnapshot) = withContext(Dispatchers.IO) {
         val normalizedDestination = snapshot.destinationFolder.normalizedDestinationOrNull() ?: return@withContext
-        indexPath.parent?.createDirectories()
-        val tempPath = indexPath.resolveSibling("${indexPath.fileName}.tmp")
+        val indexFolder = indexPath.parent ?: Path.of(".")
+        indexFolder.createDirectories()
+        val tempPath = Files.createTempFile(indexFolder, "${indexPath.fileName}.", ".tmp")
         val lines = buildList {
             add("$VERSION_PREFIX\t$INDEX_VERSION")
             add("$DESTINATION_PREFIX\t${normalizedDestination.encodeField()}")
@@ -62,8 +64,16 @@ class JvmLibraryIndexStorage(
             snapshot.duplicateFiles.forEach { add(it.toIndexLine(SECTION_DUPLICATES)) }
             snapshot.unsupportedFiles.forEach { add(it.toIndexLine(SECTION_UNSUPPORTED)) }
         }
-        tempPath.writeLines(lines)
-        Files.move(tempPath, indexPath, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+        try {
+            tempPath.writeLines(lines)
+            try {
+                Files.move(tempPath, indexPath, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+            } catch (exception: AtomicMoveNotSupportedException) {
+                Files.move(tempPath, indexPath, StandardCopyOption.REPLACE_EXISTING)
+            }
+        } finally {
+            Files.deleteIfExists(tempPath)
+        }
         Unit
     }
 

@@ -11,6 +11,7 @@
 - macOS Trash now finishes as soon as the source file disappears, even if the AppleScript process is still waiting.
 - After a successful selected-file Trash move, the UI removes the file immediately and ignores refresh failures that happen after the file is already in Trash.
 - Replaced the app icon with a more polished macOS-style photo archive icon and rebuilt the `.icns` asset.
+- Library index saves now use unique temporary files, avoiding `library-index.tsv.tmp` collisions during concurrent refreshes.
 
 ## 1.0.0-preview.8 - 2026-07-17
 

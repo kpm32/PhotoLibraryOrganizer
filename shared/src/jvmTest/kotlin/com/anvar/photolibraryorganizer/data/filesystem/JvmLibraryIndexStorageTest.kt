@@ -2,11 +2,14 @@ package com.anvar.photolibraryorganizer.data.filesystem
 
 import com.anvar.photolibraryorganizer.domain.model.LibraryIndexSnapshot
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.test.runTest
 import java.nio.file.Files
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class JvmLibraryIndexStorageTest {
     @Test
@@ -60,5 +63,43 @@ class JvmLibraryIndexStorageTest {
         )
 
         assertNull(storage.load(tempFolder.resolve("archive-b").toString()))
+    }
+
+    @Test
+    fun concurrentSavesDoNotShareTemporaryIndexFile() = runTest {
+        val tempFolder = Files.createTempDirectory("library-index-concurrent-test")
+        val indexPath = tempFolder.resolve("library-index.tsv")
+        val storage = JvmLibraryIndexStorage(indexPath)
+        val destination = tempFolder.resolve("archive").toString()
+
+        (1L..20L)
+            .map { updatedAt ->
+                async {
+                    storage.save(
+                        LibraryIndexSnapshot(
+                            destinationFolder = destination,
+                            libraryFiles = listOf(
+                                PlannedMediaFile(
+                                    sourcePath = "$destination/Library/2026/2026-07/photo-$updatedAt.jpg",
+                                    fileName = "photo-$updatedAt.jpg",
+                                    targetRelativePath = "$destination/Library/2026/2026-07/photo-$updatedAt.jpg",
+                                    sizeBytes = updatedAt,
+                                    modifiedAtEpochMillis = updatedAt,
+                                ),
+                            ),
+                            duplicateFiles = emptyList(),
+                            unsupportedFiles = emptyList(),
+                            updatedAtEpochMillis = updatedAt,
+                        ),
+                    )
+                }
+            }
+            .awaitAll()
+
+        assertTrue(indexPath.toFile().isFile)
+        assertTrue(storage.load(destination)?.libraryFiles?.isNotEmpty() == true)
+        Files.list(tempFolder).use { paths ->
+            assertTrue(paths.noneMatch { it.fileName.toString().endsWith(".tmp") })
+        }
     }
 }
