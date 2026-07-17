@@ -14,14 +14,9 @@ interface TrashFileMover {
 }
 
 object SystemTrashFileMover : TrashFileMover {
-    private val macOsMover = ChainTrashFileMover(
-        FileSystemMacTrashFileMover,
-        MacOsFinderTrashFileMover,
-    )
-
     override fun moveToTrash(path: Path): Boolean {
         return if (isMacOs()) {
-            macOsMover.moveToTrash(path)
+            MacOsFinderTrashFileMover.moveToTrash(path)
         } else {
             DesktopTrashFileMover.moveToTrash(path)
         }
@@ -128,7 +123,7 @@ object MacOsFinderTrashFileMover : TrashFileMover {
 
         return try {
             val process = ProcessBuilder(
-                "osascript",
+                "/usr/bin/osascript",
                 "-e",
                 "tell application \"Finder\" to delete POSIX file \"${path.toString().toAppleScriptString()}\"",
             )
@@ -156,5 +151,5 @@ object MacOsFinderTrashFileMover : TrashFileMover {
         return replace("\\", "\\\\").replace("\"", "\\\"")
     }
 
-    private const val FINDER_TIMEOUT_SECONDS = 10L
+    private const val FINDER_TIMEOUT_SECONDS = 5L
 }
