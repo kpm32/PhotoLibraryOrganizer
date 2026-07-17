@@ -6,6 +6,7 @@ This checklist defines what "professionally finished" means for Photo Library Or
 
 - The app has one clear primary workflow: scan, review, import, inspect, clean up.
 - The physical archive layout stays understandable without the app.
+- Any future photo/video split keeps the archive readable in Finder, for example `Library/Photos/YYYY/YYYY-MM` and `Library/Videos/YYYY/YYYY-MM`.
 - All destructive actions require explicit confirmation.
 - Move mode is treated as advanced and must remain conservative.
 - Preview releases clearly warn users to test on copies first.
@@ -36,6 +37,8 @@ This checklist defines what "professionally finished" means for Photo Library Or
 - HEIC and video metadata dates are attempted on macOS.
 - File modified date is the fallback.
 - Common photo, RAW, camera video, and legacy video formats are recognized.
+- Photo and video routing can be separated in the archive layout without breaking existing `Library/YYYY/YYYY-MM` libraries.
+- Video files are opened through macOS/default applications unless a dedicated player is intentionally added later.
 - Non-media files such as contacts, sidecars, databases, and thumbnails remain unsupported.
 
 ## Release Quality
