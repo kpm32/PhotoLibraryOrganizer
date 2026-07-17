@@ -26,6 +26,7 @@ import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
 import com.anvar.photolibraryorganizer.domain.model.UnsupportedFileQuarantineResult
 import com.anvar.photolibraryorganizer.domain.repository.DuplicateQuarantineRepository
 import com.anvar.photolibraryorganizer.domain.repository.EmptyFolderCleanupRepository
+import com.anvar.photolibraryorganizer.domain.repository.FileTrashRepository
 import com.anvar.photolibraryorganizer.domain.repository.LibraryIndexStorage
 import com.anvar.photolibraryorganizer.domain.repository.MediaFileImporter
 import com.anvar.photolibraryorganizer.domain.repository.ImportPlanTargetResolver
@@ -53,6 +54,7 @@ import com.anvar.photolibraryorganizer.presentation.PreviewDuplicateQuarantineRe
 import com.anvar.photolibraryorganizer.presentation.PreviewEmptyFolderCleanupRepository
 import com.anvar.photolibraryorganizer.presentation.PreviewAppSettingsStorage
 import com.anvar.photolibraryorganizer.presentation.PreviewFileRevealHandler
+import com.anvar.photolibraryorganizer.presentation.PreviewFileTrashRepository
 import com.anvar.photolibraryorganizer.presentation.PreviewFolderPicker
 import com.anvar.photolibraryorganizer.presentation.PreviewImportHistoryStorage
 import com.anvar.photolibraryorganizer.presentation.PreviewImportPlanTargetResolver
@@ -84,6 +86,7 @@ fun App(
     appSettingsStorage: AppSettingsStorage = PreviewAppSettingsStorage,
     importHistoryStorage: ImportHistoryStorage = PreviewImportHistoryStorage,
     libraryIndexStorage: LibraryIndexStorage = PreviewLibraryIndexStorage,
+    fileTrashRepository: FileTrashRepository = PreviewFileTrashRepository,
     folderPicker: FolderPicker = PreviewFolderPicker,
     fileRevealHandler: FileRevealHandler = PreviewFileRevealHandler,
 ) {
@@ -114,6 +117,8 @@ fun App(
         var duplicateDeleteAwaitingConfirmation by remember { mutableStateOf(false) }
         var unsupportedActionMessage by remember { mutableStateOf<String?>(null) }
         var unsupportedDeleteAwaitingConfirmation by remember { mutableStateOf(false) }
+        var selectedFileTrashAwaitingConfirmation by remember { mutableStateOf(false) }
+        var selectedFileTrashMessage by remember { mutableStateOf<String?>(null) }
         var imagePreviewUiState by remember { mutableStateOf<ImagePreviewUiState>(ImagePreviewUiState.Empty) }
         var issues by remember { mutableStateOf<List<AppIssue>>(emptyList()) }
         var nextIssueId by remember { mutableStateOf(1) }
@@ -231,6 +236,8 @@ fun App(
             duplicateDeleteAwaitingConfirmation = duplicateDeleteAwaitingConfirmation,
             unsupportedActionMessage = unsupportedActionMessage,
             unsupportedDeleteAwaitingConfirmation = unsupportedDeleteAwaitingConfirmation,
+            selectedFileTrashAwaitingConfirmation = selectedFileTrashAwaitingConfirmation,
+            selectedFileTrashMessage = selectedFileTrashMessage,
             importAvailability = resolveImportAvailabilityUseCase(
                 importMode = importMode,
                 plannedFiles = (scanUiState as? ScanUiState.Success)?.plannedFiles.orEmpty(),
@@ -259,6 +266,8 @@ fun App(
                 duplicateDeleteAwaitingConfirmation = false
                 unsupportedActionMessage = null
                 unsupportedDeleteAwaitingConfirmation = false
+                selectedFileTrashAwaitingConfirmation = false
+                selectedFileTrashMessage = null
                 selectedFile = null
                 libraryFiles = emptyList()
                 duplicateFiles = emptyList()
@@ -287,6 +296,8 @@ fun App(
                 duplicateDeleteAwaitingConfirmation = false
                 unsupportedActionMessage = null
                 unsupportedDeleteAwaitingConfirmation = false
+                selectedFileTrashAwaitingConfirmation = false
+                selectedFileTrashMessage = null
                 selectedFile = null
                 coroutineScope.launch {
                     if (!loadLibraryIndexIfAvailable(destinationFolder)) {
@@ -842,6 +853,46 @@ fun App(
                         addIssue("Просмотр", "Не удалось показать файл в папке: $path")
                     }
                 }
+            },
+            onRequestMoveSelectedFileToTrashClick = {
+                val file = selectedFile
+                if (file == null) {
+                    selectedFileTrashAwaitingConfirmation = false
+                    selectedFileTrashMessage = "Файл не выбран."
+                } else if (selectedSection == AppSection.Import) {
+                    selectedFileTrashAwaitingConfirmation = false
+                    selectedFileTrashMessage = "В разделе импорта файл из исходной папки не переносится в Корзину. Сначала проверь план импорта."
+                } else if (selectedFileTrashAwaitingConfirmation) {
+                    coroutineScope.launch {
+                        val path = file.sourcePath
+                        selectedFileTrashMessage = "Перемещаю выбранный файл в Корзину..."
+                        selectedFileTrashMessage = try {
+                            val moved = withContext(Dispatchers.Default) {
+                                fileTrashRepository.moveToTrash(path)
+                            }
+                            selectedFileTrashAwaitingConfirmation = false
+                            if (moved) {
+                                refreshLibraryIndexFromDisk(selectFirstFile = false)
+                                "Файл перемещен в Корзину."
+                            } else {
+                                addIssue("Корзина", "Не удалось переместить файл в Корзину: $path")
+                                "Не удалось переместить файл в Корзину."
+                            }
+                        } catch (exception: Throwable) {
+                            selectedFileTrashAwaitingConfirmation = false
+                            val message = "Не удалось переместить файл в Корзину: ${exception.message ?: "без деталей"}"
+                            addIssue("Корзина", message)
+                            message
+                        }
+                    }
+                } else {
+                    selectedFileTrashAwaitingConfirmation = true
+                    selectedFileTrashMessage = "Будет перемещен в Корзину только выбранный файл: ${file.fileName}"
+                }
+            },
+            onCancelMoveSelectedFileToTrashClick = {
+                selectedFileTrashAwaitingConfirmation = false
+                selectedFileTrashMessage = "Перенос выбранного файла отменен."
             },
             onPreviousFileClick = {
                 if (canNavigateSelectedFile) {

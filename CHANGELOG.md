@@ -9,6 +9,7 @@ Preview build that completes the scan-reliability hotfix for external and changi
 - Large libraries are no longer refreshed automatically on startup; refresh is now a manual action with visible progress.
 - Added a local library index that is loaded on startup and rebuilt after manual refresh or library-changing operations.
 - Cleanup from `Duplicates` and `Unsupported` now moves files to macOS Trash after confirmation instead of permanently deleting them.
+- Added inspector action to move only the currently selected library file to macOS Trash after confirmation.
 - GitHub instructions now document preview download, Gatekeeper, large-library refresh, and Trash behavior.
 
 ### Fixed

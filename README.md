@@ -19,6 +19,7 @@ The app keeps photos as normal files on disk. It scans folders, shows an import 
 - Shows unsupported file groups with counts and total size.
 - Opens unsupported type folders in Finder.
 - Lets you review and move files from `Duplicates` and `Unsupported` to macOS Trash.
+- Lets you move the currently selected library file to macOS Trash after confirmation.
 - Shows a photo grid, grouped library views, file inspector, search, filters, and basic navigation.
 - Shows captured date, file date, and the date used for folder placement.
 - Shows per-file import failure details when something goes wrong.
@@ -51,6 +52,7 @@ The app is designed around explicit confirmation:
 - Existing target files are skipped, not overwritten.
 - Unsupported files are moved to `Unsupported`, not deleted.
 - Duplicate and unsupported cleanup move files to macOS Trash after confirmation.
+- Single selected files can be moved to macOS Trash from the inspector after confirmation.
 - Preview builds do not permanently delete duplicate or unsupported files.
 - Large libraries are not refreshed automatically on startup; the app loads the last saved local index when available.
 - Click `Обновить библиотеку` when you want to read the current library folders and rebuild the local index.

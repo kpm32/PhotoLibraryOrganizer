@@ -13,6 +13,7 @@ Preview build for reliable scanning of large, real-world archives.
 - Scanning continues when an individual file disappears, cannot be read, or causes a permission/I/O error.
 - File traversal now uses `walkFileTree` so a problematic file or folder on an external drive does not interrupt the rest of the scan.
 - Duplicate and unsupported cleanup now moves files to macOS Trash after confirmation.
+- The inspector can move only the currently selected library file to macOS Trash after confirmation.
 - GitHub README instructions now explain preview download, Gatekeeper launch, large-library refresh, and Trash cleanup behavior.
 
 ## Safety Notes
@@ -22,6 +23,7 @@ Preview build for reliable scanning of large, real-world archives.
 - Prefer copy mode until you trust the result on your archive.
 - Move mode does not overwrite existing targets and reports per-file failures.
 - Duplicate and unsupported cleanup uses macOS Trash, not permanent deletion.
+- The selected-file Trash action is disabled for import-source preview files to avoid removing source files before reviewing the import plan.
 - Startup data comes from the last saved local index; use manual refresh when files changed outside the app.
 
 ## Build

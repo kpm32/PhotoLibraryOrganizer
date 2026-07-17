@@ -8,6 +8,7 @@ import com.anvar.photolibraryorganizer.domain.model.ScanSourceFolderResult
 import com.anvar.photolibraryorganizer.domain.model.ScanSourceFolderSummary
 import com.anvar.photolibraryorganizer.domain.model.ScannedMediaFile
 import com.anvar.photolibraryorganizer.domain.repository.LibraryIndexStorage
+import com.anvar.photolibraryorganizer.domain.repository.FileTrashRepository
 import com.anvar.photolibraryorganizer.domain.repository.PhotoSourceScanner
 import com.anvar.photolibraryorganizer.domain.repository.StorageSpaceProvider
 
@@ -25,6 +26,10 @@ object PreviewStorageSpaceProvider : StorageSpaceProvider {
 object PreviewLibraryIndexStorage : LibraryIndexStorage {
     override suspend fun load(destinationFolder: String?): LibraryIndexSnapshot? = null
     override suspend fun save(snapshot: LibraryIndexSnapshot) = Unit
+}
+
+object PreviewFileTrashRepository : FileTrashRepository {
+    override suspend fun moveToTrash(path: String): Boolean = true
 }
 
 object PreviewPhotoSourceScanner : PhotoSourceScanner {

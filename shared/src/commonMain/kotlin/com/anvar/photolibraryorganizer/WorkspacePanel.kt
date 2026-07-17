@@ -542,7 +542,7 @@ private fun unsupportedActionText(
 ): String? {
     return when {
         unsupportedDeleteAwaitingConfirmation && unsupportedFiles.isNotEmpty() -> "Подтвердить перенос"
-        unsupportedFiles.isNotEmpty() -> "В Корзину пропущенные файлы"
+        unsupportedFiles.isNotEmpty() -> "В Корзину все пропущенные"
         else -> null
     }
 }

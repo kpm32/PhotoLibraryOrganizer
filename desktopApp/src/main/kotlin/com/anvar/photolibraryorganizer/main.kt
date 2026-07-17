@@ -5,6 +5,7 @@ import androidx.compose.ui.unit.dp
 import com.anvar.photolibraryorganizer.data.filesystem.JvmEmptyFolderCleanupRepository
 import com.anvar.photolibraryorganizer.data.filesystem.JvmDuplicateQuarantineRepository
 import com.anvar.photolibraryorganizer.data.filesystem.JvmImportPlanTargetResolver
+import com.anvar.photolibraryorganizer.data.filesystem.JvmFileTrashRepository
 import com.anvar.photolibraryorganizer.data.filesystem.JvmLibraryIndexStorage
 import com.anvar.photolibraryorganizer.data.filesystem.JvmMediaFileImporter
 import com.anvar.photolibraryorganizer.data.filesystem.JvmPhotoSourceScanner
@@ -44,6 +45,7 @@ fun main() {
                 appSettingsStorage = JvmAppSettingsStorage(),
                 importHistoryStorage = JvmImportHistoryStorage(),
                 libraryIndexStorage = JvmLibraryIndexStorage(),
+                fileTrashRepository = JvmFileTrashRepository(),
                 folderPicker = NativeFolderPicker(),
                 fileRevealHandler = JvmFileRevealHandler(),
             )

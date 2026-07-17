@@ -51,12 +51,16 @@ internal fun InspectorPanel(
     onOpenPreviewClick: () -> Unit,
     onOpenFileClick: () -> Unit,
     onRevealFileClick: () -> Unit,
+    onRequestMoveSelectedFileToTrashClick: () -> Unit,
+    onCancelMoveSelectedFileToTrashClick: () -> Unit,
     onPreviousFileClick: () -> Unit,
     onNextFileClick: () -> Unit,
     onSourceFolderClick: () -> Unit,
     onDestinationFolderClick: () -> Unit,
     onRefreshLibraryClick: () -> Unit,
     isLibraryRefreshing: Boolean,
+    selectedFileTrashAwaitingConfirmation: Boolean,
+    selectedFileTrashMessage: String?,
 ) {
     Surface(
         modifier = Modifier
@@ -84,8 +88,12 @@ internal fun InspectorPanel(
                 onOpenPreviewClick = onOpenPreviewClick,
                 onOpenFileClick = onOpenFileClick,
                 onRevealFileClick = onRevealFileClick,
+                onRequestMoveSelectedFileToTrashClick = onRequestMoveSelectedFileToTrashClick,
+                onCancelMoveSelectedFileToTrashClick = onCancelMoveSelectedFileToTrashClick,
                 onPreviousFileClick = onPreviousFileClick,
                 onNextFileClick = onNextFileClick,
+                selectedFileTrashAwaitingConfirmation = selectedFileTrashAwaitingConfirmation,
+                selectedFileTrashMessage = selectedFileTrashMessage,
             )
             HorizontalDivider()
             FolderSelector(
@@ -156,8 +164,12 @@ private fun SelectedFilePreview(
     onOpenPreviewClick: () -> Unit,
     onOpenFileClick: () -> Unit,
     onRevealFileClick: () -> Unit,
+    onRequestMoveSelectedFileToTrashClick: () -> Unit,
+    onCancelMoveSelectedFileToTrashClick: () -> Unit,
     onPreviousFileClick: () -> Unit,
     onNextFileClick: () -> Unit,
+    selectedFileTrashAwaitingConfirmation: Boolean,
+    selectedFileTrashMessage: String?,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Box(
@@ -227,6 +239,32 @@ private fun SelectedFilePreview(
                 ) {
                     Text("В папке")
                 }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                OutlinedButton(
+                    onClick = onRequestMoveSelectedFileToTrashClick,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(if (selectedFileTrashAwaitingConfirmation) "Подтвердить" else "В Корзину")
+                }
+                if (selectedFileTrashAwaitingConfirmation) {
+                    OutlinedButton(
+                        onClick = onCancelMoveSelectedFileToTrashClick,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text("Отмена")
+                    }
+                }
+            }
+            selectedFileTrashMessage?.let { message ->
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }
