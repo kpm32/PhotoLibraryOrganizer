@@ -15,6 +15,7 @@ internal fun PanelActions(
     visible: Boolean,
     actionText: String?,
     secondaryActionText: String?,
+    actionEnabled: Boolean = true,
     onActionClick: (() -> Unit)?,
     onSecondaryActionClick: (() -> Unit)?,
 ) {
@@ -27,6 +28,7 @@ internal fun PanelActions(
         Button(
             onClick = onActionClick,
             modifier = Modifier.weight(1f),
+            enabled = actionEnabled,
         ) {
             Text(actionText)
         }

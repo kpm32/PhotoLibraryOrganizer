@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- File actions now guard against repeated clicks while duplicate, unsupported, or selected-file Trash operations are already running.
+- Selected-file Trash now has a UI timeout instead of leaving the inspector in an endless moving state.
+
 ## 1.0.0-preview.8 - 2026-07-17
 
 Hotfix preview build for selected-file Trash hangs on macOS.

@@ -97,6 +97,7 @@ internal fun GroupedMediaList(
     actionText: String? = null,
     secondaryActionText: String? = null,
     actionMessage: String? = null,
+    actionInProgress: Boolean = false,
     onActionClick: (() -> Unit)? = null,
     onSecondaryActionClick: (() -> Unit)? = null,
     groupActionText: String? = null,
@@ -127,6 +128,7 @@ internal fun GroupedMediaList(
                 visible = groups.isNotEmpty(),
                 actionText = actionText,
                 secondaryActionText = secondaryActionText,
+                actionEnabled = !actionInProgress,
                 onActionClick = onActionClick,
                 onSecondaryActionClick = onSecondaryActionClick,
             )

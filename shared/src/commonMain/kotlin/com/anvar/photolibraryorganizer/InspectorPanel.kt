@@ -61,6 +61,7 @@ internal fun InspectorPanel(
     isLibraryRefreshing: Boolean,
     selectedFileTrashAwaitingConfirmation: Boolean,
     selectedFileTrashMessage: String?,
+    selectedFileTrashInProgress: Boolean,
 ) {
     Surface(
         modifier = Modifier
@@ -94,6 +95,7 @@ internal fun InspectorPanel(
                 onNextFileClick = onNextFileClick,
                 selectedFileTrashAwaitingConfirmation = selectedFileTrashAwaitingConfirmation,
                 selectedFileTrashMessage = selectedFileTrashMessage,
+                selectedFileTrashInProgress = selectedFileTrashInProgress,
             )
             HorizontalDivider()
             FolderSelector(
@@ -170,6 +172,7 @@ private fun SelectedFilePreview(
     onNextFileClick: () -> Unit,
     selectedFileTrashAwaitingConfirmation: Boolean,
     selectedFileTrashMessage: String?,
+    selectedFileTrashInProgress: Boolean,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Box(
@@ -247,10 +250,17 @@ private fun SelectedFilePreview(
                 OutlinedButton(
                     onClick = onRequestMoveSelectedFileToTrashClick,
                     modifier = Modifier.weight(1f),
+                    enabled = !selectedFileTrashInProgress,
                 ) {
-                    Text(if (selectedFileTrashAwaitingConfirmation) "Подтвердить" else "В Корзину")
+                    Text(
+                        when {
+                            selectedFileTrashInProgress -> "Перенос..."
+                            selectedFileTrashAwaitingConfirmation -> "Подтвердить"
+                            else -> "В Корзину"
+                        },
+                    )
                 }
-                if (selectedFileTrashAwaitingConfirmation) {
+                if (selectedFileTrashAwaitingConfirmation && !selectedFileTrashInProgress) {
                     OutlinedButton(
                         onClick = onCancelMoveSelectedFileToTrashClick,
                         modifier = Modifier.weight(1f),

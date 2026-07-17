@@ -70,6 +70,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.time.Clock
 
 @Composable
@@ -115,10 +116,13 @@ fun App(
         var isLibraryRefreshing by remember { mutableStateOf(false) }
         var duplicateActionMessage by remember { mutableStateOf<String?>(null) }
         var duplicateDeleteAwaitingConfirmation by remember { mutableStateOf(false) }
+        var duplicateActionInProgress by remember { mutableStateOf(false) }
         var unsupportedActionMessage by remember { mutableStateOf<String?>(null) }
         var unsupportedDeleteAwaitingConfirmation by remember { mutableStateOf(false) }
+        var unsupportedActionInProgress by remember { mutableStateOf(false) }
         var selectedFileTrashAwaitingConfirmation by remember { mutableStateOf(false) }
         var selectedFileTrashMessage by remember { mutableStateOf<String?>(null) }
+        var selectedFileTrashInProgress by remember { mutableStateOf(false) }
         var imagePreviewUiState by remember { mutableStateOf<ImagePreviewUiState>(ImagePreviewUiState.Empty) }
         var issues by remember { mutableStateOf<List<AppIssue>>(emptyList()) }
         var nextIssueId by remember { mutableStateOf(1) }
@@ -234,10 +238,13 @@ fun App(
             imagePreviewLoader = cachedImagePreviewLoader,
             duplicateActionMessage = duplicateActionMessage,
             duplicateDeleteAwaitingConfirmation = duplicateDeleteAwaitingConfirmation,
+            duplicateActionInProgress = duplicateActionInProgress,
             unsupportedActionMessage = unsupportedActionMessage,
             unsupportedDeleteAwaitingConfirmation = unsupportedDeleteAwaitingConfirmation,
+            unsupportedActionInProgress = unsupportedActionInProgress,
             selectedFileTrashAwaitingConfirmation = selectedFileTrashAwaitingConfirmation,
             selectedFileTrashMessage = selectedFileTrashMessage,
+            selectedFileTrashInProgress = selectedFileTrashInProgress,
             importAvailability = resolveImportAvailabilityUseCase(
                 importMode = importMode,
                 plannedFiles = (scanUiState as? ScanUiState.Success)?.plannedFiles.orEmpty(),
@@ -264,10 +271,13 @@ fun App(
                 emptyFolderCleanupAwaitingConfirmation = false
                 duplicateActionMessage = null
                 duplicateDeleteAwaitingConfirmation = false
+                duplicateActionInProgress = false
                 unsupportedActionMessage = null
                 unsupportedDeleteAwaitingConfirmation = false
+                unsupportedActionInProgress = false
                 selectedFileTrashAwaitingConfirmation = false
                 selectedFileTrashMessage = null
+                selectedFileTrashInProgress = false
                 selectedFile = null
                 libraryFiles = emptyList()
                 duplicateFiles = emptyList()
@@ -294,10 +304,13 @@ fun App(
                 emptyFolderCleanupAwaitingConfirmation = false
                 duplicateActionMessage = null
                 duplicateDeleteAwaitingConfirmation = false
+                duplicateActionInProgress = false
                 unsupportedActionMessage = null
                 unsupportedDeleteAwaitingConfirmation = false
+                unsupportedActionInProgress = false
                 selectedFileTrashAwaitingConfirmation = false
                 selectedFileTrashMessage = null
+                selectedFileTrashInProgress = false
                 selectedFile = null
                 coroutineScope.launch {
                     if (!loadLibraryIndexIfAvailable(destinationFolder)) {
@@ -587,55 +600,64 @@ fun App(
                 }
             },
             onRefreshLibraryClick = {
-                coroutineScope.launch {
-                    isLibraryRefreshing = true
-                    try {
-                        refreshLibraryIndexFromDisk()
-                    } finally {
-                        isLibraryRefreshing = false
+                if (!isLibraryRefreshing) {
+                    coroutineScope.launch {
+                        isLibraryRefreshing = true
+                        try {
+                            refreshLibraryIndexFromDisk()
+                        } finally {
+                            isLibraryRefreshing = false
+                        }
                     }
                 }
             },
             onMoveDuplicatesClick = {
-                coroutineScope.launch {
-                    duplicateDeleteAwaitingConfirmation = false
-                    val duplicatesToMove = libraryFiles.duplicateQuarantineCandidates()
-                    if (duplicatesToMove.isEmpty()) {
-                        duplicateActionMessage = "Дубликаты для переноса не найдены."
-                        return@launch
-                    }
-
-                    duplicateActionMessage = "Переношу дубликаты в папку дублей..."
-                    duplicateActionMessage = try {
-                        when (
-                            val result = withContext(Dispatchers.Default) {
-                                duplicateQuarantineRepository.moveToQuarantine(
-                                    destinationFolder = destinationFolder,
-                                    duplicateFiles = duplicatesToMove,
-                                )
+                if (!duplicateActionInProgress) {
+                    coroutineScope.launch {
+                        duplicateActionInProgress = true
+                        duplicateDeleteAwaitingConfirmation = false
+                        try {
+                            val duplicatesToMove = libraryFiles.duplicateQuarantineCandidates()
+                            if (duplicatesToMove.isEmpty()) {
+                                duplicateActionMessage = "Дубликаты для переноса не найдены."
+                                return@launch
                             }
-                        ) {
-                            is AppResult.Success -> {
-                                refreshLibraryIndexFromDisk()
-                                if (result.data.failedFiles > 0) {
-                                    addIssue(
-                                        title = "Дубликаты",
-                                        detail = "Часть дублей не удалось перенести в папку дублей: ${result.data.failedFiles}.",
-                                    )
+
+                            duplicateActionMessage = "Переношу дубликаты в папку дублей..."
+                            duplicateActionMessage = try {
+                                when (
+                                    val result = withContext(Dispatchers.Default) {
+                                        duplicateQuarantineRepository.moveToQuarantine(
+                                            destinationFolder = destinationFolder,
+                                            duplicateFiles = duplicatesToMove,
+                                        )
+                                    }
+                                ) {
+                                    is AppResult.Success -> {
+                                        refreshLibraryIndexFromDisk()
+                                        if (result.data.failedFiles > 0) {
+                                            addIssue(
+                                                title = "Дубликаты",
+                                                detail = "Часть дублей не удалось перенести в папку дублей: ${result.data.failedFiles}.",
+                                            )
+                                        }
+                                        "Перенесено в папку дублей: ${result.data.movedFiles}, ошибок: ${result.data.failedFiles}."
+                                    }
+
+                                    is AppResult.Error -> {
+                                        val message = result.error.toUserMessage()
+                                        addIssue("Дубликаты", message)
+                                        message
+                                    }
                                 }
-                                "Перенесено в папку дублей: ${result.data.movedFiles}, ошибок: ${result.data.failedFiles}."
-                            }
-
-                            is AppResult.Error -> {
-                                val message = result.error.toUserMessage()
+                            } catch (exception: Throwable) {
+                                val message = "Не удалось перенести дубликаты: ${exception.message ?: "без деталей"}"
                                 addIssue("Дубликаты", message)
                                 message
                             }
+                        } finally {
+                            duplicateActionInProgress = false
                         }
-                    } catch (exception: Throwable) {
-                        val message = "Не удалось перенести дубликаты: ${exception.message ?: "без деталей"}"
-                        addIssue("Дубликаты", message)
-                        message
                     }
                 }
             },
@@ -653,47 +675,54 @@ fun App(
                 duplicateActionMessage = "Перенос в Корзину отменен."
             },
             onConfirmDeleteQuarantineClick = {
-                coroutineScope.launch {
-                    if (duplicateFiles.isEmpty()) {
-                        duplicateDeleteAwaitingConfirmation = false
-                        duplicateActionMessage = "В папке дублей пока нет файлов для переноса в Корзину."
-                        return@launch
-                    }
-
-                    duplicateActionMessage = "Перемещаю файлы из папки дублей в Корзину..."
-                    duplicateActionMessage = try {
-                        when (
-                            val result = withContext(Dispatchers.Default) {
-                                duplicateQuarantineRepository.deleteFromQuarantine(
-                                    destinationFolder = destinationFolder,
-                                    quarantineFiles = duplicateFiles,
-                                )
-                            }
-                        ) {
-                            is AppResult.Success -> {
+                if (!duplicateActionInProgress) {
+                    coroutineScope.launch {
+                        duplicateActionInProgress = true
+                        try {
+                            if (duplicateFiles.isEmpty()) {
                                 duplicateDeleteAwaitingConfirmation = false
-                                refreshLibraryIndexFromDisk()
-                                if (result.data.failedFiles > 0) {
-                                    addIssue(
-                                        title = "Дубликаты",
-                                        detail = "Часть файлов из папки дублей не удалось переместить в Корзину: ${result.data.failedFiles}.",
-                                    )
+                                duplicateActionMessage = "В папке дублей пока нет файлов для переноса в Корзину."
+                                return@launch
+                            }
+
+                            duplicateActionMessage = "Перемещаю файлы из папки дублей в Корзину..."
+                            duplicateActionMessage = try {
+                                when (
+                                    val result = withContext(Dispatchers.Default) {
+                                        duplicateQuarantineRepository.deleteFromQuarantine(
+                                            destinationFolder = destinationFolder,
+                                            quarantineFiles = duplicateFiles,
+                                        )
+                                    }
+                                ) {
+                                    is AppResult.Success -> {
+                                        duplicateDeleteAwaitingConfirmation = false
+                                        refreshLibraryIndexFromDisk()
+                                        if (result.data.failedFiles > 0) {
+                                            addIssue(
+                                                title = "Дубликаты",
+                                                detail = "Часть файлов из папки дублей не удалось переместить в Корзину: ${result.data.failedFiles}.",
+                                            )
+                                        }
+                                        "Перемещено в Корзину из папки дублей: ${result.data.deletedFiles}, ошибок: ${result.data.failedFiles}."
+                                    }
+
+                                    is AppResult.Error -> {
+                                        duplicateDeleteAwaitingConfirmation = false
+                                        val message = result.error.toUserMessage()
+                                        addIssue("Дубликаты", message)
+                                        message
+                                    }
                                 }
-                                "Перемещено в Корзину из папки дублей: ${result.data.deletedFiles}, ошибок: ${result.data.failedFiles}."
-                            }
-
-                            is AppResult.Error -> {
+                            } catch (exception: Throwable) {
                                 duplicateDeleteAwaitingConfirmation = false
-                                val message = result.error.toUserMessage()
+                                val message = "Не удалось переместить файлы из папки дублей в Корзину: ${exception.message ?: "без деталей"}"
                                 addIssue("Дубликаты", message)
                                 message
                             }
+                        } finally {
+                            duplicateActionInProgress = false
                         }
-                    } catch (exception: Throwable) {
-                        duplicateDeleteAwaitingConfirmation = false
-                        val message = "Не удалось переместить файлы из папки дублей в Корзину: ${exception.message ?: "без деталей"}"
-                        addIssue("Дубликаты", message)
-                        message
                     }
                 }
             },
@@ -711,47 +740,54 @@ fun App(
                 unsupportedActionMessage = "Перенос в Корзину отменен."
             },
             onConfirmDeleteUnsupportedClick = {
-                coroutineScope.launch {
-                    if (unsupportedFiles.isEmpty()) {
-                        unsupportedDeleteAwaitingConfirmation = false
-                        unsupportedActionMessage = "В папке пропущенных файлов пока нечего переносить в Корзину."
-                        return@launch
-                    }
-
-                    unsupportedActionMessage = "Перемещаю пропущенные файлы в Корзину..."
-                    unsupportedActionMessage = try {
-                        when (
-                            val result = withContext(Dispatchers.Default) {
-                                unsupportedFileQuarantineRepository.deleteFromQuarantine(
-                                    destinationFolder = destinationFolder,
-                                    quarantineFiles = unsupportedFiles,
-                                )
-                            }
-                        ) {
-                            is AppResult.Success -> {
+                if (!unsupportedActionInProgress) {
+                    coroutineScope.launch {
+                        unsupportedActionInProgress = true
+                        try {
+                            if (unsupportedFiles.isEmpty()) {
                                 unsupportedDeleteAwaitingConfirmation = false
-                                refreshLibraryIndexFromDisk(selectFirstFile = false)
-                                if (result.data.failedFiles > 0) {
-                                    addIssue(
-                                        title = "Неподдерживаемые",
-                                        detail = "Часть пропущенных файлов не удалось переместить в Корзину: ${result.data.failedFiles}.",
-                                    )
+                                unsupportedActionMessage = "В папке пропущенных файлов пока нечего переносить в Корзину."
+                                return@launch
+                            }
+
+                            unsupportedActionMessage = "Перемещаю пропущенные файлы в Корзину..."
+                            unsupportedActionMessage = try {
+                                when (
+                                    val result = withContext(Dispatchers.Default) {
+                                        unsupportedFileQuarantineRepository.deleteFromQuarantine(
+                                            destinationFolder = destinationFolder,
+                                            quarantineFiles = unsupportedFiles,
+                                        )
+                                    }
+                                ) {
+                                    is AppResult.Success -> {
+                                        unsupportedDeleteAwaitingConfirmation = false
+                                        refreshLibraryIndexFromDisk(selectFirstFile = false)
+                                        if (result.data.failedFiles > 0) {
+                                            addIssue(
+                                                title = "Неподдерживаемые",
+                                                detail = "Часть пропущенных файлов не удалось переместить в Корзину: ${result.data.failedFiles}.",
+                                            )
+                                        }
+                                        "Перемещено в Корзину пропущенных файлов: ${result.data.deletedFiles}, ошибок: ${result.data.failedFiles}."
+                                    }
+
+                                    is AppResult.Error -> {
+                                        unsupportedDeleteAwaitingConfirmation = false
+                                        val message = result.error.toUserMessage()
+                                        addIssue("Неподдерживаемые", message)
+                                        message
+                                    }
                                 }
-                                "Перемещено в Корзину пропущенных файлов: ${result.data.deletedFiles}, ошибок: ${result.data.failedFiles}."
-                            }
-
-                            is AppResult.Error -> {
+                            } catch (exception: Throwable) {
                                 unsupportedDeleteAwaitingConfirmation = false
-                                val message = result.error.toUserMessage()
+                                val message = "Не удалось переместить пропущенные файлы в Корзину: ${exception.message ?: "без деталей"}"
                                 addIssue("Неподдерживаемые", message)
                                 message
                             }
+                        } finally {
+                            unsupportedActionInProgress = false
                         }
-                    } catch (exception: Throwable) {
-                        unsupportedDeleteAwaitingConfirmation = false
-                        val message = "Не удалось переместить пропущенные файлы в Корзину: ${exception.message ?: "без деталей"}"
-                        addIssue("Неподдерживаемые", message)
-                        message
                     }
                 }
             },
@@ -855,39 +891,50 @@ fun App(
                 }
             },
             onRequestMoveSelectedFileToTrashClick = {
-                val file = selectedFile
-                if (file == null) {
-                    selectedFileTrashAwaitingConfirmation = false
-                    selectedFileTrashMessage = "Файл не выбран."
-                } else if (selectedSection == AppSection.Import) {
-                    selectedFileTrashAwaitingConfirmation = false
-                    selectedFileTrashMessage = "В разделе импорта файл из исходной папки не переносится в Корзину. Сначала проверь план импорта."
-                } else if (selectedFileTrashAwaitingConfirmation) {
-                    coroutineScope.launch {
-                        val path = file.sourcePath
-                        selectedFileTrashMessage = "Перемещаю выбранный файл в Корзину..."
-                        selectedFileTrashMessage = try {
-                            val moved = withContext(Dispatchers.Default) {
-                                fileTrashRepository.moveToTrash(path)
+                if (!selectedFileTrashInProgress) {
+                    val file = selectedFile
+                    if (file == null) {
+                        selectedFileTrashAwaitingConfirmation = false
+                        selectedFileTrashMessage = "Файл не выбран."
+                    } else if (selectedSection == AppSection.Import) {
+                        selectedFileTrashAwaitingConfirmation = false
+                        selectedFileTrashMessage = "В разделе импорта файл из исходной папки не переносится в Корзину. Сначала проверь план импорта."
+                    } else if (selectedFileTrashAwaitingConfirmation) {
+                        coroutineScope.launch {
+                            selectedFileTrashInProgress = true
+                            val path = file.sourcePath
+                            selectedFileTrashMessage = "Перемещаю выбранный файл в Корзину..."
+                            selectedFileTrashMessage = try {
+                                val moved = withTimeoutOrNull(SELECTED_FILE_TRASH_TIMEOUT_MS) {
+                                    withContext(Dispatchers.Default) {
+                                        fileTrashRepository.moveToTrash(path)
+                                    }
+                                }
+                                selectedFileTrashAwaitingConfirmation = false
+                                if (moved == true) {
+                                    refreshLibraryIndexFromDisk(selectFirstFile = false)
+                                    "Файл перемещен в Корзину."
+                                } else if (moved == null) {
+                                    val message = "Перенос в Корзину занял слишком много времени. Проверь доступ к диску или попробуй открыть файл в папке."
+                                    addIssue("Корзина", "$message Файл: $path")
+                                    message
+                                } else {
+                                    addIssue("Корзина", "Не удалось переместить файл в Корзину: $path")
+                                    "Не удалось переместить файл в Корзину."
+                                }
+                            } catch (exception: Throwable) {
+                                selectedFileTrashAwaitingConfirmation = false
+                                val message = "Не удалось переместить файл в Корзину: ${exception.message ?: "без деталей"}"
+                                addIssue("Корзина", message)
+                                message
+                            } finally {
+                                selectedFileTrashInProgress = false
                             }
-                            selectedFileTrashAwaitingConfirmation = false
-                            if (moved) {
-                                refreshLibraryIndexFromDisk(selectFirstFile = false)
-                                "Файл перемещен в Корзину."
-                            } else {
-                                addIssue("Корзина", "Не удалось переместить файл в Корзину: $path")
-                                "Не удалось переместить файл в Корзину."
-                            }
-                        } catch (exception: Throwable) {
-                            selectedFileTrashAwaitingConfirmation = false
-                            val message = "Не удалось переместить файл в Корзину: ${exception.message ?: "без деталей"}"
-                            addIssue("Корзина", message)
-                            message
                         }
+                    } else {
+                        selectedFileTrashAwaitingConfirmation = true
+                        selectedFileTrashMessage = "Будет перемещен в Корзину только выбранный файл: ${file.fileName}"
                     }
-                } else {
-                    selectedFileTrashAwaitingConfirmation = true
-                    selectedFileTrashMessage = "Будет перемещен в Корзину только выбранный файл: ${file.fileName}"
                 }
             },
             onCancelMoveSelectedFileToTrashClick = {
@@ -1116,3 +1163,5 @@ private fun List<PlannedMediaFile>.nextFrom(
 private fun Int.floorMod(size: Int): Int {
     return ((this % size) + size) % size
 }
+
+private const val SELECTED_FILE_TRASH_TIMEOUT_MS = 20_000L

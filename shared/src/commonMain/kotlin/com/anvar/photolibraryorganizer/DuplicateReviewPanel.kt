@@ -41,6 +41,7 @@ internal fun DuplicateReviewPanel(
     actionText: String? = null,
     secondaryActionText: String? = null,
     actionMessage: String? = null,
+    actionInProgress: Boolean = false,
     onActionClick: (() -> Unit)? = null,
     onSecondaryActionClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
@@ -68,6 +69,7 @@ internal fun DuplicateReviewPanel(
                 visible = groups.isNotEmpty(),
                 actionText = actionText,
                 secondaryActionText = secondaryActionText,
+                actionEnabled = !actionInProgress,
                 onActionClick = onActionClick,
                 onSecondaryActionClick = onSecondaryActionClick,
             )

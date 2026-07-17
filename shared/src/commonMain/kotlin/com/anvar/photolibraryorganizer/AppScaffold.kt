@@ -60,10 +60,13 @@ internal fun PhotoLibraryOrganizerApp(
     imagePreviewLoader: ImagePreviewLoader,
     duplicateActionMessage: String?,
     duplicateDeleteAwaitingConfirmation: Boolean,
+    duplicateActionInProgress: Boolean,
     unsupportedActionMessage: String?,
     unsupportedDeleteAwaitingConfirmation: Boolean,
+    unsupportedActionInProgress: Boolean,
     selectedFileTrashAwaitingConfirmation: Boolean,
     selectedFileTrashMessage: String?,
+    selectedFileTrashInProgress: Boolean,
     importAvailability: ImportAvailability,
     isLibraryRefreshing: Boolean,
     issues: List<AppIssue>,
@@ -188,8 +191,10 @@ internal fun PhotoLibraryOrganizerApp(
                     imagePreviewLoader = imagePreviewLoader,
                     duplicateActionMessage = duplicateActionMessage,
                     duplicateDeleteAwaitingConfirmation = duplicateDeleteAwaitingConfirmation,
+                    duplicateActionInProgress = duplicateActionInProgress,
                     unsupportedActionMessage = unsupportedActionMessage,
                     unsupportedDeleteAwaitingConfirmation = unsupportedDeleteAwaitingConfirmation,
+                    unsupportedActionInProgress = unsupportedActionInProgress,
                     importAvailability = importAvailability,
                     isLibraryRefreshing = isLibraryRefreshing,
                     issues = issues,
@@ -241,6 +246,7 @@ internal fun PhotoLibraryOrganizerApp(
                     isLibraryRefreshing = isLibraryRefreshing,
                     selectedFileTrashAwaitingConfirmation = selectedFileTrashAwaitingConfirmation,
                     selectedFileTrashMessage = selectedFileTrashMessage,
+                    selectedFileTrashInProgress = selectedFileTrashInProgress,
                 )
             }
             if (isViewerOpen && selectedFile != null) {

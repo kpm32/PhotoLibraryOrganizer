@@ -81,6 +81,7 @@ Run this checklist before publishing a DMG.
 6. Confirm open file and reveal in folder actions work.
 7. Confirm moving one selected library file to macOS Trash requires confirmation and refreshes the list.
 8. Confirm the selected-file Trash action is not allowed from the import-source preview.
+9. Confirm repeated clicks do not start a second Trash operation while a file action is already running.
 
 ## Error Handling
 

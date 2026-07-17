@@ -52,8 +52,10 @@ internal fun MainWorkspace(
     imagePreviewLoader: ImagePreviewLoader,
     duplicateActionMessage: String?,
     duplicateDeleteAwaitingConfirmation: Boolean,
+    duplicateActionInProgress: Boolean,
     unsupportedActionMessage: String?,
     unsupportedDeleteAwaitingConfirmation: Boolean,
+    unsupportedActionInProgress: Boolean,
     importAvailability: ImportAvailability,
     isLibraryRefreshing: Boolean,
     issues: List<AppIssue>,
@@ -161,8 +163,10 @@ internal fun MainWorkspace(
                 imagePreviewLoader = imagePreviewLoader,
                 duplicateActionMessage = duplicateActionMessage,
                 duplicateDeleteAwaitingConfirmation = duplicateDeleteAwaitingConfirmation,
+                duplicateActionInProgress = duplicateActionInProgress,
                 unsupportedActionMessage = unsupportedActionMessage,
                 unsupportedDeleteAwaitingConfirmation = unsupportedDeleteAwaitingConfirmation,
+                unsupportedActionInProgress = unsupportedActionInProgress,
                 issues = issues,
                 selectedFile = selectedFile,
                 onFileSelected = onFileSelected,
@@ -287,8 +291,10 @@ private fun LibrarySection(
     imagePreviewLoader: ImagePreviewLoader,
     duplicateActionMessage: String?,
     duplicateDeleteAwaitingConfirmation: Boolean,
+    duplicateActionInProgress: Boolean,
     unsupportedActionMessage: String?,
     unsupportedDeleteAwaitingConfirmation: Boolean,
+    unsupportedActionInProgress: Boolean,
     issues: List<AppIssue>,
     selectedFile: PlannedMediaFile?,
     onFileSelected: (PlannedMediaFile) -> Unit,
@@ -372,6 +378,7 @@ private fun LibrarySection(
                 null
             },
             actionMessage = duplicateActionMessage,
+            actionInProgress = duplicateActionInProgress,
             onActionClick = when {
                 duplicateDeleteAwaitingConfirmation && duplicateFiles.isNotEmpty() -> onConfirmDeleteQuarantineClick
                 duplicateFiles.isNotEmpty() -> onRequestDeleteQuarantineClick
@@ -405,6 +412,7 @@ private fun LibrarySection(
                 null
             },
             actionMessage = unsupportedActionMessage,
+            actionInProgress = unsupportedActionInProgress,
             onActionClick = when {
                 unsupportedDeleteAwaitingConfirmation && unsupportedFiles.isNotEmpty() -> onConfirmDeleteUnsupportedClick
                 unsupportedFiles.isNotEmpty() -> onRequestDeleteUnsupportedClick
