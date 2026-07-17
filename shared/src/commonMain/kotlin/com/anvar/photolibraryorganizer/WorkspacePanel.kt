@@ -452,7 +452,7 @@ private fun AboutPanel(
                 fontWeight = FontWeight.SemiBold,
             )
             HorizontalDivider()
-            AboutRow("Версия", "1.0.0-preview.5")
+            AboutRow("Версия", "1.0.0-preview.6")
             AboutRow("Статус", "Preview-релиз для macOS")
             AboutRow("Интерфейс", "Русский")
             AboutRow("Лицензия", "MIT")

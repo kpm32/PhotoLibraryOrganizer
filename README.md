@@ -66,7 +66,7 @@ Download the latest preview DMG from GitHub Releases:
 https://github.com/kpm32/PhotoLibraryOrganizer/releases
 ```
 
-Current preview line: `v1.0.0-preview.5`.
+Current preview line: `v1.0.0-preview.6`.
 
 The preview DMG is unsigned. On first launch macOS Gatekeeper may block it; use right click -> Open or System Settings -> Privacy & Security -> Open Anyway.
 

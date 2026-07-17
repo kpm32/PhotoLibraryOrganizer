@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.0.0-preview.6 - 2026-07-17
+
+Preview build focused on safer real-archive cleanup and faster startup for large libraries.
+
+### Added
+
+- Added a local library index that is loaded on startup and rebuilt after manual refresh or library-changing operations.
+- Added inspector action to move only the currently selected library file to macOS Trash after confirmation.
+
+### Changed
+
+- Large libraries are no longer refreshed automatically on startup; refresh is now a manual action with visible progress.
+- Cleanup from `Duplicates` and `Unsupported` moves files to macOS Trash after confirmation instead of permanently deleting them.
+- The unsupported cleanup button now explicitly says it moves all skipped files to Trash.
+- GitHub instructions now document preview download, Gatekeeper, large-library refresh, local index, and Trash behavior.
+
 ## 1.0.0-preview.5 - 2026-07-10
 
 Preview build that completes the scan-reliability hotfix for external and changing archives.

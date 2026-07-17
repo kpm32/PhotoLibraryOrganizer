@@ -100,7 +100,7 @@ Run this checklist before publishing a DMG.
 2. Confirm DMG exists:
 
    ```text
-   desktopApp/build/compose/binaries/main/dmg/PhotoLibraryOrganizer-1.0.0.dmg
+   desktopApp/build/compose/binaries/main/dmg/PhotoLibraryOrganizer-1.0.6.dmg
    ```
 
 3. Install from DMG on a test machine or clean app install location.
