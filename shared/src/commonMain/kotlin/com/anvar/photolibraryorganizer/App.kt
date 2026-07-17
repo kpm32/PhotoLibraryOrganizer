@@ -229,6 +229,18 @@ fun App(
         } ?: -1
         val canNavigateSelectedFile = navigationFiles.size > 1 && selectedFileIndex >= 0
 
+        fun removeFileFromVisibleState(path: String) {
+            libraryFiles = libraryFiles.filterNot { it.sourcePath == path }
+            duplicateFiles = duplicateFiles.filterNot { it.sourcePath == path }
+            unsupportedFiles = unsupportedFiles.filterNot { it.sourcePath == path }
+            selectedFile = navigationFiles.filterNot { it.sourcePath == path }.firstOrNull()
+            imagePreviewUiState = if (selectedFile == null) {
+                ImagePreviewUiState.Empty
+            } else {
+                imagePreviewUiState
+            }
+        }
+
         PhotoLibraryOrganizerApp(
             plan = plan,
             scanUiState = scanUiState,
@@ -940,7 +952,13 @@ fun App(
                                 }
                                 selectedFileTrashAwaitingConfirmation = false
                                 if (moved == true) {
-                                    refreshLibraryIndexFromDisk(selectFirstFile = false)
+                                    removeFileFromVisibleState(path)
+                                    try {
+                                        refreshLibraryIndexFromDisk(selectFirstFile = false)
+                                    } catch (exception: Throwable) {
+                                        // The file is already in Trash. A refresh failure should not turn a successful
+                                        // delete into a blocking system dialog.
+                                    }
                                     "Файл перемещен в Корзину."
                                 } else if (moved == null) {
                                     val message = "Перенос в Корзину занял слишком много времени. Проверь доступ к диску или попробуй открыть файл в папке."
