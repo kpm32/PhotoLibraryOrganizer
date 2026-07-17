@@ -953,11 +953,13 @@ fun App(
                                 selectedFileTrashAwaitingConfirmation = false
                                 if (moved == true) {
                                     removeFileFromVisibleState(path)
-                                    try {
-                                        refreshLibraryIndexFromDisk(selectFirstFile = false)
-                                    } catch (exception: Throwable) {
-                                        // The file is already in Trash. A refresh failure should not turn a successful
-                                        // delete into a blocking system dialog.
+                                    coroutineScope.launch {
+                                        try {
+                                            refreshLibraryIndexFromDisk(selectFirstFile = false)
+                                        } catch (exception: Throwable) {
+                                            // The file is already in Trash. A refresh failure should not turn a successful
+                                            // delete into a blocking system dialog.
+                                        }
                                     }
                                     "Файл перемещен в Корзину."
                                 } else if (moved == null) {
