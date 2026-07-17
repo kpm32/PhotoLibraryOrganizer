@@ -8,6 +8,7 @@ Preview build for reliable scanning of large, real-world archives.
 - Library refresh no longer calculates SHA-256 hashes for every file during normal browsing.
 - Library refresh no longer starts automatically on app launch; use the manual refresh action for large libraries.
 - Manual library refresh now shows a visible progress indicator.
+- Added a local library index for fast startup after the first refresh.
 - AppleDouble sidecar files such as `._*.jpg` and `._*.mov` are ignored as service files.
 - Scanning continues when an individual file disappears, cannot be read, or causes a permission/I/O error.
 - File traversal now uses `walkFileTree` so a problematic file or folder on an external drive does not interrupt the rest of the scan.
@@ -21,6 +22,7 @@ Preview build for reliable scanning of large, real-world archives.
 - Prefer copy mode until you trust the result on your archive.
 - Move mode does not overwrite existing targets and reports per-file failures.
 - Duplicate and unsupported cleanup uses macOS Trash, not permanent deletion.
+- Startup data comes from the last saved local index; use manual refresh when files changed outside the app.
 
 ## Build
 

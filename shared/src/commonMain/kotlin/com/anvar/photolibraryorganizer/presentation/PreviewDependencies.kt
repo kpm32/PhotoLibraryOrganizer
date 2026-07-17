@@ -2,10 +2,12 @@ package com.anvar.photolibraryorganizer.presentation
 
 import com.anvar.photolibraryorganizer.domain.AppResult
 import com.anvar.photolibraryorganizer.domain.model.MediaFileCategory
+import com.anvar.photolibraryorganizer.domain.model.LibraryIndexSnapshot
 import com.anvar.photolibraryorganizer.domain.model.ScanSourceFolderProgress
 import com.anvar.photolibraryorganizer.domain.model.ScanSourceFolderResult
 import com.anvar.photolibraryorganizer.domain.model.ScanSourceFolderSummary
 import com.anvar.photolibraryorganizer.domain.model.ScannedMediaFile
+import com.anvar.photolibraryorganizer.domain.repository.LibraryIndexStorage
 import com.anvar.photolibraryorganizer.domain.repository.PhotoSourceScanner
 import com.anvar.photolibraryorganizer.domain.repository.StorageSpaceProvider
 
@@ -18,6 +20,11 @@ object PreviewFolderPicker : FolderPicker {
 
 object PreviewStorageSpaceProvider : StorageSpaceProvider {
     override suspend fun availableBytes(path: String): Long = 100_000_000_000
+}
+
+object PreviewLibraryIndexStorage : LibraryIndexStorage {
+    override suspend fun load(destinationFolder: String?): LibraryIndexSnapshot? = null
+    override suspend fun save(snapshot: LibraryIndexSnapshot) = Unit
 }
 
 object PreviewPhotoSourceScanner : PhotoSourceScanner {

@@ -16,7 +16,9 @@ Run this checklist before publishing a DMG.
 3. Confirm the app follows macOS dark/light appearance.
 4. Select a source folder.
 5. Select a destination folder.
-6. Confirm the selections persist after restart.
+6. Run `Обновить библиотеку` once.
+7. Restart the app.
+8. Confirm the selections and library list load from the saved index without an automatic disk scan.
 
 ## Scan
 
@@ -26,8 +28,9 @@ Run this checklist before publishing a DMG.
 4. Run scan again and let it finish.
 5. Confirm counts for photos, videos, unsupported files, and total size look plausible.
 6. Confirm supported HEIC/video files appear as media when possible.
-7. Scan a folder that contains an inaccessible or removed file, if the test environment permits it.
-8. Confirm the scan completes and records the problem without losing the remaining files.
+7. Restart the app and confirm the previous library view appears from the local index.
+8. Scan a folder that contains an inaccessible or removed file, if the test environment permits it.
+9. Confirm the scan completes and records the problem without losing the remaining files.
 
 ## Import Copy
 

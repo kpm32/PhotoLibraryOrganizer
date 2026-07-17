@@ -23,6 +23,7 @@ The app keeps photos as normal files on disk. It scans folders, shows an import 
 - Shows captured date, file date, and the date used for folder placement.
 - Shows per-file import failure details when something goes wrong.
 - Supports re-running import after interruption by skipping already imported target files.
+- Stores a local library index for fast startup after the first refresh.
 - Provides a large preview overlay and keyboard navigation.
 - Uses macOS QuickLook as a fallback for video thumbnails.
 
@@ -51,7 +52,8 @@ The app is designed around explicit confirmation:
 - Unsupported files are moved to `Unsupported`, not deleted.
 - Duplicate and unsupported cleanup move files to macOS Trash after confirmation.
 - Preview builds do not permanently delete duplicate or unsupported files.
-- Large libraries are not refreshed automatically on startup; click `Обновить библиотеку` when you want to read the current library folders.
+- Large libraries are not refreshed automatically on startup; the app loads the last saved local index when available.
+- Click `Обновить библиотеку` when you want to read the current library folders and rebuild the local index.
 - Empty source folder cleanup removes only empty subfolders, not files and not the source root.
 
 ## Download macOS Preview
@@ -68,9 +70,9 @@ The preview DMG is unsigned. On first launch macOS Gatekeeper may block it; use 
 
 ## Large Libraries
 
-The app remembers the selected source and library folders, but it does not scan the whole library automatically on every launch. This keeps startup responsive for archives with tens of thousands of files.
+The app remembers the selected source and library folders, but it does not scan the whole library automatically on every launch. Instead, it loads the last saved local index from `~/Library/Application Support/PhotoLibraryOrganizer/library-index.tsv` when available. This keeps startup responsive for archives with tens of thousands of files.
 
-Use `Обновить библиотеку` when you want to reload `Library`, `Duplicates`, and `Unsupported`. While reading folders, the inspector shows `Обновляю...` with a progress indicator.
+Use `Обновить библиотеку` when you want to reload `Library`, `Duplicates`, and `Unsupported`. While reading folders, the inspector shows `Обновляю...` with a progress indicator, then saves a fresh index.
 
 ## Run From Source
 
