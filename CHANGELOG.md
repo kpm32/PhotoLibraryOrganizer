@@ -10,6 +10,7 @@
 - macOS Trash now uses only the Finder operation with a short timeout, avoiding slow direct `.Trashes` moves on external drives.
 - macOS Trash now finishes as soon as the source file disappears, even if the AppleScript process is still waiting.
 - After a successful selected-file Trash move, the UI removes the file immediately and ignores refresh failures that happen after the file is already in Trash.
+- Replaced the app icon with a more polished macOS-style photo archive icon and rebuilt the `.icns` asset.
 
 ## 1.0.0-preview.8 - 2026-07-17
 
