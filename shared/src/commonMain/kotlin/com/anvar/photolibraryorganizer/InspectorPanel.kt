@@ -35,6 +35,8 @@ import androidx.compose.ui.unit.dp
 import com.anvar.photolibraryorganizer.domain.PhotoLibraryPlan
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
 import com.anvar.photolibraryorganizer.presentation.ImagePreviewUiState
+import com.anvar.photolibraryorganizer.presentation.LibraryRefreshProgress
+import com.anvar.photolibraryorganizer.presentation.LibraryRefreshSection
 import com.anvar.photolibraryorganizer.presentation.ScanUiState
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -58,7 +60,9 @@ internal fun InspectorPanel(
     onSourceFolderClick: () -> Unit,
     onDestinationFolderClick: () -> Unit,
     onRefreshLibraryClick: () -> Unit,
+    onCancelRefreshLibraryClick: () -> Unit,
     isLibraryRefreshing: Boolean,
+    libraryRefreshProgress: LibraryRefreshProgress?,
     selectedFileTrashAwaitingConfirmation: Boolean,
     selectedFileTrashMessage: String?,
     selectedFileTrashInProgress: Boolean,
@@ -119,10 +123,13 @@ internal fun InspectorPanel(
             if (isLibraryRefreshing) {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                 Text(
-                    text = "Читаю папки библиотеки. Окно можно оставить открытым.",
+                    text = libraryRefreshProgress.toRefreshText(),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                TextButton(onClick = onCancelRefreshLibraryClick) {
+                    Text("Остановить обновление")
+                }
             }
             if (scanUiState is ScanUiState.Success) {
                 HorizontalDivider()
@@ -409,6 +416,15 @@ private fun PlannedMediaFile.libraryDateLabel(): String {
     return month?.takeIf { it.length == 7 }
         ?.let { value -> if (source == null) value else "$value ($source)" }
         ?: "Не определена"
+}
+
+private fun LibraryRefreshProgress?.toRefreshText(): String {
+    if (this == null) return "Готовлю обновление библиотеки..."
+    return if (section == LibraryRefreshSection.Saving) {
+        "Сохраняю локальный индекс. Окно можно оставить открытым."
+    } else {
+        "${section.title}: просмотрено $scannedFiles, медиа $mediaFiles, пропущено $unsupportedFiles."
+    }
 }
 
 private fun Long?.toReadableDateTimeOrEmpty(): String {

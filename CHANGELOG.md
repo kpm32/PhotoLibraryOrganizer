@@ -6,6 +6,7 @@
 
 - File actions now guard against repeated clicks while duplicate, unsupported, or selected-file Trash operations are already running.
 - Selected-file Trash now has a UI timeout instead of leaving the inspector in an endless moving state.
+- Library refresh now shows the current section and file counters, and can be canceled from the inspector.
 
 ## 1.0.0-preview.8 - 2026-07-17
 

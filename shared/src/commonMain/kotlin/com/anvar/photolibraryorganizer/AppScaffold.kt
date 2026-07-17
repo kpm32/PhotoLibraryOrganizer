@@ -42,6 +42,7 @@ import com.anvar.photolibraryorganizer.presentation.ImportReport
 import com.anvar.photolibraryorganizer.presentation.ImportUiState
 import com.anvar.photolibraryorganizer.presentation.AppSection
 import com.anvar.photolibraryorganizer.presentation.ImagePreviewLoader
+import com.anvar.photolibraryorganizer.presentation.LibraryRefreshProgress
 import com.anvar.photolibraryorganizer.presentation.ScanUiState
 
 @Composable
@@ -69,10 +70,12 @@ internal fun PhotoLibraryOrganizerApp(
     selectedFileTrashInProgress: Boolean,
     importAvailability: ImportAvailability,
     isLibraryRefreshing: Boolean,
+    libraryRefreshProgress: LibraryRefreshProgress?,
     issues: List<AppIssue>,
     onSourceFolderClick: () -> Unit,
     onDestinationFolderClick: () -> Unit,
     onRefreshLibraryClick: () -> Unit,
+    onCancelRefreshLibraryClick: () -> Unit,
     onMoveDuplicatesClick: () -> Unit,
     onRequestDeleteQuarantineClick: () -> Unit,
     onConfirmDeleteQuarantineClick: () -> Unit,
@@ -243,7 +246,9 @@ internal fun PhotoLibraryOrganizerApp(
                     onSourceFolderClick = onSourceFolderClick,
                     onDestinationFolderClick = onDestinationFolderClick,
                     onRefreshLibraryClick = onRefreshLibraryClick,
+                    onCancelRefreshLibraryClick = onCancelRefreshLibraryClick,
                     isLibraryRefreshing = isLibraryRefreshing,
+                    libraryRefreshProgress = libraryRefreshProgress,
                     selectedFileTrashAwaitingConfirmation = selectedFileTrashAwaitingConfirmation,
                     selectedFileTrashMessage = selectedFileTrashMessage,
                     selectedFileTrashInProgress = selectedFileTrashInProgress,

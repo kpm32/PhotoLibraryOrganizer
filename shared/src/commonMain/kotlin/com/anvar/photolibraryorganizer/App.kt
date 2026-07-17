@@ -50,6 +50,8 @@ import com.anvar.photolibraryorganizer.presentation.ImagePreviewUiState
 import com.anvar.photolibraryorganizer.presentation.ImportHistoryStorage
 import com.anvar.photolibraryorganizer.presentation.ImportReport
 import com.anvar.photolibraryorganizer.presentation.ImportUiState
+import com.anvar.photolibraryorganizer.presentation.LibraryRefreshProgress
+import com.anvar.photolibraryorganizer.presentation.LibraryRefreshSection
 import com.anvar.photolibraryorganizer.presentation.PreviewDuplicateQuarantineRepository
 import com.anvar.photolibraryorganizer.presentation.PreviewEmptyFolderCleanupRepository
 import com.anvar.photolibraryorganizer.presentation.PreviewAppSettingsStorage
@@ -103,6 +105,7 @@ fun App(
         var scanRequestToken by remember { mutableStateOf(0) }
         var scanJob by remember { mutableStateOf<Job?>(null) }
         var importJob by remember { mutableStateOf<Job?>(null) }
+        var refreshLibraryJob by remember { mutableStateOf<Job?>(null) }
         var lastImportProgress by remember { mutableStateOf<ImportMediaFilesProgress?>(null) }
         var importUiState by remember { mutableStateOf<ImportUiState>(ImportUiState.Idle) }
         var lastImportReport by remember { mutableStateOf<ImportReport?>(null) }
@@ -114,6 +117,7 @@ fun App(
         var duplicateFiles by remember { mutableStateOf<List<PlannedMediaFile>>(emptyList()) }
         var unsupportedFiles by remember { mutableStateOf<List<PlannedMediaFile>>(emptyList()) }
         var isLibraryRefreshing by remember { mutableStateOf(false) }
+        var libraryRefreshProgress by remember { mutableStateOf<LibraryRefreshProgress?>(null) }
         var duplicateActionMessage by remember { mutableStateOf<String?>(null) }
         var duplicateDeleteAwaitingConfirmation by remember { mutableStateOf(false) }
         var duplicateActionInProgress by remember { mutableStateOf(false) }
@@ -175,11 +179,13 @@ fun App(
 
         suspend fun refreshLibraryIndexFromDisk(
             selectFirstFile: Boolean = true,
+            onProgress: (LibraryRefreshProgress) -> Unit = {},
         ) {
             val snapshot = refreshLibraryIndexSnapshot(
                 destinationFolder = destinationFolder,
                 photoSourceScanner = photoSourceScanner,
                 libraryIndexStorage = libraryIndexStorage,
+                onProgress = onProgress,
             )
             applyLibraryIndexSnapshot(snapshot, selectFirstFile)
         }
@@ -250,6 +256,7 @@ fun App(
                 plannedFiles = (scanUiState as? ScanUiState.Success)?.plannedFiles.orEmpty(),
             ),
             isLibraryRefreshing = isLibraryRefreshing,
+            libraryRefreshProgress = libraryRefreshProgress,
             issues = issues,
             onSourceFolderClick = {
                 folderPicker.chooseFolder("Выбери исходную папку")?.let {
@@ -278,6 +285,9 @@ fun App(
                 selectedFileTrashAwaitingConfirmation = false
                 selectedFileTrashMessage = null
                 selectedFileTrashInProgress = false
+                refreshLibraryJob?.cancel()
+                isLibraryRefreshing = false
+                libraryRefreshProgress = null
                 selectedFile = null
                 libraryFiles = emptyList()
                 duplicateFiles = emptyList()
@@ -311,6 +321,9 @@ fun App(
                 selectedFileTrashAwaitingConfirmation = false
                 selectedFileTrashMessage = null
                 selectedFileTrashInProgress = false
+                refreshLibraryJob?.cancel()
+                isLibraryRefreshing = false
+                libraryRefreshProgress = null
                 selectedFile = null
                 coroutineScope.launch {
                     if (!loadLibraryIndexIfAvailable(destinationFolder)) {
@@ -601,15 +614,30 @@ fun App(
             },
             onRefreshLibraryClick = {
                 if (!isLibraryRefreshing) {
-                    coroutineScope.launch {
+                    refreshLibraryJob = coroutineScope.launch {
                         isLibraryRefreshing = true
+                        libraryRefreshProgress = null
                         try {
-                            refreshLibraryIndexFromDisk()
+                            refreshLibraryIndexFromDisk { progress ->
+                                coroutineScope.launch {
+                                    if (isLibraryRefreshing) {
+                                        libraryRefreshProgress = progress
+                                    }
+                                }
+                            }
+                        } catch (exception: CancellationException) {
+                            libraryRefreshProgress = null
                         } finally {
                             isLibraryRefreshing = false
+                            refreshLibraryJob = null
                         }
                     }
                 }
+            },
+            onCancelRefreshLibraryClick = {
+                refreshLibraryJob?.cancel()
+                isLibraryRefreshing = false
+                libraryRefreshProgress = null
             },
             onMoveDuplicatesClick = {
                 if (!duplicateActionInProgress) {
@@ -1007,26 +1035,29 @@ private fun String.toUnsupportedFolderName(): String {
 private suspend fun refreshLibraryFiles(
     destinationFolder: String?,
     photoSourceScanner: PhotoSourceScanner,
+    onProgress: (LibraryRefreshProgress) -> Unit,
 ): List<PlannedMediaFile> {
     val libraryFolder = destinationFolder?.trim()?.trimEnd('/')?.let { "$it/Library" }
         ?: return emptyList()
 
-    return refreshPlannedFiles(libraryFolder, photoSourceScanner)
+    return refreshPlannedFiles(libraryFolder, photoSourceScanner, LibraryRefreshSection.Library, onProgress)
 }
 
 private suspend fun refreshLibraryIndexSnapshot(
     destinationFolder: String?,
     photoSourceScanner: PhotoSourceScanner,
     libraryIndexStorage: LibraryIndexStorage,
+    onProgress: (LibraryRefreshProgress) -> Unit,
 ): LibraryIndexSnapshot {
     val destination = destinationFolder?.trim()?.trimEnd('/').orEmpty()
     val snapshot = LibraryIndexSnapshot(
         destinationFolder = destination,
-        libraryFiles = refreshLibraryFiles(destination, photoSourceScanner),
-        duplicateFiles = refreshDuplicateFiles(destination, photoSourceScanner),
-        unsupportedFiles = refreshUnsupportedFiles(destination, photoSourceScanner),
+        libraryFiles = refreshLibraryFiles(destination, photoSourceScanner, onProgress),
+        duplicateFiles = refreshDuplicateFiles(destination, photoSourceScanner, onProgress),
+        unsupportedFiles = refreshUnsupportedFiles(destination, photoSourceScanner, onProgress),
         updatedAtEpochMillis = Clock.System.now().toEpochMilliseconds(),
     )
+    onProgress(LibraryRefreshProgress(section = LibraryRefreshSection.Saving))
     libraryIndexStorage.save(snapshot)
     return snapshot
 }
@@ -1034,31 +1065,38 @@ private suspend fun refreshLibraryIndexSnapshot(
 private suspend fun refreshDuplicateFiles(
     destinationFolder: String?,
     photoSourceScanner: PhotoSourceScanner,
+    onProgress: (LibraryRefreshProgress) -> Unit,
 ): List<PlannedMediaFile> {
     val duplicatesFolder = destinationFolder?.trim()?.trimEnd('/')?.let { "$it/Duplicates" }
         ?: return emptyList()
 
-    return refreshPlannedFiles(duplicatesFolder, photoSourceScanner)
+    return refreshPlannedFiles(duplicatesFolder, photoSourceScanner, LibraryRefreshSection.Duplicates, onProgress)
 }
 
 private suspend fun refreshUnsupportedFiles(
     destinationFolder: String?,
     photoSourceScanner: PhotoSourceScanner,
+    onProgress: (LibraryRefreshProgress) -> Unit,
 ): List<PlannedMediaFile> {
     val unsupportedFolder = destinationFolder?.trim()?.trimEnd('/')?.let { "$it/Unsupported" }
         ?: return emptyList()
 
-    return refreshAllFiles(unsupportedFolder, photoSourceScanner)
+    return refreshAllFiles(unsupportedFolder, photoSourceScanner, LibraryRefreshSection.Unsupported, onProgress)
 }
 
 private suspend fun refreshPlannedFiles(
     folder: String,
     photoSourceScanner: PhotoSourceScanner,
+    section: LibraryRefreshSection,
+    onProgress: (LibraryRefreshProgress) -> Unit,
 ): List<PlannedMediaFile> {
     return when (
         val result = withContext(Dispatchers.Default) {
             photoSourceScanner.scanFolder(
                 path = folder,
+                onProgress = { progress ->
+                    onProgress(progress.toLibraryRefreshProgress(section))
+                },
                 readContentHash = false,
             )
         }
@@ -1082,11 +1120,16 @@ private suspend fun refreshPlannedFiles(
 private suspend fun refreshAllFiles(
     folder: String,
     photoSourceScanner: PhotoSourceScanner,
+    section: LibraryRefreshSection,
+    onProgress: (LibraryRefreshProgress) -> Unit,
 ): List<PlannedMediaFile> {
     return when (
         val result = withContext(Dispatchers.Default) {
             photoSourceScanner.scanFolder(
                 path = folder,
+                onProgress = { progress ->
+                    onProgress(progress.toLibraryRefreshProgress(section))
+                },
                 readContentHash = false,
             )
         }
@@ -1117,6 +1160,17 @@ private suspend fun refreshAllFiles(
 
         is AppResult.Error -> emptyList()
     }
+}
+
+private fun com.anvar.photolibraryorganizer.domain.model.ScanSourceFolderProgress.toLibraryRefreshProgress(
+    section: LibraryRefreshSection,
+): LibraryRefreshProgress {
+    return LibraryRefreshProgress(
+        section = section,
+        scannedFiles = scannedFiles,
+        mediaFiles = mediaFiles,
+        unsupportedFiles = unsupportedFiles,
+    )
 }
 
 private fun List<PlannedMediaFile>.duplicateQuarantineCandidates(): List<PlannedMediaFile> {
