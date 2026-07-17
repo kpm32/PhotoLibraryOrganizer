@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.0-preview.8 - 2026-07-17
+
+Hotfix preview build for selected-file Trash hangs on macOS.
+
+### Fixed
+
+- macOS Trash actions now avoid Java `Desktop.moveToTrash` on macOS and first move files directly into `.Trash` or external-volume `.Trashes/<uid>`.
+- Finder Trash remains as a fallback, while Java Desktop Trash is only used on non-macOS systems.
+
 ## 1.0.0-preview.7 - 2026-07-17
 
 Hotfix preview build for macOS Trash reliability.

@@ -22,7 +22,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "PhotoLibraryOrganizer"
-            packageVersion = "1.0.7"
+            packageVersion = "1.0.8"
             description = "Photo archive organizer"
 
             macOS {
