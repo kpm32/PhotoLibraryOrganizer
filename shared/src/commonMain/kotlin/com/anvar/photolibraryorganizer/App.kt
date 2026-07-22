@@ -22,6 +22,7 @@ import com.anvar.photolibraryorganizer.domain.model.ImportMediaFilesProgress
 import com.anvar.photolibraryorganizer.domain.model.ImportMediaFilesResult
 import com.anvar.photolibraryorganizer.domain.model.ImportStorageSpace
 import com.anvar.photolibraryorganizer.domain.model.LibraryIndexSnapshot
+import com.anvar.photolibraryorganizer.domain.model.MoveSelectedFileToTrashResult
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
 import com.anvar.photolibraryorganizer.domain.model.UnsupportedFileQuarantineResult
 import com.anvar.photolibraryorganizer.domain.repository.DuplicateQuarantineRepository
@@ -36,6 +37,7 @@ import com.anvar.photolibraryorganizer.domain.repository.StorageSpaceProvider
 import com.anvar.photolibraryorganizer.domain.usecase.BuildMediaFilePlanUseCase
 import com.anvar.photolibraryorganizer.domain.usecase.CheckImportStorageSpaceUseCase
 import com.anvar.photolibraryorganizer.domain.usecase.ImportMediaFilesUseCase
+import com.anvar.photolibraryorganizer.domain.usecase.MoveSelectedFileToTrashUseCase
 import com.anvar.photolibraryorganizer.domain.usecase.ResolveImportAvailabilityUseCase
 import com.anvar.photolibraryorganizer.domain.usecase.ScanSourceFolderUseCase
 import com.anvar.photolibraryorganizer.presentation.FolderPicker
@@ -72,7 +74,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.time.Clock
 
 /**
@@ -155,6 +156,9 @@ fun App(
         }
         val buildMediaFilePlanUseCase = remember { BuildMediaFilePlanUseCase() }
         val resolveImportAvailabilityUseCase = remember { ResolveImportAvailabilityUseCase() }
+        val moveSelectedFileToTrashUseCase = remember(fileTrashRepository) {
+            MoveSelectedFileToTrashUseCase(fileTrashRepository)
+        }
         val cachedImagePreviewLoader = remember(imagePreviewLoader) {
             CachingImagePreviewLoader(imagePreviewLoader)
         }
@@ -952,30 +956,44 @@ fun App(
                             val path = file.sourcePath
                             selectedFileTrashMessage = "Перемещаю выбранный файл в Корзину..."
                             selectedFileTrashMessage = try {
-                                val moved = withTimeoutOrNull(SELECTED_FILE_TRASH_TIMEOUT_MS) {
-                                    withContext(Dispatchers.Default) {
-                                        fileTrashRepository.moveToTrash(path)
-                                    }
+                                val result = withContext(Dispatchers.Default) {
+                                    moveSelectedFileToTrashUseCase(
+                                        selectedFile = file,
+                                        isSourceFileActionAllowed = selectedSection != AppSection.Import,
+                                    )
                                 }
                                 selectedFileTrashAwaitingConfirmation = false
-                                if (moved == true) {
-                                    removeFileFromVisibleState(path)
-                                    coroutineScope.launch {
-                                        try {
-                                            refreshLibraryIndexFromDisk(selectFirstFile = false)
-                                        } catch (exception: Throwable) {
-                                            // The file is already in Trash. A refresh failure should not turn a successful
-                                            // delete into a blocking system dialog.
+                                when (result) {
+                                    is MoveSelectedFileToTrashResult.Moved -> {
+                                        removeFileFromVisibleState(result.path)
+                                        coroutineScope.launch {
+                                            try {
+                                                refreshLibraryIndexFromDisk(selectFirstFile = false)
+                                            } catch (exception: Throwable) {
+                                                // The file is already in Trash. A refresh failure should not turn a successful
+                                                // delete into a blocking system dialog.
+                                            }
                                         }
+                                        "Файл перемещен в Корзину."
                                     }
-                                    "Файл перемещен в Корзину."
-                                } else if (moved == null) {
-                                    val message = "Перенос в Корзину занял слишком много времени. Проверь доступ к диску или попробуй открыть файл в папке."
-                                    addIssue("Корзина", "$message Файл: $path")
-                                    message
-                                } else {
-                                    addIssue("Корзина", "Не удалось переместить файл в Корзину: $path")
-                                    "Не удалось переместить файл в Корзину."
+                                    MoveSelectedFileToTrashResult.FileNotSelected -> "Файл не выбран."
+                                    MoveSelectedFileToTrashResult.SourceFileActionNotAllowed -> {
+                                        "В разделе импорта файл из исходной папки не переносится в Корзину. Сначала проверь план импорта."
+                                    }
+                                    MoveSelectedFileToTrashResult.TimedOut -> {
+                                        val message = "Перенос в Корзину занял слишком много времени. Проверь доступ к диску или попробуй открыть файл в папке."
+                                        addIssue("Корзина", "$message Файл: $path")
+                                        message
+                                    }
+                                    MoveSelectedFileToTrashResult.Failed -> {
+                                        addIssue("Корзина", "Не удалось переместить файл в Корзину: $path")
+                                        "Не удалось переместить файл в Корзину."
+                                    }
+                                    is MoveSelectedFileToTrashResult.Error -> {
+                                        val message = "Не удалось переместить файл в Корзину: ${result.message ?: "без деталей"}"
+                                        addIssue("Корзина", message)
+                                        message
+                                    }
                                 }
                             } catch (exception: Throwable) {
                                 selectedFileTrashAwaitingConfirmation = false
@@ -1255,5 +1273,3 @@ private fun List<PlannedMediaFile>.nextFrom(
 private fun Int.floorMod(size: Int): Int {
     return ((this % size) + size) % size
 }
-
-private const val SELECTED_FILE_TRASH_TIMEOUT_MS = 20_000L

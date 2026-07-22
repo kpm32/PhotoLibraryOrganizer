@@ -4,6 +4,7 @@
 
 ### Changed
 
+- Moved selected-file Trash validation, timeout, and repository result mapping into a dedicated domain use case with tests.
 - File actions now guard against repeated clicks while duplicate, unsupported, or selected-file Trash operations are already running.
 - Selected-file Trash now has a UI timeout instead of leaving the inspector in an endless moving state.
 - Library refresh now shows the current section and file counters, and can be canceled from the inspector.
