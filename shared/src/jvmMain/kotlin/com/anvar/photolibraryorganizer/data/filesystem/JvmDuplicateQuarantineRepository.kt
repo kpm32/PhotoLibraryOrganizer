@@ -6,6 +6,9 @@ import com.anvar.photolibraryorganizer.domain.model.DuplicateQuarantineDeleteRes
 import com.anvar.photolibraryorganizer.domain.model.DuplicateQuarantineResult
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
 import com.anvar.photolibraryorganizer.domain.repository.DuplicateQuarantineRepository
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.createDirectories
@@ -33,6 +36,7 @@ class JvmDuplicateQuarantineRepository(
             var failedFiles = 0
 
             duplicateFiles.forEach { duplicateFile ->
+                currentCoroutineContext().ensureActive()
                 val sourcePath = Path.of(duplicateFile.sourcePath)
                 if (!sourcePath.exists()) {
                     failedFiles += 1
@@ -53,6 +57,8 @@ class JvmDuplicateQuarantineRepository(
                     failedFiles = failedFiles,
                 ),
             )
+        } catch (exception: CancellationException) {
+            throw exception
         } catch (exception: Throwable) {
             AppResult.Error(PhotoLibraryError.FileSystem(exception.message ?: "Duplicate quarantine failed"))
         }
@@ -71,6 +77,7 @@ class JvmDuplicateQuarantineRepository(
             var failedFiles = 0
 
             quarantineFiles.forEach { quarantineFile ->
+                currentCoroutineContext().ensureActive()
                 val sourcePath = Path.of(quarantineFile.sourcePath).toAbsolutePath().normalize()
                 if (!sourcePath.startsWith(quarantineRoot) || !sourcePath.exists() || !Files.isRegularFile(sourcePath)) {
                     failedFiles += 1
@@ -90,6 +97,8 @@ class JvmDuplicateQuarantineRepository(
                     failedFiles = failedFiles,
                 ),
             )
+        } catch (exception: CancellationException) {
+            throw exception
         } catch (exception: Throwable) {
             AppResult.Error(PhotoLibraryError.FileSystem(exception.message ?: "Duplicate quarantine delete failed"))
         }

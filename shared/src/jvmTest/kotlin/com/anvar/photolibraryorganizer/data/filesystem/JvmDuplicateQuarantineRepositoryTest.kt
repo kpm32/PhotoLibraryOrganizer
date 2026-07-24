@@ -4,6 +4,7 @@ import com.anvar.photolibraryorganizer.domain.AppResult
 import com.anvar.photolibraryorganizer.domain.model.DuplicateQuarantineDeleteResult
 import com.anvar.photolibraryorganizer.domain.model.DuplicateQuarantineResult
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
 import java.nio.file.Files
 import java.nio.file.Path
@@ -15,6 +16,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
+import kotlin.test.assertFailsWith
 
 class JvmDuplicateQuarantineRepositoryTest {
     private val repository = JvmDuplicateQuarantineRepository()
@@ -87,6 +89,30 @@ class JvmDuplicateQuarantineRepositoryTest {
         assertTrue(libraryFile.exists())
     }
 
+    @Test
+    fun preservesCancellationWhenDeletingDuplicatesFromQuarantine() = runTest {
+        val destination = Files.createTempDirectory("duplicate-delete-cancellation-test")
+        val quarantineFile = destination.resolve("Duplicates/abcdef123456/photo-copy.jpg")
+        val repository = JvmDuplicateQuarantineRepository(CancelingTrashFileMover)
+        quarantineFile.parent.createDirectories()
+        quarantineFile.writeText("duplicate")
+
+        assertFailsWith<CancellationException> {
+            repository.deleteFromQuarantine(
+                destinationFolder = destination.toString(),
+                quarantineFiles = listOf(
+                    PlannedMediaFile(
+                        sourcePath = quarantineFile.toString(),
+                        fileName = quarantineFile.fileName.toString(),
+                        targetRelativePath = quarantineFile.toString(),
+                        sizeBytes = 9,
+                        contentHash = "abcdef1234567890",
+                    ),
+                ),
+            )
+        }
+    }
+
     private class FakeTrashFileMover : TrashFileMover {
         val movedPaths = mutableListOf<Path>()
 
@@ -94,6 +120,12 @@ class JvmDuplicateQuarantineRepositoryTest {
             movedPaths.add(path)
             Files.deleteIfExists(path)
             return true
+        }
+    }
+
+    private object CancelingTrashFileMover : TrashFileMover {
+        override fun moveToTrash(path: Path): Boolean {
+            throw CancellationException("stop")
         }
     }
 }
