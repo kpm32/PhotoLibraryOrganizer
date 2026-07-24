@@ -74,7 +74,7 @@ internal fun ImportPanel(
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Text(
-                text = "Панель импорта",
+                text = uiText("Панель импорта", "Import Panel"),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )
@@ -87,7 +87,10 @@ internal fun ImportPanel(
             ScanProgressIndicator(scanUiState)
             if (scanUiState is ScanUiState.Success) {
                 Text(
-                    text = "Если в JPEG есть EXIF-дата съемки, используем ее. Для остальных файлов берем дату изменения.",
+                    text = uiText(
+                        ru = "Если в JPEG есть EXIF-дата съемки, используем ее. Для остальных файлов берем дату изменения.",
+                        en = "JPEG capture dates use EXIF when available. Other files use the modified date.",
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -131,14 +134,20 @@ internal fun ImportPanel(
                     modifier = Modifier.fillMaxWidth(),
                     enabled = plan.canScan && scanUiState !is ScanUiState.Loading,
                 ) {
-                    Text(if (scanUiState is ScanUiState.Loading) "Сканирую..." else "Сканировать")
+                    Text(
+                        if (scanUiState is ScanUiState.Loading) {
+                            uiText("Сканирую...", "Scanning...")
+                        } else {
+                            uiText("Сканировать", "Scan")
+                        },
+                    )
                 }
                 if (scanUiState is ScanUiState.Loading) {
                     OutlinedButton(
                         onClick = onCancelScanClick,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("Остановить сканирование")
+                        Text(uiText("Остановить сканирование", "Stop Scan"))
                     }
                 }
                 OutlinedButton(
@@ -149,14 +158,20 @@ internal fun ImportPanel(
                         importUiState !is ImportUiState.AwaitingConfirmation &&
                         importUiState !is ImportUiState.Loading,
                 ) {
-                    Text(if (importUiState is ImportUiState.Loading) "Импортирую..." else "Импорт")
+                    Text(
+                        if (importUiState is ImportUiState.Loading) {
+                            uiText("Импортирую...", "Importing...")
+                        } else {
+                            uiText("Импорт", "Import")
+                        },
+                    )
                 }
                 if (importUiState is ImportUiState.Loading) {
                     OutlinedButton(
                         onClick = onCancelRunningImportClick,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("Остановить импорт")
+                        Text(uiText("Остановить импорт", "Stop Import"))
                     }
                 }
             }
@@ -171,13 +186,19 @@ private fun ScanProgressIndicator(scanUiState: ScanUiState) {
     LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
     scanUiState.progress?.let { progress ->
         Text(
-            text = "Просмотрено: ${progress.scannedFiles}. Медиа: ${progress.mediaFiles}. Пропущено: ${progress.unsupportedFiles}.",
+            text = uiText(
+                ru = "Просмотрено: ${progress.scannedFiles}. Медиа: ${progress.mediaFiles}. Пропущено: ${progress.unsupportedFiles}.",
+                en = "Scanned: ${progress.scannedFiles}. Media: ${progress.mediaFiles}. Skipped: ${progress.unsupportedFiles}.",
+            ),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         if (progress.unsupportedFileExtensions.isNotEmpty()) {
             Text(
-                text = "Пропущенные типы: ${progress.unsupportedFileExtensions.toReadableUnsupportedExtensions()}",
+                text = uiText(
+                    ru = "Пропущенные типы: ${progress.unsupportedFileExtensions.toReadableUnsupportedExtensions()}",
+                    en = "Skipped types: ${progress.unsupportedFileExtensions.toReadableUnsupportedExtensions()}",
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 2,
@@ -201,14 +222,17 @@ private fun ImportHistorySummary(importHistory: List<ImportReport>) {
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Text(
-                text = "История импортов",
+                text = uiText("История импортов", "Import History"),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
             )
             importHistory.take(3).forEach { report ->
                 CompactRuleRow(
                     label = report.createdAtEpochMillis.toReadableDateTime(),
-                    value = "${report.importMode.title}: ${report.readyFiles} файлов, ошибок ${report.totalFailedFiles}",
+                    value = uiText(
+                        ru = "${report.importMode.titleText()}: ${report.readyFiles} файлов, ошибок ${report.totalFailedFiles}",
+                        en = "${report.importMode.titleText()}: ${report.readyFiles} files, ${report.totalFailedFiles} errors",
+                    ),
                 )
             }
         }
@@ -222,7 +246,7 @@ private fun ImportRulesPresetPicker(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-            text = "Структура папок",
+            text = uiText("Структура папок", "Folder Structure"),
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
         )
@@ -248,13 +272,13 @@ private fun ImportRulesPresetPicker(
                         verticalArrangement = Arrangement.spacedBy(3.dp),
                     ) {
                         Text(
-                            text = preset.title,
+                            text = preset.titleText(),
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
                         )
                         Text(
-                            text = preset.description,
+                            text = preset.descriptionText(),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 2,
@@ -288,46 +312,52 @@ private fun ImportReportSummary(
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Text(
-                text = "Последний импорт",
+                text = uiText("Последний импорт", "Last Import"),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
             )
-            CompactRuleRow("Режим", lastImportReport.importMode.title)
+            CompactRuleRow(uiText("Режим", "Mode"), lastImportReport.importMode.titleText())
             CompactRuleRow(
-                label = "План",
-                value = "${lastImportReport.readyFiles} к импорту, ${lastImportReport.existingFiles} уже есть",
+                label = uiText("План", "Plan"),
+                value = uiText(
+                    ru = "${lastImportReport.readyFiles} к импорту, ${lastImportReport.existingFiles} уже есть",
+                    en = "${lastImportReport.readyFiles} to import, ${lastImportReport.existingFiles} already exist",
+                ),
             )
             CompactRuleRow(
-                label = "Итог",
-                value = "копий ${lastImportReport.copiedFiles}, переносов ${lastImportReport.movedFiles}, пропусков ${lastImportReport.skippedFiles}, ошибок ${lastImportReport.totalFailedFiles}",
+                label = uiText("Итог", "Result"),
+                value = uiText(
+                    ru = "копий ${lastImportReport.copiedFiles}, переносов ${lastImportReport.movedFiles}, пропусков ${lastImportReport.skippedFiles}, ошибок ${lastImportReport.totalFailedFiles}",
+                    en = "copied ${lastImportReport.copiedFiles}, moved ${lastImportReport.movedFiles}, skipped ${lastImportReport.skippedFiles}, errors ${lastImportReport.totalFailedFiles}",
+                ),
             )
-            CompactRuleRow("Ошибки медиа", lastImportReport.failedFiles.toString())
-            CompactRuleRow("Ошибки пропущенных", lastImportReport.failedUnsupportedFiles.toString())
+            CompactRuleRow(uiText("Ошибки медиа", "Media errors"), lastImportReport.failedFiles.toString())
+            CompactRuleRow(uiText("Ошибки пропущенных", "Skipped errors"), lastImportReport.failedUnsupportedFiles.toString())
             importResult?.let { result ->
-                CompactRuleRow("В пропущенные", result.quarantinedUnsupportedFiles.toString())
-                CompactRuleRow("Ошибок пропущенных", result.failedUnsupportedFiles.toString())
+                CompactRuleRow(uiText("В пропущенные", "Moved to Skipped"), result.quarantinedUnsupportedFiles.toString())
+                CompactRuleRow(uiText("Ошибок пропущенных", "Skipped-file errors"), result.failedUnsupportedFiles.toString())
                 ImportFailureDetails(result.failureDetails)
             }
-            CompactRuleRow("Всего найдено", lastImportReport.plannedFiles.toString())
-            CompactRuleRow("Время", lastImportReport.createdAtEpochMillis.toReadableDateTime())
+            CompactRuleRow(uiText("Всего найдено", "Total found"), lastImportReport.plannedFiles.toString())
+            CompactRuleRow(uiText("Время", "Time"), lastImportReport.createdAtEpochMillis.toReadableDateTime())
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(
                     onClick = onOpenLibraryFolderClick,
                     modifier = Modifier.weight(1f),
                 ) {
-                    Text("Библиотека")
+                    Text(uiText("Библиотека", "Library"))
                 }
                 OutlinedButton(
                     onClick = onOpenUnsupportedFolderClick,
                     modifier = Modifier.weight(1f),
                 ) {
-                    Text("Пропущенные")
+                    Text(uiText("Пропущенные", "Skipped"))
                 }
                 OutlinedButton(
                     onClick = onOpenDuplicatesFolderClick,
                     modifier = Modifier.weight(1f),
                 ) {
-                    Text("Дубли")
+                    Text(uiText("Дубли", "Duplicates"))
                 }
             }
         }
@@ -340,7 +370,7 @@ private fun ImportFailureDetails(failureDetails: List<ImportFailureDetail>) {
 
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(
-            text = "Ошибки импорта",
+            text = uiText("Ошибки импорта", "Import Errors"),
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.SemiBold,
         )
@@ -364,7 +394,10 @@ private fun ImportFailureDetails(failureDetails: List<ImportFailureDetail>) {
         }
         if (failureDetails.size > 5) {
             Text(
-                text = "Еще ошибок: ${failureDetails.size - 5}",
+                text = uiText(
+                    ru = "Еще ошибок: ${failureDetails.size - 5}",
+                    en = "More errors: ${failureDetails.size - 5}",
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -393,12 +426,15 @@ private fun EmptyFolderCleanupAction(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
-                text = "Пустые папки источника",
+                text = uiText("Пустые папки источника", "Empty Source Folders"),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
-                text = message ?: "После переноса можно удалить пустые подпапки во входящей папке. Файлы не удаляются.",
+                text = message ?: uiText(
+                    ru = "После переноса можно удалить пустые подпапки во входящей папке. Файлы не удаляются.",
+                    en = "After moving files, empty subfolders in the source folder can be removed. Files are not deleted.",
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -408,13 +444,13 @@ private fun EmptyFolderCleanupAction(
                         onClick = onCancelClick,
                         modifier = Modifier.weight(1f),
                     ) {
-                        Text("Отмена")
+                        Text(uiText("Отмена", "Cancel"))
                     }
                     Button(
                         onClick = onConfirmClick,
                         modifier = Modifier.weight(1f),
                     ) {
-                        Text("Удалить пустые")
+                        Text(uiText("Удалить пустые", "Remove Empty"))
                     }
                 }
             } else {
@@ -422,7 +458,7 @@ private fun EmptyFolderCleanupAction(
                     onClick = onRequestClick,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("Очистить пустые папки")
+                    Text(uiText("Очистить пустые папки", "Clean Empty Folders"))
                 }
             }
         }
@@ -451,7 +487,7 @@ private fun ImportModeChips(
                 },
             ) {
                 Text(
-                    text = mode.title,
+                    text = mode.titleText(),
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.SemiBold,
@@ -467,15 +503,30 @@ private fun ImportStatus(importUiState: ImportUiState) {
     val text = when (importUiState) {
         ImportUiState.Idle -> return
         is ImportUiState.AwaitingConfirmation -> return
-        ImportUiState.CheckingStorageSpace -> "Проверяю свободное место в папке библиотеки."
+        ImportUiState.CheckingStorageSpace -> uiText(
+            ru = "Проверяю свободное место в папке библиотеки.",
+            en = "Checking free space in the library folder.",
+        )
         is ImportUiState.Loading -> importUiState.progress?.let { progress ->
-            "Импорт: ${progress.processedFiles} из ${progress.totalFiles}. Копий ${progress.copiedFiles}, переносов ${progress.movedFiles}, пропусков ${progress.skippedFiles}, ошибок ${progress.failedFiles}."
-        } ?: "Выполняю импорт по выбранному режиму."
+            uiText(
+                ru = "Импорт: ${progress.processedFiles} из ${progress.totalFiles}. Копий ${progress.copiedFiles}, переносов ${progress.movedFiles}, пропусков ${progress.skippedFiles}, ошибок ${progress.failedFiles}.",
+                en = "Import: ${progress.processedFiles} of ${progress.totalFiles}. Copied ${progress.copiedFiles}, moved ${progress.movedFiles}, skipped ${progress.skippedFiles}, errors ${progress.failedFiles}.",
+            )
+        } ?: uiText("Выполняю импорт по выбранному режиму.", "Importing with the selected mode.")
         is ImportUiState.Canceled -> importUiState.progress?.let { progress ->
-            "Импорт остановлен: обработано ${progress.processedFiles} из ${progress.totalFiles}. Копий ${progress.copiedFiles}, переносов ${progress.movedFiles}, пропусков ${progress.skippedFiles}, ошибок ${progress.failedFiles}."
-        } ?: "Импорт остановлен. Уже обработанные файлы оставлены на месте."
+            uiText(
+                ru = "Импорт остановлен: обработано ${progress.processedFiles} из ${progress.totalFiles}. Копий ${progress.copiedFiles}, переносов ${progress.movedFiles}, пропусков ${progress.skippedFiles}, ошибок ${progress.failedFiles}.",
+                en = "Import stopped: processed ${progress.processedFiles} of ${progress.totalFiles}. Copied ${progress.copiedFiles}, moved ${progress.movedFiles}, skipped ${progress.skippedFiles}, errors ${progress.failedFiles}.",
+            )
+        } ?: uiText(
+            ru = "Импорт остановлен. Уже обработанные файлы оставлены на месте.",
+            en = "Import stopped. Already processed files were left as they are.",
+        )
         is ImportUiState.Success -> {
-                "Импорт завершен: скопировано ${importUiState.result.copiedFiles}, перенесено ${importUiState.result.movedFiles}, в пропущенные ${importUiState.result.quarantinedUnsupportedFiles}, пропущено ${importUiState.result.skippedFiles}, ошибок медиа ${importUiState.result.failedFiles}, ошибок пропущенных ${importUiState.result.failedUnsupportedFiles}."
+            uiText(
+                ru = "Импорт завершен: скопировано ${importUiState.result.copiedFiles}, перенесено ${importUiState.result.movedFiles}, в пропущенные ${importUiState.result.quarantinedUnsupportedFiles}, пропущено ${importUiState.result.skippedFiles}, ошибок медиа ${importUiState.result.failedFiles}, ошибок пропущенных ${importUiState.result.failedUnsupportedFiles}.",
+                en = "Import complete: copied ${importUiState.result.copiedFiles}, moved ${importUiState.result.movedFiles}, moved to Skipped ${importUiState.result.quarantinedUnsupportedFiles}, skipped ${importUiState.result.skippedFiles}, media errors ${importUiState.result.failedFiles}, skipped-file errors ${importUiState.result.failedUnsupportedFiles}.",
+            )
         }
         is ImportUiState.Error -> importUiState.message
     }
@@ -526,21 +577,21 @@ private fun ImportConfirmation(
                 fontWeight = FontWeight.SemiBold,
             )
             if (selectedMode == ImportMode.Copy && importUiState.requiredBytes != null && importUiState.availableBytes != null) {
-                CompactRuleRow("Нужно места", importUiState.requiredBytes.toReadableSize())
-                CompactRuleRow("Свободно", importUiState.availableBytes.toReadableSize())
+                CompactRuleRow(uiText("Нужно места", "Required Space"), importUiState.requiredBytes.toReadableSize())
+                CompactRuleRow(uiText("Свободно", "Available"), importUiState.availableBytes.toReadableSize())
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(
                     onClick = onCancelImportClick,
                     modifier = Modifier.weight(1f),
                 ) {
-                    Text("Отмена")
+                    Text(uiText("Отмена", "Cancel"))
                 }
                 Button(
                     onClick = onConfirmImportClick,
                     modifier = Modifier.weight(1f),
                 ) {
-                    Text("Начать импорт")
+                    Text(uiText("Начать импорт", "Start Import"))
                 }
             }
         }
@@ -559,12 +610,12 @@ private fun ImportRulesSummary(importRules: ImportOrganizationRules) {
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Text(
-                text = "Правила импорта",
+                text = uiText("Правила импорта", "Import Rules"),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
             )
-            CompactRuleRow("Папки", importRules.folderTemplate.toReadableFolderRule())
-            CompactRuleRow("Имена", importRules.fileNameTemplate.toReadableFileNameRule())
+            CompactRuleRow(uiText("Папки", "Folders"), importRules.folderTemplate.toReadableFolderRule())
+            CompactRuleRow(uiText("Имена", "Names"), importRules.fileNameTemplate.toReadableFileNameRule())
         }
     }
 }
@@ -597,7 +648,7 @@ private fun CompactRuleRow(
 private fun ImportAvailabilityHint(importAvailability: ImportAvailability) {
     if (importAvailability is ImportAvailability.Unavailable) {
         Text(
-            text = importAvailability.reason,
+            text = importAvailability.reasonText(),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -609,23 +660,32 @@ private fun importConfirmationText(
     selectedMode: ImportMode,
 ): String {
     val action = when (selectedMode) {
-        ImportMode.Copy -> "Будет скопировано"
-        ImportMode.Move -> "Будет перенесено"
-        ImportMode.ScanOnly -> "Будет обработано"
+        ImportMode.Copy -> uiText("Будет скопировано", "Will copy")
+        ImportMode.Move -> uiText("Будет перенесено", "Will move")
+        ImportMode.ScanOnly -> uiText("Будет обработано", "Will process")
     }
     val sourceNote = when (selectedMode) {
-        ImportMode.Copy -> "Исходники останутся на месте."
+        ImportMode.Copy -> uiText("Исходники останутся на месте.", "Source files will stay in place.")
         ImportMode.Move -> {
             val unsupportedNote = if (importUiState.unsupportedFileCount > 0) {
-                " Неподдерживаемые файлы уйдут в отдельную папку: ${importUiState.unsupportedFileCount}."
+                uiText(
+                    ru = " Неподдерживаемые файлы уйдут в отдельную папку: ${importUiState.unsupportedFileCount}.",
+                    en = " Unsupported files will be moved to a separate folder: ${importUiState.unsupportedFileCount}.",
+                )
             } else {
                 ""
             }
-            "Исходники исчезнут из старой папки после успешного переноса.$unsupportedNote"
+            uiText(
+                ru = "Исходники исчезнут из старой папки после успешного переноса.$unsupportedNote",
+                en = "Source files will disappear from the old folder after a successful move.$unsupportedNote",
+            )
         }
-        ImportMode.ScanOnly -> "Файлы не изменяются."
+        ImportMode.ScanOnly -> uiText("Файлы не изменяются.", "Files are not changed.")
     }
-    return "$action: ${importUiState.readyFileCount}. Уже есть: ${importUiState.existingFileCount}. $sourceNote"
+    return uiText(
+        ru = "$action: ${importUiState.readyFileCount}. Уже есть: ${importUiState.existingFileCount}. $sourceNote",
+        en = "$action: ${importUiState.readyFileCount}. Already exist: ${importUiState.existingFileCount}. $sourceNote",
+    )
 }
 
 private fun scanStatusText(
@@ -634,14 +694,29 @@ private fun scanStatusText(
 ): String {
     return when (scanUiState) {
         ScanUiState.Idle -> if (plan.canScan) {
-            "Готово к безопасному сканированию. На этом шаге приложение еще не будет копировать, переносить или удалять файлы."
+            uiText(
+                ru = "Готово к безопасному сканированию. На этом шаге приложение еще не будет копировать, переносить или удалять файлы.",
+                en = "Ready for a safe scan. At this step the app will not copy, move, or delete files.",
+            )
         } else {
-            "Выбери исходную папку и папку библиотеки, чтобы подготовить сканирование."
+            uiText(
+                ru = "Выбери исходную папку и папку библиотеки, чтобы подготовить сканирование.",
+                en = "Choose the source folder and library folder to prepare scanning.",
+            )
         }
 
-        is ScanUiState.Loading -> "Сканирую папку и подпапки. Файлы не изменяются."
-        ScanUiState.Canceled -> "Сканирование остановлено. Файлы не изменялись."
-        is ScanUiState.Success -> "Сканирование завершено. Это только статистика, импорт пока не запускался."
+        is ScanUiState.Loading -> uiText(
+            ru = "Сканирую папку и подпапки. Файлы не изменяются.",
+            en = "Scanning the folder and subfolders. Files are not changed.",
+        )
+        ScanUiState.Canceled -> uiText(
+            ru = "Сканирование остановлено. Файлы не изменялись.",
+            en = "Scan stopped. Files were not changed.",
+        )
+        is ScanUiState.Success -> uiText(
+            ru = "Сканирование завершено. Это только статистика, импорт пока не запускался.",
+            en = "Scan complete. This is only statistics; import has not started yet.",
+        )
         is ScanUiState.Error -> scanUiState.message
     }
 }
@@ -652,20 +727,45 @@ private fun Map<String, Int>.toReadableUnsupportedExtensions(): String {
         .joinToString { (extension, count) -> "$extension: $count" }
 }
 
+private fun ImportRulesPreset.titleText(): String {
+    return when (this) {
+        ImportRulesPreset.YearMonth -> uiText("Год / месяц", "Year / Month")
+        ImportRulesPreset.YearMonthDay -> uiText("Год / месяц / день", "Year / Month / Day")
+        ImportRulesPreset.YearOnly -> uiText("Только год", "Year Only")
+    }
+}
+
+private fun ImportRulesPreset.descriptionText(): String {
+    return when (this) {
+        ImportRulesPreset.YearMonth -> uiText(
+            ru = "Удобно для большого архива без слишком глубоких папок.",
+            en = "Good for large archives without deep folder nesting.",
+        )
+        ImportRulesPreset.YearMonthDay -> uiText(
+            ru = "Лучше для дней с большим количеством фото.",
+            en = "Better for days with many photos.",
+        )
+        ImportRulesPreset.YearOnly -> uiText(
+            ru = "Минимум папок, сортировка в основном по имени файла.",
+            en = "Fewer folders, mostly sorted by file name.",
+        )
+    }
+}
+
 private fun String.toReadableFolderRule(): String {
     return when (this) {
-        "YYYY/YYYY-MM" -> "Библиотека / год / месяц"
-        "YYYY/YYYY-MM/YYYY-MM-DD" -> "Библиотека / год / месяц / день"
-        "YYYY" -> "Библиотека / год"
-        else -> "Пользовательская структура"
+        "YYYY/YYYY-MM" -> uiText("Библиотека / год / месяц", "Library / year / month")
+        "YYYY/YYYY-MM/YYYY-MM-DD" -> uiText("Библиотека / год / месяц / день", "Library / year / month / day")
+        "YYYY" -> uiText("Библиотека / год", "Library / year")
+        else -> uiText("Пользовательская структура", "Custom structure")
     }
 }
 
 private fun String.toReadableFileNameRule(): String {
     return when (this) {
-        "YYYY-MM-DD_HH-mm-ss_original-name.ext" -> "Дата, время и исходное имя"
-        "HH-mm-ss_original-name.ext" -> "Время и исходное имя"
-        else -> "Пользовательские имена"
+        "YYYY-MM-DD_HH-mm-ss_original-name.ext" -> uiText("Дата, время и исходное имя", "Date, time, and original name")
+        "HH-mm-ss_original-name.ext" -> uiText("Время и исходное имя", "Time and original name")
+        else -> uiText("Пользовательские имена", "Custom names")
     }
 }
 

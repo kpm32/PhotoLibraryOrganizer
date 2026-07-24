@@ -137,8 +137,11 @@ internal fun MainWorkspace(
                 onImportRulesSelected = onImportRulesSelected,
             )
             MediaList(
-                title = "Файлы к импорту",
-                emptyText = "После сканирования здесь появится список найденных фото.",
+                title = uiText("Файлы к импорту", "Files to Import"),
+                emptyText = uiText(
+                    ru = "После сканирования здесь появится список найденных фото.",
+                    en = "After scanning, found photos will appear here.",
+                ),
                 scanUiState = scanUiState,
                 files = (scanUiState as? ScanUiState.Success)?.plannedFiles.orEmpty(),
                 imagePreviewLoader = imagePreviewLoader,
@@ -215,7 +218,7 @@ private fun LibrarySearchBar(
                 onValueChange = onQueryChange,
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                label = { Text("Поиск по имени, пути или SHA-256") },
+                label = { Text(uiText("Поиск по имени, пути или SHA-256", "Search by name, path, or SHA-256")) },
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -233,7 +236,7 @@ private fun LibrarySearchBar(
                         onClick = { onMediaCategoryFilterChange(filter) },
                     ) {
                         Text(
-                            text = filter.title,
+                            text = filter.titleText(),
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.SemiBold,
@@ -247,10 +250,13 @@ private fun LibrarySearchBar(
                 onValueChange = onExtensionFilterChange,
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                label = { Text("Расширение, например jpg или mov") },
+                label = { Text(uiText("Расширение, например jpg или mov", "Extension, for example jpg or mov")) },
             )
             Text(
-                text = "Показано $visibleFiles из $totalFiles",
+                text = uiText(
+                    ru = "Показано $visibleFiles из $totalFiles",
+                    en = "Showing $visibleFiles of $totalFiles",
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
@@ -264,21 +270,21 @@ private fun LibrarySearchBar(
 private fun WorkspaceHeader(selectedSection: AppSection) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
-            text = selectedSection.title,
+            text = selectedSection.titleText(),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.SemiBold,
         )
         Text(
             text = when (selectedSection) {
-                AppSection.Import -> "Сначала показываем план, потом выполняем выбранное действие: сканирование, копирование или перенос."
-                AppSection.AllPhotos -> "Просмотр уже разложенной библиотеки."
-                AppSection.Years -> "Библиотека, сгруппированная по годам."
-                AppSection.Months -> "Библиотека, сгруппированная по месяцам."
-                AppSection.WithoutDate -> "Файлы, для которых пока не удалось определить дату."
-                AppSection.Duplicates -> "Файлы с одинаковым SHA-256 хэшем."
-                AppSection.Unsupported -> "Файлы, которые приложение не считает фото или видео, лежат отдельно и не потеряны."
-                AppSection.Errors -> "Ошибки импорта и сканирования будут собираться здесь."
-                AppSection.About -> "Версия, статус релиза, лицензия и заметки по установке."
+                AppSection.Import -> uiText("Сначала показываем план, потом выполняем выбранное действие: сканирование, копирование или перенос.", "First review the plan, then run the selected action: scan, copy, or move.")
+                AppSection.AllPhotos -> uiText("Просмотр уже разложенной библиотеки.", "Browse the organized library.")
+                AppSection.Years -> uiText("Библиотека, сгруппированная по годам.", "Library grouped by years.")
+                AppSection.Months -> uiText("Библиотека, сгруппированная по месяцам.", "Library grouped by months.")
+                AppSection.WithoutDate -> uiText("Файлы, для которых пока не удалось определить дату.", "Files where a date could not be determined yet.")
+                AppSection.Duplicates -> uiText("Файлы с одинаковым SHA-256 хэшем.", "Files with the same SHA-256 hash.")
+                AppSection.Unsupported -> uiText("Файлы, которые приложение не считает фото или видео, лежат отдельно и не потеряны.", "Files the app does not treat as photos or videos are kept separately and are not lost.")
+                AppSection.Errors -> uiText("Ошибки импорта и сканирования будут собираться здесь.", "Import and scan errors are collected here.")
+                AppSection.About -> uiText("Версия, статус релиза, лицензия и заметки по установке.", "Version, release status, license, and install notes.")
             },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -315,8 +321,8 @@ private fun LibrarySection(
 ) {
     when (selectedSection) {
         AppSection.AllPhotos -> MediaList(
-            title = "Библиотека",
-            emptyText = "Выбери папку библиотеки или нажми «Обновить библиотеку».",
+            title = uiText("Библиотека", "Library"),
+            emptyText = uiText("Выбери папку библиотеки или нажми «Обновить библиотеку».", "Choose a library folder or click Refresh Library."),
             scanUiState = ScanUiState.Idle,
             files = libraryFiles,
             imagePreviewLoader = imagePreviewLoader,
@@ -326,10 +332,10 @@ private fun LibrarySection(
         )
 
         AppSection.Years -> GroupedMediaList(
-            title = "Годы",
-            emptyText = "В библиотеке пока нет файлов с годом.",
+            title = uiText("Годы", "Years"),
+            emptyText = uiText("В библиотеке пока нет файлов с годом.", "The library has no files with a year yet."),
             groups = libraryFiles
-                .groupBy { it.libraryDateGroup()?.year ?: "Без даты" }
+                .groupBy { it.libraryDateGroup()?.year ?: uiText("Без даты", "No Date") }
                 .toSortedMap(compareByDescending { it }),
             imagePreviewLoader = imagePreviewLoader,
             selectedFile = selectedFile,
@@ -338,10 +344,10 @@ private fun LibrarySection(
         )
 
         AppSection.Months -> GroupedMediaList(
-            title = "Месяцы",
-            emptyText = "В библиотеке пока нет файлов с месяцем.",
+            title = uiText("Месяцы", "Months"),
+            emptyText = uiText("В библиотеке пока нет файлов с месяцем.", "The library has no files with a month yet."),
             groups = libraryFiles
-                .groupBy { it.libraryDateGroup()?.month ?: "Без даты" }
+                .groupBy { it.libraryDateGroup()?.month ?: uiText("Без даты", "No Date") }
                 .toSortedMap(compareByDescending { it }),
             imagePreviewLoader = imagePreviewLoader,
             selectedFile = selectedFile,
@@ -350,8 +356,8 @@ private fun LibrarySection(
         )
 
         AppSection.WithoutDate -> MediaList(
-            title = "Без даты",
-            emptyText = "Файлов без даты пока нет.",
+            title = uiText("Без даты", "No Date"),
+            emptyText = uiText("Файлов без даты пока нет.", "There are no undated files yet."),
             scanUiState = ScanUiState.Idle,
             files = libraryFiles.filter { it.libraryDateGroup() == null },
             imagePreviewLoader = imagePreviewLoader,
@@ -361,8 +367,8 @@ private fun LibrarySection(
         )
 
         AppSection.Duplicates -> DuplicateReviewPanel(
-            title = if (duplicateFiles.isEmpty()) "Дубликаты" else "Папка дублей",
-            emptyText = "Дубликаты и файлы в карантине пока не найдены.",
+            title = if (duplicateFiles.isEmpty()) uiText("Дубликаты", "Duplicates") else uiText("Папка дублей", "Duplicates Folder"),
+            emptyText = uiText("Дубликаты и файлы в карантине пока не найдены.", "No duplicates or quarantined files found yet."),
             groups = buildDuplicateReviewGroups(
                 libraryFiles = libraryFiles,
                 duplicateFiles = duplicateFiles,
@@ -377,7 +383,7 @@ private fun LibrarySection(
                 duplicateDeleteAwaitingConfirmation = duplicateDeleteAwaitingConfirmation,
             ),
             secondaryActionText = if (duplicateDeleteAwaitingConfirmation && duplicateFiles.isNotEmpty()) {
-                "Отмена"
+                uiText("Отмена", "Cancel")
             } else {
                 null
             },
@@ -393,8 +399,8 @@ private fun LibrarySection(
         )
 
         AppSection.Unsupported -> GroupedMediaList(
-            title = "Неподдерживаемые",
-            emptyText = "Папка пропущенных файлов пока пуста.",
+            title = uiText("Неподдерживаемые", "Unsupported"),
+            emptyText = uiText("Папка пропущенных файлов пока пуста.", "The skipped files folder is empty."),
             groups = unsupportedFiles
                 .groupBy { it.unsupportedTypeGroup() }
                 .toList()
@@ -411,7 +417,7 @@ private fun LibrarySection(
                 unsupportedDeleteAwaitingConfirmation = unsupportedDeleteAwaitingConfirmation,
             ),
             secondaryActionText = if (unsupportedDeleteAwaitingConfirmation && unsupportedFiles.isNotEmpty()) {
-                "Отмена"
+                uiText("Отмена", "Cancel")
             } else {
                 null
             },
@@ -424,7 +430,7 @@ private fun LibrarySection(
             },
             onSecondaryActionClick = onCancelDeleteUnsupportedClick,
             onGroupActionClick = onOpenUnsupportedTypeFolderClick,
-            groupActionText = "Открыть группу",
+            groupActionText = uiText("Открыть группу", "Open Group"),
             modifier = modifier,
         )
 
@@ -437,8 +443,8 @@ private fun LibrarySection(
         AppSection.About -> AboutPanel(modifier = modifier)
 
         AppSection.Import -> PlaceholderPanel(
-            title = selectedSection.title,
-            text = "Этот раздел уже есть в навигации, но его логика будет добавлена отдельным шагом.",
+            title = selectedSection.titleText(),
+            text = uiText("Этот раздел уже есть в навигации, но его логика будет добавлена отдельным шагом.", "This section is in navigation; its logic will be added separately."),
             modifier = modifier,
         )
     }
@@ -464,18 +470,27 @@ private fun AboutPanel(
                 fontWeight = FontWeight.SemiBold,
             )
             HorizontalDivider()
-            AboutRow("Версия", "1.0.0-preview.8")
-            AboutRow("Статус", "Preview-релиз для macOS")
-            AboutRow("Интерфейс", "Русский")
-            AboutRow("Лицензия", "MIT")
+            AboutRow(uiText("Версия", "Version"), "1.0.0-preview.8")
+            AboutRow(uiText("Статус", "Status"), uiText("Preview-релиз для macOS", "Preview release for macOS"))
+            AboutRow(
+                uiText("Интерфейс", "Interface"),
+                uiText("Русский по системе, английский для остальных языков", "Russian for Russian systems, English for other languages"),
+            )
+            AboutRow(uiText("Лицензия", "License"), "MIT")
             AboutRow("GitHub", "github.com/kpm32/PhotoLibraryOrganizer")
             AboutRow(
-                label = "Установка",
-                value = "Сборка пока не подписана Apple Developer ID. Если macOS блокирует запуск, открой приложение через правый клик или разреши запуск в Privacy & Security.",
+                label = uiText("Установка", "Install"),
+                value = uiText(
+                    ru = "Сборка пока не подписана Apple Developer ID. Если macOS блокирует запуск, открой приложение через правый клик или разреши запуск в Privacy & Security.",
+                    en = "The build is not signed with Apple Developer ID yet. If macOS blocks launch, open the app with right click or allow it in Privacy & Security.",
+                ),
             )
             AboutRow(
-                label = "Безопасность",
-                value = "Для первого реального архива используй только сканирование или копирование. Перенос запускай после проверки результата.",
+                label = uiText("Безопасность", "Safety"),
+                value = uiText(
+                    ru = "Для первого реального архива используй только сканирование или копирование. Перенос запускай после проверки результата.",
+                    en = "For the first real archive, use scan-only or copy. Run move mode after checking the result.",
+                ),
             )
         }
     }
@@ -533,9 +548,9 @@ private fun duplicateActionText(
     duplicateDeleteAwaitingConfirmation: Boolean,
 ): String? {
     return when {
-        duplicateDeleteAwaitingConfirmation && duplicateFiles.isNotEmpty() -> "Подтвердить перенос"
-        duplicateFiles.isNotEmpty() -> "В Корзину из папки дублей"
-        libraryFiles.hasDuplicateGroups() -> "Перенести дубли в папку дублей"
+        duplicateDeleteAwaitingConfirmation && duplicateFiles.isNotEmpty() -> uiText("Подтвердить перенос", "Confirm Move")
+        duplicateFiles.isNotEmpty() -> uiText("В Корзину из папки дублей", "Move Duplicates Folder to Trash")
+        libraryFiles.hasDuplicateGroups() -> uiText("Перенести дубли в папку дублей", "Move Duplicates to Folder")
         else -> null
     }
 }
@@ -553,18 +568,16 @@ private fun unsupportedActionText(
     unsupportedDeleteAwaitingConfirmation: Boolean,
 ): String? {
     return when {
-        unsupportedDeleteAwaitingConfirmation && unsupportedFiles.isNotEmpty() -> "Подтвердить перенос"
-        unsupportedFiles.isNotEmpty() -> "В Корзину все пропущенные"
+        unsupportedDeleteAwaitingConfirmation && unsupportedFiles.isNotEmpty() -> uiText("Подтвердить перенос", "Confirm Move")
+        unsupportedFiles.isNotEmpty() -> uiText("В Корзину все пропущенные", "Move All Skipped to Trash")
         else -> null
     }
 }
 
-private enum class MediaCategoryFilter(
-    val title: String,
-) {
-    All("Все"),
-    Images("Фото"),
-    Videos("Видео"),
+private enum class MediaCategoryFilter {
+    All,
+    Images,
+    Videos,
 }
 
 private fun AppSection.supportsLibrarySearch(): Boolean {
@@ -577,8 +590,16 @@ private fun AppSection.supportsLibrarySearch(): Boolean {
 private fun PlannedMediaFile.unsupportedTypeGroup(): String {
     val extension = fileName.substringAfterLast('.', missingDelimiterValue = "")
         .lowercase()
-        .ifBlank { "без расширения" }
+        .ifBlank { uiText("без расширения", "no extension") }
     return extension
+}
+
+private fun MediaCategoryFilter.titleText(): String {
+    return when (this) {
+        MediaCategoryFilter.All -> uiText("Все", "All")
+        MediaCategoryFilter.Images -> uiText("Фото", "Photos")
+        MediaCategoryFilter.Videos -> uiText("Видео", "Videos")
+    }
 }
 
 private fun List<PlannedMediaFile>.filterLibraryFiles(

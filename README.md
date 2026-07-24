@@ -27,6 +27,7 @@ The app keeps photos as normal files on disk. It scans folders, shows an import 
 - Stores a local library index for fast startup after the first refresh.
 - Provides a large preview overlay and keyboard navigation.
 - Uses macOS QuickLook as a fallback for video thumbnails.
+- Uses Russian UI on Russian systems and English UI on other system languages.
 
 ## Library Layout
 
@@ -118,13 +119,14 @@ docs/PROFESSIONAL_FINISH_CHECKLIST.md
 
 - Kotlin Multiplatform
 - Compose Multiplatform Desktop
+- Compose Multiplatform resources and platform locale fallback for Russian/English UI
 - Coroutines
 - kotlinx-datetime
 - Clean Architecture style boundaries
 
 ## Project Status
 
-Preview desktop app. The main workflow is usable for local archive cleanup, but public releases should still be treated as preview builds until more real-world archives are tested.
+Preview desktop app. The main workflow is usable for local archive cleanup, but public releases should still be treated as preview builds until more real-world archives are tested. The app is currently macOS-focused. The interface follows the system language: Russian for Russian systems, English for other languages.
 
 ## License
 

@@ -17,6 +17,12 @@
 - Library index saves now use unique temporary files, avoiding `library-index.tsv.tmp` collisions during concurrent refreshes.
 - Selected-file Trash no longer waits for a full library index refresh before showing success and re-enabling the inspector action.
 - Added KDoc to key domain contracts, use cases, JVM filesystem adapters, and large UI entry points; removed obsolete Trash mover implementations.
+- Introduced a platform-neutral Compose app state holder and moved mutable screen state out of the root `App.kt` composition.
+- Moved library index refresh, navigation-file selection, file action helpers, and user-message mapping out of `App.kt` into focused files.
+- Added Russian/English UI localization: Russian is used for Russian systems, while all other system languages fall back to English.
+- Added Compose Multiplatform string resources for stable labels and a platform locale helper for dynamic status/error text.
+- Removed UI labels from domain enums and removed unused Android lifecycle dependencies.
+- Replaced domain import availability messages with typed reasons, keeping domain code language-neutral while presentation localizes the text.
 
 ## 1.0.0-preview.8 - 2026-07-17
 

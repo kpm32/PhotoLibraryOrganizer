@@ -44,6 +44,12 @@ import com.anvar.photolibraryorganizer.presentation.AppSection
 import com.anvar.photolibraryorganizer.presentation.ImagePreviewLoader
 import com.anvar.photolibraryorganizer.presentation.LibraryRefreshProgress
 import com.anvar.photolibraryorganizer.presentation.ScanUiState
+import org.jetbrains.compose.resources.stringResource
+import photolibraryorganizer.shared.generated.resources.Res
+import photolibraryorganizer.shared.generated.resources.sidebar_app_title
+import photolibraryorganizer.shared.generated.resources.sidebar_help
+import photolibraryorganizer.shared.generated.resources.sidebar_library
+import photolibraryorganizer.shared.generated.resources.sidebar_work
 
 /**
  * Top-level desktop layout: sidebar, workspace, inspector, and optional viewer.
@@ -291,12 +297,12 @@ private fun LibrarySidebar(
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Text(
-                text = "Фотоархив",
+                text = stringResource(Res.string.sidebar_app_title),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )
             SidebarSection(
-                title = "Библиотека",
+                title = stringResource(Res.string.sidebar_library),
                 items = listOf(
                     AppSection.AllPhotos,
                     AppSection.Years,
@@ -307,7 +313,7 @@ private fun LibrarySidebar(
                 onSectionSelected = onSectionSelected,
             )
             SidebarSection(
-                title = "Работа",
+                title = stringResource(Res.string.sidebar_work),
                 items = listOf(
                     AppSection.Import,
                     AppSection.Duplicates,
@@ -318,7 +324,7 @@ private fun LibrarySidebar(
                 onSectionSelected = onSectionSelected,
             )
             SidebarSection(
-                title = "Справка",
+                title = stringResource(Res.string.sidebar_help),
                 items = listOf(AppSection.About),
                 selectedSection = selectedSection,
                 onSectionSelected = onSectionSelected,
@@ -354,7 +360,7 @@ private fun SidebarSection(
                 shape = MaterialTheme.shapes.small,
             ) {
                 Text(
-                    text = item.navigationTitle,
+                    text = item.navigationTitleText(),
                     modifier = Modifier.padding(vertical = 6.dp, horizontal = 8.dp),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = if (item == selectedSection) FontWeight.SemiBold else FontWeight.Normal,

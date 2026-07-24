@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sidebar_app_title">Photo Archive</string>
+    <string name="sidebar_library">Library</string>
+    <string name="sidebar_work">Work</string>
+    <string name="sidebar_help">Help</string>
+
+    <string name="section_all_photos">All Photos</string>
+    <string name="section_years">Years</string>
+    <string name="section_months">Months</string>
+    <string name="section_without_date">No Date</string>
+    <string name="section_import">Import</string>
+    <string name="section_duplicates">Duplicates</string>
+    <string name="section_unsupported">Unsupported</string>
+    <string name="section_unsupported_nav">Skipped</string>
+    <string name="section_errors">Errors</string>
+    <string name="section_about">About</string>
+
+    <string name="import_mode_scan_only_title">Scan Only</string>
+    <string name="import_mode_scan_only_description">Does not change files on disk, only shows the organization plan.</string>
+    <string name="import_mode_copy_title">Copy</string>
+    <string name="import_mode_copy_description">Copies files into the new library and leaves sources in place.</string>
+    <string name="import_mode_move_title">Move</string>
+    <string name="import_mode_move_description">Moves files after review to avoid duplicate storage usage.</string>
+    <string name="import_unavailable_plan_missing">Scan a folder first to build the file plan.</string>
+    <string name="import_unavailable_scan_only">Scan Only is selected. Choose Copy or Move to import files.</string>
+</resources>

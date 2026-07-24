@@ -88,7 +88,7 @@ internal fun InspectorPanel(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
-                text = "Инспектор",
+                text = uiText("Инспектор", "Inspector"),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )
@@ -110,22 +110,28 @@ internal fun InspectorPanel(
             )
             HorizontalDivider()
             FolderSelector(
-                title = "Источник",
+                title = uiText("Источник", "Source"),
                 path = plan.sourceFolder,
-                actionText = "Выбрать",
+                actionText = uiText("Выбрать", "Choose"),
                 onClick = onSourceFolderClick,
             )
             FolderSelector(
-                title = "Библиотека",
+                title = uiText("Библиотека", "Library"),
                 path = plan.destinationFolder,
-                actionText = "Выбрать",
+                actionText = uiText("Выбрать", "Choose"),
                 onClick = onDestinationFolderClick,
             )
             OutlinedButton(
                 onClick = onRefreshLibraryClick,
                 enabled = !plan.destinationFolder.isNullOrBlank() && !isLibraryRefreshing,
             ) {
-                Text(if (isLibraryRefreshing) "Обновляю..." else "Обновить библиотеку")
+                Text(
+                    if (isLibraryRefreshing) {
+                        uiText("Обновляю...", "Refreshing...")
+                    } else {
+                        uiText("Обновить библиотеку", "Refresh Library")
+                    },
+                )
             }
             if (isLibraryRefreshing) {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
@@ -135,7 +141,7 @@ internal fun InspectorPanel(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 TextButton(onClick = onCancelRefreshLibraryClick) {
-                    Text("Остановить обновление")
+                    Text(uiText("Остановить обновление", "Stop Refresh"))
                 }
             }
             if (scanUiState is ScanUiState.Success) {
@@ -160,7 +166,7 @@ private fun FolderSelector(
             fontWeight = FontWeight.SemiBold,
         )
         Text(
-            text = path ?: "Папка пока не выбрана",
+            text = path ?: uiText("Папка пока не выбрана", "Folder is not selected yet"),
             style = MaterialTheme.typography.bodySmall,
             color = if (path == null) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 3,
@@ -197,9 +203,9 @@ private fun SelectedFilePreview(
             contentAlignment = Alignment.Center,
         ) {
             when (imagePreviewUiState) {
-                ImagePreviewUiState.Empty -> PreviewPlaceholder("Фото не выбрано")
-                ImagePreviewUiState.Loading -> PreviewPlaceholder("Загружаю превью...")
-                ImagePreviewUiState.Unsupported -> PreviewPlaceholder("Превью пока недоступно")
+                ImagePreviewUiState.Empty -> PreviewPlaceholder(uiText("Фото не выбрано", "No photo selected"))
+                ImagePreviewUiState.Loading -> PreviewPlaceholder(uiText("Загружаю превью...", "Loading preview..."))
+                ImagePreviewUiState.Unsupported -> PreviewPlaceholder(uiText("Превью пока недоступно", "Preview is not available yet"))
                 is ImagePreviewUiState.Success -> {
                     Image(
                         bitmap = imagePreviewUiState.image,
@@ -217,12 +223,12 @@ private fun SelectedFilePreview(
                 onPreviousFileClick = onPreviousFileClick,
                 onNextFileClick = onNextFileClick,
             )
-            SummaryRow("Файл", selectedFile.fileName)
-            SummaryRow("Размер", selectedFile.sizeBytes.toReadableSize())
-            SummaryRow("Дата съемки", selectedFile.capturedAtEpochMillis.toReadableDateTimeOrEmpty())
-            SummaryRow("Дата файла", selectedFile.modifiedAtEpochMillis.toReadableDateTimeOrEmpty())
-            SummaryRow("Использована для папки", selectedFile.libraryDateLabel())
-            SummaryRow("SHA-256", selectedFile.contentHash?.take(12) ?: "Нет")
+            SummaryRow(uiText("Файл", "File"), selectedFile.fileName)
+            SummaryRow(uiText("Размер", "Size"), selectedFile.sizeBytes.toReadableSize())
+            SummaryRow(uiText("Дата съемки", "Capture Date"), selectedFile.capturedAtEpochMillis.toReadableDateTimeOrEmpty())
+            SummaryRow(uiText("Дата файла", "File Date"), selectedFile.modifiedAtEpochMillis.toReadableDateTimeOrEmpty())
+            SummaryRow(uiText("Использована для папки", "Used for Folder"), selectedFile.libraryDateLabel())
+            SummaryRow("SHA-256", selectedFile.contentHash?.take(12) ?: uiText("Нет", "No"))
             Text(
                 text = selectedFile.targetRelativePath,
                 style = MaterialTheme.typography.bodySmall,
@@ -237,13 +243,13 @@ private fun SelectedFilePreview(
                     modifier = Modifier.weight(1f),
                     enabled = imagePreviewUiState is ImagePreviewUiState.Success,
                 ) {
-                    Text("Крупно")
+                    Text(uiText("Крупно", "Large"))
                 }
                 Button(
                     onClick = onOpenFileClick,
                     modifier = Modifier.weight(1f),
                 ) {
-                    Text("Открыть")
+                    Text(uiText("Открыть", "Open"))
                 }
             }
             Row(
@@ -254,7 +260,7 @@ private fun SelectedFilePreview(
                     onClick = onRevealFileClick,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("В папке")
+                    Text(uiText("В папке", "In Folder"))
                 }
             }
             Row(
@@ -268,9 +274,9 @@ private fun SelectedFilePreview(
                 ) {
                     Text(
                         when {
-                            selectedFileTrashInProgress -> "Перенос..."
-                            selectedFileTrashAwaitingConfirmation -> "Подтвердить"
-                            else -> "В Корзину"
+                            selectedFileTrashInProgress -> uiText("Перенос...", "Moving...")
+                            selectedFileTrashAwaitingConfirmation -> uiText("Подтвердить", "Confirm")
+                            else -> uiText("В Корзину", "To Trash")
                         },
                     )
                 }
@@ -279,7 +285,7 @@ private fun SelectedFilePreview(
                         onClick = onCancelMoveSelectedFileToTrashClick,
                         modifier = Modifier.weight(1f),
                     ) {
-                        Text("Отмена")
+                        Text(uiText("Отмена", "Cancel"))
                     }
                 }
             }
@@ -305,9 +311,12 @@ private fun FileNavigationControls(
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
             text = if (selectedFileIndex >= 0 && navigationFileCount > 0) {
-                "${selectedFileIndex + 1} из $navigationFileCount"
+                uiText(
+                    ru = "${selectedFileIndex + 1} из $navigationFileCount",
+                    en = "${selectedFileIndex + 1} of $navigationFileCount",
+                )
             } else {
-                "Файл выбран"
+                uiText("Файл выбран", "File selected")
             },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -321,14 +330,14 @@ private fun FileNavigationControls(
                 modifier = Modifier.weight(1f),
                 enabled = canNavigate,
             ) {
-                Text("Назад")
+                Text(uiText("Назад", "Back"))
             }
             OutlinedButton(
                 onClick = onNextFileClick,
                 modifier = Modifier.weight(1f),
                 enabled = canNavigate,
             ) {
-                Text("Вперед")
+                Text(uiText("Вперед", "Forward"))
             }
         }
     }
@@ -346,14 +355,14 @@ private fun PreviewPlaceholder(text: String) {
 @Composable
 private fun ScanSummaryRows(scanUiState: ScanUiState.Success) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        SummaryRow("Всего файлов", scanUiState.summary.scannedFiles.toString())
-        SummaryRow("Медиа", scanUiState.summary.mediaFiles.toString())
-        SummaryRow("Фото", scanUiState.summary.imageFiles.toString())
-        SummaryRow("Видео", scanUiState.summary.videoFiles.toString())
-        SummaryRow("С датой съемки", scanUiState.summary.capturedDateFiles.toString())
-        SummaryRow("Неподдерживаемые", scanUiState.summary.unsupportedFiles.toString())
+        SummaryRow(uiText("Всего файлов", "Total Files"), scanUiState.summary.scannedFiles.toString())
+        SummaryRow(uiText("Медиа", "Media"), scanUiState.summary.mediaFiles.toString())
+        SummaryRow(uiText("Фото", "Photos"), scanUiState.summary.imageFiles.toString())
+        SummaryRow(uiText("Видео", "Videos"), scanUiState.summary.videoFiles.toString())
+        SummaryRow(uiText("С датой съемки", "With Capture Date"), scanUiState.summary.capturedDateFiles.toString())
+        SummaryRow(uiText("Неподдерживаемые", "Unsupported"), scanUiState.summary.unsupportedFiles.toString())
         UnsupportedExtensionsRows(scanUiState.summary.unsupportedFileExtensions)
-        SummaryRow("Размер медиа", scanUiState.summary.totalMediaBytes.toReadableSize())
+        SummaryRow(uiText("Размер медиа", "Media Size"), scanUiState.summary.totalMediaBytes.toReadableSize())
     }
 }
 
@@ -368,7 +377,7 @@ private fun UnsupportedExtensionsRows(unsupportedFileExtensions: Map<String, Int
 
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(
-            text = "Типы пропущенных",
+            text = uiText("Типы пропущенных", "Skipped Types"),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -378,7 +387,13 @@ private fun UnsupportedExtensionsRows(unsupportedFileExtensions: Map<String, Int
         val hiddenCount = sortedExtensions.size - initialVisibleCount
         if (hiddenCount > 0) {
             TextButton(onClick = { expanded = !expanded }) {
-                Text(if (expanded) "Свернуть" else "Показать еще $hiddenCount")
+                Text(
+                    if (expanded) {
+                        uiText("Свернуть", "Collapse")
+                    } else {
+                        uiText("Показать еще $hiddenCount", "Show $hiddenCount more")
+                    },
+                )
             }
         }
     }
@@ -414,28 +429,37 @@ private fun PlannedMediaFile.libraryDateLabel(): String {
     val parts = libraryPart.split('/')
     val month = parts.getOrNull(1)
     val source = if (capturedAtEpochMillis != null) {
-        "дата съемки"
+        uiText("дата съемки", "capture date")
     } else if (modifiedAtEpochMillis != null) {
-        "дата файла"
+        uiText("дата файла", "file date")
     } else {
         null
     }
     return month?.takeIf { it.length == 7 }
         ?.let { value -> if (source == null) value else "$value ($source)" }
-        ?: "Не определена"
+        ?: uiText("Не определена", "Not determined")
 }
 
 private fun LibraryRefreshProgress?.toRefreshText(): String {
-    if (this == null) return "Готовлю обновление библиотеки..."
+    if (this == null) {
+        return uiText("Готовлю обновление библиотеки...", "Preparing library refresh...")
+    }
     return if (section == LibraryRefreshSection.Saving) {
-        "Сохраняю локальный индекс. Окно можно оставить открытым."
+        uiText(
+            ru = "Сохраняю локальный индекс. Окно можно оставить открытым.",
+            en = "Saving the local index. You can keep the window open.",
+        )
     } else {
-        "${section.title}: просмотрено $scannedFiles, медиа $mediaFiles, пропущено $unsupportedFiles."
+        val title = uiText(section.ruTitle, section.enTitle)
+        uiText(
+            ru = "$title: просмотрено $scannedFiles, медиа $mediaFiles, пропущено $unsupportedFiles.",
+            en = "$title: scanned $scannedFiles, media $mediaFiles, skipped $unsupportedFiles.",
+        )
     }
 }
 
 private fun Long?.toReadableDateTimeOrEmpty(): String {
-    if (this == null) return "Нет"
+    if (this == null) return uiText("Нет", "No")
     val dateTime = Instant.fromEpochMilliseconds(this).toLocalDateTime(TimeZone.currentSystemDefault())
     val month = (dateTime.month.ordinal + 1).toString().padStart(2, '0')
     val day = dateTime.day.toString().padStart(2, '0')

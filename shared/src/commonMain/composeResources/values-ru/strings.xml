@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sidebar_app_title">Фотоархив</string>
+    <string name="sidebar_library">Библиотека</string>
+    <string name="sidebar_work">Работа</string>
+    <string name="sidebar_help">Справка</string>
+
+    <string name="section_all_photos">Все фото</string>
+    <string name="section_years">Годы</string>
+    <string name="section_months">Месяцы</string>
+    <string name="section_without_date">Без даты</string>
+    <string name="section_import">Импорт</string>
+    <string name="section_duplicates">Дубликаты</string>
+    <string name="section_unsupported">Неподдерживаемые</string>
+    <string name="section_unsupported_nav">Пропущенные</string>
+    <string name="section_errors">Ошибки</string>
+    <string name="section_about">О программе</string>
+
+    <string name="import_mode_scan_only_title">Только сканировать</string>
+    <string name="import_mode_scan_only_description">Ничего не меняет на диске, только показывает план разбора.</string>
+    <string name="import_mode_copy_title">Копировать</string>
+    <string name="import_mode_copy_description">Копирует файлы в новую библиотеку и оставляет исходники на месте.</string>
+    <string name="import_mode_move_title">Переносить</string>
+    <string name="import_mode_move_description">Переносит файлы после проверки, чтобы не занимать место копиями.</string>
+    <string name="import_unavailable_plan_missing">Сначала нужно просканировать папку и получить план файлов.</string>
+    <string name="import_unavailable_scan_only">Выбран режим только сканирования. Для импорта выбери копирование или перенос.</string>
+</resources>

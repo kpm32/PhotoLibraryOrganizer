@@ -73,10 +73,10 @@ internal fun MediaList(
                     modifier = Modifier.weight(1f),
                 )
                 scanUiState == ScanUiState.Idle -> EmptyListText(emptyText)
-                scanUiState == ScanUiState.Canceled -> EmptyListText("Сканирование остановлено. Файлы не изменялись.")
+                scanUiState == ScanUiState.Canceled -> EmptyListText(uiText("Сканирование остановлено. Файлы не изменялись.", "Scan stopped. Files were not changed."))
                 scanUiState is ScanUiState.Loading -> EmptyListText(scanUiState.progress.toMediaListProgressText())
                 scanUiState is ScanUiState.Error -> EmptyListText(scanUiState.message)
-                files.isEmpty() -> EmptyListText("Медиафайлы не найдены.")
+                files.isEmpty() -> EmptyListText(uiText("Медиафайлы не найдены.", "No media files found."))
                 else -> MediaGrid(
                     files = files,
                     imagePreviewLoader = imagePreviewLoader,
@@ -247,9 +247,12 @@ internal fun EmptyListText(text: String) {
 
 private fun com.anvar.photolibraryorganizer.domain.model.ScanSourceFolderProgress?.toMediaListProgressText(): String {
     return if (this == null) {
-        "Сканирую папку..."
+        uiText("Сканирую папку...", "Scanning folder...")
     } else {
-        "Просмотрено файлов: $scannedFiles. Найдено медиа: $mediaFiles. Пропущено: $unsupportedFiles."
+        uiText(
+            ru = "Просмотрено файлов: $scannedFiles. Найдено медиа: $mediaFiles. Пропущено: $unsupportedFiles.",
+            en = "Scanned files: $scannedFiles. Media found: $mediaFiles. Skipped: $unsupportedFiles.",
+        )
     }
 }
 

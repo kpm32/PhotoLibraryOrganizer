@@ -6,25 +6,18 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.tooling.preview.Preview
 import com.anvar.photolibraryorganizer.domain.AppResult
 import com.anvar.photolibraryorganizer.domain.ImportMode
-import com.anvar.photolibraryorganizer.domain.PhotoLibraryError
 import com.anvar.photolibraryorganizer.domain.PhotoLibraryPlan
 import com.anvar.photolibraryorganizer.domain.model.ImportTargetStatus
 import com.anvar.photolibraryorganizer.domain.model.ImportOrganizationRules
 import com.anvar.photolibraryorganizer.domain.model.ImportMediaFilesProgress
-import com.anvar.photolibraryorganizer.domain.model.ImportMediaFilesResult
 import com.anvar.photolibraryorganizer.domain.model.ImportStorageSpace
 import com.anvar.photolibraryorganizer.domain.model.LibraryIndexSnapshot
 import com.anvar.photolibraryorganizer.domain.model.MoveSelectedFileToTrashResult
-import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
-import com.anvar.photolibraryorganizer.domain.model.UnsupportedFileQuarantineResult
 import com.anvar.photolibraryorganizer.domain.repository.DuplicateQuarantineRepository
 import com.anvar.photolibraryorganizer.domain.repository.EmptyFolderCleanupRepository
 import com.anvar.photolibraryorganizer.domain.repository.FileTrashRepository
@@ -44,7 +37,6 @@ import com.anvar.photolibraryorganizer.presentation.FolderPicker
 import com.anvar.photolibraryorganizer.presentation.AppSettings
 import com.anvar.photolibraryorganizer.presentation.AppSettingsStorage
 import com.anvar.photolibraryorganizer.presentation.AppSection
-import com.anvar.photolibraryorganizer.presentation.AppIssue
 import com.anvar.photolibraryorganizer.presentation.CachingImagePreviewLoader
 import com.anvar.photolibraryorganizer.presentation.FileRevealHandler
 import com.anvar.photolibraryorganizer.presentation.ImagePreviewLoader
@@ -53,7 +45,6 @@ import com.anvar.photolibraryorganizer.presentation.ImportHistoryStorage
 import com.anvar.photolibraryorganizer.presentation.ImportReport
 import com.anvar.photolibraryorganizer.presentation.ImportUiState
 import com.anvar.photolibraryorganizer.presentation.LibraryRefreshProgress
-import com.anvar.photolibraryorganizer.presentation.LibraryRefreshSection
 import com.anvar.photolibraryorganizer.presentation.PreviewDuplicateQuarantineRepository
 import com.anvar.photolibraryorganizer.presentation.PreviewEmptyFolderCleanupRepository
 import com.anvar.photolibraryorganizer.presentation.PreviewAppSettingsStorage
@@ -71,7 +62,6 @@ import com.anvar.photolibraryorganizer.presentation.PreviewStorageSpaceProvider
 import com.anvar.photolibraryorganizer.presentation.ScanUiState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.time.Clock
@@ -104,46 +94,9 @@ fun App(
     val colorScheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()
 
     MaterialTheme(colorScheme = colorScheme) {
-        var sourceFolder by remember { mutableStateOf<String?>(null) }
-        var destinationFolder by remember { mutableStateOf<String?>(null) }
-        var importMode by remember { mutableStateOf(ImportMode.ScanOnly) }
-        var importRules by remember { mutableStateOf(ImportOrganizationRules.Default) }
-        var selectedSection by remember { mutableStateOf(AppSection.AllPhotos) }
-        var scanUiState by remember { mutableStateOf<ScanUiState>(ScanUiState.Idle) }
-        var scanRequestToken by remember { mutableStateOf(0) }
-        var scanJob by remember { mutableStateOf<Job?>(null) }
-        var importJob by remember { mutableStateOf<Job?>(null) }
-        var refreshLibraryJob by remember { mutableStateOf<Job?>(null) }
-        var lastImportProgress by remember { mutableStateOf<ImportMediaFilesProgress?>(null) }
-        var importUiState by remember { mutableStateOf<ImportUiState>(ImportUiState.Idle) }
-        var lastImportReport by remember { mutableStateOf<ImportReport?>(null) }
-        var emptyFolderCleanupMessage by remember { mutableStateOf<String?>(null) }
-        var emptyFolderCleanupAwaitingConfirmation by remember { mutableStateOf(false) }
-        var importHistory by remember { mutableStateOf<List<ImportReport>>(emptyList()) }
-        var selectedFile by remember { mutableStateOf<PlannedMediaFile?>(null) }
-        var libraryFiles by remember { mutableStateOf<List<PlannedMediaFile>>(emptyList()) }
-        var duplicateFiles by remember { mutableStateOf<List<PlannedMediaFile>>(emptyList()) }
-        var unsupportedFiles by remember { mutableStateOf<List<PlannedMediaFile>>(emptyList()) }
-        var isLibraryRefreshing by remember { mutableStateOf(false) }
-        var libraryRefreshProgress by remember { mutableStateOf<LibraryRefreshProgress?>(null) }
-        var duplicateActionMessage by remember { mutableStateOf<String?>(null) }
-        var duplicateDeleteAwaitingConfirmation by remember { mutableStateOf(false) }
-        var duplicateActionInProgress by remember { mutableStateOf(false) }
-        var unsupportedActionMessage by remember { mutableStateOf<String?>(null) }
-        var unsupportedDeleteAwaitingConfirmation by remember { mutableStateOf(false) }
-        var unsupportedActionInProgress by remember { mutableStateOf(false) }
-        var selectedFileTrashAwaitingConfirmation by remember { mutableStateOf(false) }
-        var selectedFileTrashMessage by remember { mutableStateOf<String?>(null) }
-        var selectedFileTrashInProgress by remember { mutableStateOf(false) }
-        var imagePreviewUiState by remember { mutableStateOf<ImagePreviewUiState>(ImagePreviewUiState.Empty) }
-        var issues by remember { mutableStateOf<List<AppIssue>>(emptyList()) }
-        var nextIssueId by remember { mutableStateOf(1) }
-
+        val appState = rememberPhotoLibraryAppState()
         val coroutineScope = rememberCoroutineScope()
-        fun addIssue(title: String, detail: String) {
-            issues = listOf(AppIssue(nextIssueId, title, detail)) + issues
-            nextIssueId += 1
-        }
+        with(appState) {
 
         val scanSourceFolderUseCase = remember(photoSourceScanner) {
             ScanSourceFolderUseCase(photoSourceScanner)
@@ -282,7 +235,7 @@ fun App(
             libraryRefreshProgress = libraryRefreshProgress,
             issues = issues,
             onSourceFolderClick = {
-                folderPicker.chooseFolder("Выбери исходную папку")?.let {
+                folderPicker.chooseFolder(uiText("Выбери исходную папку", "Choose Source Folder"))?.let {
                     sourceFolder = it
                     coroutineScope.launch {
                         appSettingsStorage.saveSettings(
@@ -318,7 +271,7 @@ fun App(
                 imagePreviewUiState = ImagePreviewUiState.Empty
             },
             onDestinationFolderClick = {
-                folderPicker.chooseFolder("Выбери папку библиотеки")?.let {
+                folderPicker.chooseFolder(uiText("Выбери папку библиотеки", "Choose Library Folder"))?.let {
                     destinationFolder = it
                     coroutineScope.launch {
                         appSettingsStorage.saveSettings(
@@ -425,7 +378,7 @@ fun App(
                             is AppResult.Error -> {
                                 if (scanRequestToken != currentScanToken) return@launch
                                 val message = result.error.toUserMessage()
-                                addIssue("Сканирование", message)
+                                addIssue(uiText("Сканирование", "Scan"), message)
                                 scanUiState = ScanUiState.Error(message)
                             }
                         }
@@ -435,8 +388,11 @@ fun App(
                         }
                     } catch (exception: Throwable) {
                         if (scanRequestToken != currentScanToken) return@launch
-                        val message = "Сканирование прервалось: ${exception.message ?: "без деталей"}"
-                        addIssue("Сканирование", message)
+                        val message = uiText(
+                            ru = "Сканирование прервалось: ${exception.message ?: "без деталей"}",
+                            en = "Scan failed: ${exception.message ?: "no details"}",
+                        )
+                        addIssue(uiText("Сканирование", "Scan"), message)
                         scanUiState = ScanUiState.Error(message)
                     } finally {
                         if (scanRequestToken == currentScanToken) {
@@ -457,7 +413,7 @@ fun App(
             onImportClick = {
                 val targetFolder = destinationFolder
                 if (targetFolder.isNullOrBlank()) {
-                    importUiState = ImportUiState.Error("Не выбрана папка библиотеки.")
+                    importUiState = ImportUiState.Error(uiText("Не выбрана папка библиотеки.", "Library folder is not selected."))
                 } else {
                     importUiState = ImportUiState.CheckingStorageSpace
                     coroutineScope.launch {
@@ -479,13 +435,19 @@ fun App(
                             when (space) {
                                 is ImportStorageSpace.Insufficient -> {
                                     importUiState = ImportUiState.Error(
-                                        "Недостаточно места в папке библиотеки: нужно ${space.requiredBytes.toReadableSize()}, свободно ${space.availableBytes.toReadableSize()}.",
+                                        uiText(
+                                            ru = "Недостаточно места в папке библиотеки: нужно ${space.requiredBytes.toReadableSize()}, свободно ${space.availableBytes.toReadableSize()}.",
+                                            en = "Not enough space in the library folder: required ${space.requiredBytes.toReadableSize()}, available ${space.availableBytes.toReadableSize()}.",
+                                        ),
                                     )
                                 }
 
                                 ImportStorageSpace.Unavailable -> {
                                     importUiState = ImportUiState.Error(
-                                        "Не удалось определить свободное место в папке библиотеки. Проверь доступ к диску.",
+                                        uiText(
+                                            ru = "Не удалось определить свободное место в папке библиотеки. Проверь доступ к диску.",
+                                            en = "Could not determine free space in the library folder. Check disk access.",
+                                        ),
                                     )
                                 }
 
@@ -508,8 +470,11 @@ fun App(
                                 }
                             }
                         } catch (exception: Throwable) {
-                            val message = "Не удалось подготовить импорт: ${exception.message ?: "без деталей"}"
-                            addIssue("Импорт", message)
+                            val message = uiText(
+                                ru = "Не удалось подготовить импорт: ${exception.message ?: "без деталей"}",
+                                en = "Could not prepare import: ${exception.message ?: "no details"}",
+                            )
+                            addIssue(uiText("Импорт", "Import"), message)
                             importUiState = ImportUiState.Error(message)
                         }
                     }
@@ -535,14 +500,20 @@ fun App(
                         }) {
                             is ImportStorageSpace.Insufficient -> {
                                 importUiState = ImportUiState.Error(
-                                    "Недостаточно места в папке библиотеки: нужно ${space.requiredBytes.toReadableSize()}, свободно ${space.availableBytes.toReadableSize()}.",
+                                    uiText(
+                                        ru = "Недостаточно места в папке библиотеки: нужно ${space.requiredBytes.toReadableSize()}, свободно ${space.availableBytes.toReadableSize()}.",
+                                        en = "Not enough space in the library folder: required ${space.requiredBytes.toReadableSize()}, available ${space.availableBytes.toReadableSize()}.",
+                                    ),
                                 )
                                 return@launch
                             }
 
                             ImportStorageSpace.Unavailable -> {
                                 importUiState = ImportUiState.Error(
-                                    "Не удалось определить свободное место в папке библиотеки. Проверь доступ к диску.",
+                                    uiText(
+                                        ru = "Не удалось определить свободное место в папке библиотеки. Проверь доступ к диску.",
+                                        en = "Could not determine free space in the library folder. Check disk access.",
+                                    ),
                                 )
                                 return@launch
                             }
@@ -603,8 +574,11 @@ fun App(
                                 refreshLibraryIndexFromDisk(selectFirstFile = false)
                                 if (finalImportResult.failedFiles > 0 || finalImportResult.failedUnsupportedFiles > 0) {
                                     addIssue(
-                                        title = "Импорт",
-                                        detail = "Ошибки медиа: ${finalImportResult.failedFiles}. Ошибки неподдерживаемых: ${finalImportResult.failedUnsupportedFiles}.",
+                                        title = uiText("Импорт", "Import"),
+                                        detail = uiText(
+                                            ru = "Ошибки медиа: ${finalImportResult.failedFiles}. Ошибки неподдерживаемых: ${finalImportResult.failedUnsupportedFiles}.",
+                                            en = "Media errors: ${finalImportResult.failedFiles}. Unsupported-file errors: ${finalImportResult.failedUnsupportedFiles}.",
+                                        ),
                                     )
                                 }
                                 importUiState = ImportUiState.Success(finalImportResult)
@@ -612,7 +586,7 @@ fun App(
 
                             is AppResult.Error -> {
                                 val message = result.error.toUserMessage()
-                                addIssue("Импорт", message)
+                                addIssue(uiText("Импорт", "Import"), message)
                                 importUiState = ImportUiState.Error(message)
                             }
                         }
@@ -620,8 +594,11 @@ fun App(
                         importUiState = ImportUiState.Canceled(lastImportProgress)
                         refreshLibraryIndexFromDisk(selectFirstFile = false)
                     } catch (exception: Throwable) {
-                        val message = "Импорт прервался: ${exception.message ?: "без деталей"}"
-                        addIssue("Импорт", message)
+                        val message = uiText(
+                            ru = "Импорт прервался: ${exception.message ?: "без деталей"}",
+                            en = "Import failed: ${exception.message ?: "no details"}",
+                        )
+                        addIssue(uiText("Импорт", "Import"), message)
                         importUiState = ImportUiState.Error(message)
                     } finally {
                         importJob = null
@@ -670,11 +647,11 @@ fun App(
                         try {
                             val duplicatesToMove = libraryFiles.duplicateQuarantineCandidates()
                             if (duplicatesToMove.isEmpty()) {
-                                duplicateActionMessage = "Дубликаты для переноса не найдены."
+                                duplicateActionMessage = uiText("Дубликаты для переноса не найдены.", "No duplicates found to move.")
                                 return@launch
                             }
 
-                            duplicateActionMessage = "Переношу дубликаты в папку дублей..."
+                            duplicateActionMessage = uiText("Переношу дубликаты в папку дублей...", "Moving duplicates to the duplicates folder...")
                             duplicateActionMessage = try {
                                 when (
                                     val result = withContext(Dispatchers.Default) {
@@ -688,22 +665,31 @@ fun App(
                                         refreshLibraryIndexFromDisk()
                                         if (result.data.failedFiles > 0) {
                                             addIssue(
-                                                title = "Дубликаты",
-                                                detail = "Часть дублей не удалось перенести в папку дублей: ${result.data.failedFiles}.",
+                                                title = uiText("Дубликаты", "Duplicates"),
+                                                detail = uiText(
+                                                    ru = "Часть дублей не удалось перенести в папку дублей: ${result.data.failedFiles}.",
+                                                    en = "Some duplicates could not be moved to the duplicates folder: ${result.data.failedFiles}.",
+                                                ),
                                             )
                                         }
-                                        "Перенесено в папку дублей: ${result.data.movedFiles}, ошибок: ${result.data.failedFiles}."
+                                        uiText(
+                                            ru = "Перенесено в папку дублей: ${result.data.movedFiles}, ошибок: ${result.data.failedFiles}.",
+                                            en = "Moved to duplicates folder: ${result.data.movedFiles}, errors: ${result.data.failedFiles}.",
+                                        )
                                     }
 
                                     is AppResult.Error -> {
                                         val message = result.error.toUserMessage()
-                                        addIssue("Дубликаты", message)
+                                        addIssue(uiText("Дубликаты", "Duplicates"), message)
                                         message
                                     }
                                 }
                             } catch (exception: Throwable) {
-                                val message = "Не удалось перенести дубликаты: ${exception.message ?: "без деталей"}"
-                                addIssue("Дубликаты", message)
+                                val message = uiText(
+                                    ru = "Не удалось перенести дубликаты: ${exception.message ?: "без деталей"}",
+                                    en = "Could not move duplicates: ${exception.message ?: "no details"}",
+                                )
+                                addIssue(uiText("Дубликаты", "Duplicates"), message)
                                 message
                             }
                         } finally {
@@ -714,16 +700,22 @@ fun App(
             },
             onRequestDeleteQuarantineClick = {
                 if (duplicateFiles.isEmpty()) {
-                    duplicateActionMessage = "В папке дублей пока нет файлов для переноса в Корзину."
+                    duplicateActionMessage = uiText(
+                        ru = "В папке дублей пока нет файлов для переноса в Корзину.",
+                        en = "There are no files in the duplicates folder to move to Trash.",
+                    )
                     duplicateDeleteAwaitingConfirmation = false
                 } else {
                     duplicateDeleteAwaitingConfirmation = true
-                    duplicateActionMessage = "Будет перемещено в Корзину из папки дублей: ${duplicateFiles.size}. Библиотеку не трогаем."
+                    duplicateActionMessage = uiText(
+                        ru = "Будет перемещено в Корзину из папки дублей: ${duplicateFiles.size}. Библиотеку не трогаем.",
+                        en = "Will move files from the duplicates folder to Trash: ${duplicateFiles.size}. The library will not be touched.",
+                    )
                 }
             },
             onCancelDeleteQuarantineClick = {
                 duplicateDeleteAwaitingConfirmation = false
-                duplicateActionMessage = "Перенос в Корзину отменен."
+                duplicateActionMessage = uiText("Перенос в Корзину отменен.", "Move to Trash canceled.")
             },
             onConfirmDeleteQuarantineClick = {
                 if (!duplicateActionInProgress) {
@@ -732,11 +724,17 @@ fun App(
                         try {
                             if (duplicateFiles.isEmpty()) {
                                 duplicateDeleteAwaitingConfirmation = false
-                                duplicateActionMessage = "В папке дублей пока нет файлов для переноса в Корзину."
+                                duplicateActionMessage = uiText(
+                                    ru = "В папке дублей пока нет файлов для переноса в Корзину.",
+                                    en = "There are no files in the duplicates folder to move to Trash.",
+                                )
                                 return@launch
                             }
 
-                            duplicateActionMessage = "Перемещаю файлы из папки дублей в Корзину..."
+                            duplicateActionMessage = uiText(
+                                ru = "Перемещаю файлы из папки дублей в Корзину...",
+                                en = "Moving files from the duplicates folder to Trash...",
+                            )
                             duplicateActionMessage = try {
                                 when (
                                     val result = withContext(Dispatchers.Default) {
@@ -751,24 +749,33 @@ fun App(
                                         refreshLibraryIndexFromDisk()
                                         if (result.data.failedFiles > 0) {
                                             addIssue(
-                                                title = "Дубликаты",
-                                                detail = "Часть файлов из папки дублей не удалось переместить в Корзину: ${result.data.failedFiles}.",
+                                                title = uiText("Дубликаты", "Duplicates"),
+                                                detail = uiText(
+                                                    ru = "Часть файлов из папки дублей не удалось переместить в Корзину: ${result.data.failedFiles}.",
+                                                    en = "Some files from the duplicates folder could not be moved to Trash: ${result.data.failedFiles}.",
+                                                ),
                                             )
                                         }
-                                        "Перемещено в Корзину из папки дублей: ${result.data.deletedFiles}, ошибок: ${result.data.failedFiles}."
+                                        uiText(
+                                            ru = "Перемещено в Корзину из папки дублей: ${result.data.deletedFiles}, ошибок: ${result.data.failedFiles}.",
+                                            en = "Moved from duplicates folder to Trash: ${result.data.deletedFiles}, errors: ${result.data.failedFiles}.",
+                                        )
                                     }
 
                                     is AppResult.Error -> {
                                         duplicateDeleteAwaitingConfirmation = false
                                         val message = result.error.toUserMessage()
-                                        addIssue("Дубликаты", message)
+                                        addIssue(uiText("Дубликаты", "Duplicates"), message)
                                         message
                                     }
                                 }
                             } catch (exception: Throwable) {
                                 duplicateDeleteAwaitingConfirmation = false
-                                val message = "Не удалось переместить файлы из папки дублей в Корзину: ${exception.message ?: "без деталей"}"
-                                addIssue("Дубликаты", message)
+                                val message = uiText(
+                                    ru = "Не удалось переместить файлы из папки дублей в Корзину: ${exception.message ?: "без деталей"}",
+                                    en = "Could not move files from the duplicates folder to Trash: ${exception.message ?: "no details"}",
+                                )
+                                addIssue(uiText("Дубликаты", "Duplicates"), message)
                                 message
                             }
                         } finally {
@@ -779,16 +786,22 @@ fun App(
             },
             onRequestDeleteUnsupportedClick = {
                 if (unsupportedFiles.isEmpty()) {
-                    unsupportedActionMessage = "В папке пропущенных файлов пока нечего переносить в Корзину."
+                    unsupportedActionMessage = uiText(
+                        ru = "В папке пропущенных файлов пока нечего переносить в Корзину.",
+                        en = "There are no skipped files to move to Trash.",
+                    )
                     unsupportedDeleteAwaitingConfirmation = false
                 } else {
                     unsupportedDeleteAwaitingConfirmation = true
-                    unsupportedActionMessage = "Будет перемещено в Корзину пропущенных файлов: ${unsupportedFiles.size}. Библиотеку и исходники не трогаем."
+                    unsupportedActionMessage = uiText(
+                        ru = "Будет перемещено в Корзину пропущенных файлов: ${unsupportedFiles.size}. Библиотеку и исходники не трогаем.",
+                        en = "Will move skipped files to Trash: ${unsupportedFiles.size}. The library and source files will not be touched.",
+                    )
                 }
             },
             onCancelDeleteUnsupportedClick = {
                 unsupportedDeleteAwaitingConfirmation = false
-                unsupportedActionMessage = "Перенос в Корзину отменен."
+                unsupportedActionMessage = uiText("Перенос в Корзину отменен.", "Move to Trash canceled.")
             },
             onConfirmDeleteUnsupportedClick = {
                 if (!unsupportedActionInProgress) {
@@ -797,11 +810,17 @@ fun App(
                         try {
                             if (unsupportedFiles.isEmpty()) {
                                 unsupportedDeleteAwaitingConfirmation = false
-                                unsupportedActionMessage = "В папке пропущенных файлов пока нечего переносить в Корзину."
+                                unsupportedActionMessage = uiText(
+                                    ru = "В папке пропущенных файлов пока нечего переносить в Корзину.",
+                                    en = "There are no skipped files to move to Trash.",
+                                )
                                 return@launch
                             }
 
-                            unsupportedActionMessage = "Перемещаю пропущенные файлы в Корзину..."
+                            unsupportedActionMessage = uiText(
+                                ru = "Перемещаю пропущенные файлы в Корзину...",
+                                en = "Moving skipped files to Trash...",
+                            )
                             unsupportedActionMessage = try {
                                 when (
                                     val result = withContext(Dispatchers.Default) {
@@ -816,24 +835,33 @@ fun App(
                                         refreshLibraryIndexFromDisk(selectFirstFile = false)
                                         if (result.data.failedFiles > 0) {
                                             addIssue(
-                                                title = "Неподдерживаемые",
-                                                detail = "Часть пропущенных файлов не удалось переместить в Корзину: ${result.data.failedFiles}.",
+                                                title = uiText("Неподдерживаемые", "Unsupported"),
+                                                detail = uiText(
+                                                    ru = "Часть пропущенных файлов не удалось переместить в Корзину: ${result.data.failedFiles}.",
+                                                    en = "Some skipped files could not be moved to Trash: ${result.data.failedFiles}.",
+                                                ),
                                             )
                                         }
-                                        "Перемещено в Корзину пропущенных файлов: ${result.data.deletedFiles}, ошибок: ${result.data.failedFiles}."
+                                        uiText(
+                                            ru = "Перемещено в Корзину пропущенных файлов: ${result.data.deletedFiles}, ошибок: ${result.data.failedFiles}.",
+                                            en = "Moved skipped files to Trash: ${result.data.deletedFiles}, errors: ${result.data.failedFiles}.",
+                                        )
                                     }
 
                                     is AppResult.Error -> {
                                         unsupportedDeleteAwaitingConfirmation = false
                                         val message = result.error.toUserMessage()
-                                        addIssue("Неподдерживаемые", message)
+                                        addIssue(uiText("Неподдерживаемые", "Unsupported"), message)
                                         message
                                     }
                                 }
                             } catch (exception: Throwable) {
                                 unsupportedDeleteAwaitingConfirmation = false
-                                val message = "Не удалось переместить пропущенные файлы в Корзину: ${exception.message ?: "без деталей"}"
-                                addIssue("Неподдерживаемые", message)
+                                val message = uiText(
+                                    ru = "Не удалось переместить пропущенные файлы в Корзину: ${exception.message ?: "без деталей"}",
+                                    en = "Could not move skipped files to Trash: ${exception.message ?: "no details"}",
+                                )
+                                addIssue(uiText("Неподдерживаемые", "Unsupported"), message)
                                 message
                             }
                         } finally {
@@ -844,15 +872,18 @@ fun App(
             },
             onRequestEmptyFolderCleanupClick = {
                 emptyFolderCleanupAwaitingConfirmation = true
-                emptyFolderCleanupMessage = "Будут удалены только пустые подпапки внутри исходной папки. Файлы не удаляются."
+                emptyFolderCleanupMessage = uiText(
+                    ru = "Будут удалены только пустые подпапки внутри исходной папки. Файлы не удаляются.",
+                    en = "Only empty subfolders inside the source folder will be removed. Files are not deleted.",
+                )
             },
             onCancelEmptyFolderCleanupClick = {
                 emptyFolderCleanupAwaitingConfirmation = false
-                emptyFolderCleanupMessage = "Очистка пустых папок отменена."
+                emptyFolderCleanupMessage = uiText("Очистка пустых папок отменена.", "Empty folder cleanup canceled.")
             },
             onConfirmEmptyFolderCleanupClick = {
                 coroutineScope.launch {
-                    emptyFolderCleanupMessage = "Удаляю пустые папки источника..."
+                    emptyFolderCleanupMessage = uiText("Удаляю пустые папки источника...", "Removing empty source folders...")
                     emptyFolderCleanupMessage = try {
                         when (
                             val result = withContext(Dispatchers.Default) {
@@ -863,24 +894,33 @@ fun App(
                                 emptyFolderCleanupAwaitingConfirmation = false
                                 if (result.data.failedFolders > 0) {
                                     addIssue(
-                                        title = "Пустые папки",
-                                        detail = "Часть пустых папок не удалось удалить: ${result.data.failedFolders}.",
+                                        title = uiText("Пустые папки", "Empty Folders"),
+                                        detail = uiText(
+                                            ru = "Часть пустых папок не удалось удалить: ${result.data.failedFolders}.",
+                                            en = "Some empty folders could not be removed: ${result.data.failedFolders}.",
+                                        ),
                                     )
                                 }
-                                "Удалено пустых папок: ${result.data.deletedFolders}, ошибок: ${result.data.failedFolders}."
+                                uiText(
+                                    ru = "Удалено пустых папок: ${result.data.deletedFolders}, ошибок: ${result.data.failedFolders}.",
+                                    en = "Removed empty folders: ${result.data.deletedFolders}, errors: ${result.data.failedFolders}.",
+                                )
                             }
 
                             is AppResult.Error -> {
                                 emptyFolderCleanupAwaitingConfirmation = false
                                 val message = result.error.toUserMessage()
-                                addIssue("Пустые папки", message)
+                                addIssue(uiText("Пустые папки", "Empty Folders"), message)
                                 message
                             }
                         }
                     } catch (exception: Throwable) {
                         emptyFolderCleanupAwaitingConfirmation = false
-                        val message = "Не удалось удалить пустые папки: ${exception.message ?: "без деталей"}"
-                        addIssue("Пустые папки", message)
+                        val message = uiText(
+                            ru = "Не удалось удалить пустые папки: ${exception.message ?: "без деталей"}",
+                            en = "Could not remove empty folders: ${exception.message ?: "no details"}",
+                        )
+                        addIssue(uiText("Пустые папки", "Empty Folders"), message)
                         message
                     }
                 }
@@ -889,7 +929,7 @@ fun App(
                 openLibrarySubfolder(
                     destinationFolder = destinationFolder,
                     subfolder = "Library",
-                    title = "Библиотека",
+                    title = uiText("Библиотека", "Library"),
                     fileRevealHandler = fileRevealHandler,
                     addIssue = ::addIssue,
                 )
@@ -898,7 +938,7 @@ fun App(
                 openLibrarySubfolder(
                     destinationFolder = destinationFolder,
                     subfolder = "Unsupported",
-                    title = "Пропущенные",
+                    title = uiText("Пропущенные", "Skipped"),
                     fileRevealHandler = fileRevealHandler,
                     addIssue = ::addIssue,
                 )
@@ -907,7 +947,7 @@ fun App(
                 openLibrarySubfolder(
                     destinationFolder = destinationFolder,
                     subfolder = "Unsupported/${type.toUnsupportedFolderName()}",
-                    title = "Неподдерживаемые",
+                    title = uiText("Неподдерживаемые", "Unsupported"),
                     fileRevealHandler = fileRevealHandler,
                     addIssue = ::addIssue,
                 )
@@ -916,12 +956,12 @@ fun App(
                 openLibrarySubfolder(
                     destinationFolder = destinationFolder,
                     subfolder = "Duplicates",
-                    title = "Дубли",
+                    title = uiText("Дубли", "Duplicates"),
                     fileRevealHandler = fileRevealHandler,
                     addIssue = ::addIssue,
                 )
             },
-            onClearIssuesClick = { issues = emptyList() },
+            onClearIssuesClick = { clearIssues() },
             onSectionSelected = { selectedSection = it },
             selectedFile = selectedFile,
             selectedFileIndex = selectedFileIndex,
@@ -930,14 +970,20 @@ fun App(
             onOpenFileClick = {
                 selectedFile?.sourcePath?.let { path ->
                     if (!fileRevealHandler.open(path)) {
-                        addIssue("Просмотр", "Не удалось открыть файл: $path")
+                        addIssue(
+                            uiText("Просмотр", "Preview"),
+                            uiText("Не удалось открыть файл: $path", "Could not open file: $path"),
+                        )
                     }
                 }
             },
             onRevealFileClick = {
                 selectedFile?.sourcePath?.let { path ->
                     if (!fileRevealHandler.reveal(path)) {
-                        addIssue("Просмотр", "Не удалось показать файл в папке: $path")
+                        addIssue(
+                            uiText("Просмотр", "Preview"),
+                            uiText("Не удалось показать файл в папке: $path", "Could not reveal file in folder: $path"),
+                        )
                     }
                 }
             },
@@ -946,15 +992,18 @@ fun App(
                     val file = selectedFile
                     if (file == null) {
                         selectedFileTrashAwaitingConfirmation = false
-                        selectedFileTrashMessage = "Файл не выбран."
+                        selectedFileTrashMessage = uiText("Файл не выбран.", "No file selected.")
                     } else if (selectedSection == AppSection.Import) {
                         selectedFileTrashAwaitingConfirmation = false
-                        selectedFileTrashMessage = "В разделе импорта файл из исходной папки не переносится в Корзину. Сначала проверь план импорта."
+                        selectedFileTrashMessage = uiText(
+                            ru = "В разделе импорта файл из исходной папки не переносится в Корзину. Сначала проверь план импорта.",
+                            en = "In the import section, source files are not moved to Trash. Review the import plan first.",
+                        )
                     } else if (selectedFileTrashAwaitingConfirmation) {
                         coroutineScope.launch {
                             selectedFileTrashInProgress = true
                             val path = file.sourcePath
-                            selectedFileTrashMessage = "Перемещаю выбранный файл в Корзину..."
+                            selectedFileTrashMessage = uiText("Перемещаю выбранный файл в Корзину...", "Moving selected file to Trash...")
                             selectedFileTrashMessage = try {
                                 val result = withContext(Dispatchers.Default) {
                                     moveSelectedFileToTrashUseCase(
@@ -974,31 +1023,49 @@ fun App(
                                                 // delete into a blocking system dialog.
                                             }
                                         }
-                                        "Файл перемещен в Корзину."
+                                        uiText("Файл перемещен в Корзину.", "File moved to Trash.")
                                     }
-                                    MoveSelectedFileToTrashResult.FileNotSelected -> "Файл не выбран."
+                                    MoveSelectedFileToTrashResult.FileNotSelected -> uiText("Файл не выбран.", "No file selected.")
                                     MoveSelectedFileToTrashResult.SourceFileActionNotAllowed -> {
-                                        "В разделе импорта файл из исходной папки не переносится в Корзину. Сначала проверь план импорта."
+                                        uiText(
+                                            ru = "В разделе импорта файл из исходной папки не переносится в Корзину. Сначала проверь план импорта.",
+                                            en = "In the import section, source files are not moved to Trash. Review the import plan first.",
+                                        )
                                     }
                                     MoveSelectedFileToTrashResult.TimedOut -> {
-                                        val message = "Перенос в Корзину занял слишком много времени. Проверь доступ к диску или попробуй открыть файл в папке."
-                                        addIssue("Корзина", "$message Файл: $path")
+                                        val message = uiText(
+                                            ru = "Перенос в Корзину занял слишком много времени. Проверь доступ к диску или попробуй открыть файл в папке.",
+                                            en = "Moving to Trash took too long. Check disk access or try opening the file in its folder.",
+                                        )
+                                        addIssue(
+                                            uiText("Корзина", "Trash"),
+                                            uiText("$message Файл: $path", "$message File: $path"),
+                                        )
                                         message
                                     }
                                     MoveSelectedFileToTrashResult.Failed -> {
-                                        addIssue("Корзина", "Не удалось переместить файл в Корзину: $path")
-                                        "Не удалось переместить файл в Корзину."
+                                        addIssue(
+                                            uiText("Корзина", "Trash"),
+                                            uiText("Не удалось переместить файл в Корзину: $path", "Could not move file to Trash: $path"),
+                                        )
+                                        uiText("Не удалось переместить файл в Корзину.", "Could not move file to Trash.")
                                     }
                                     is MoveSelectedFileToTrashResult.Error -> {
-                                        val message = "Не удалось переместить файл в Корзину: ${result.message ?: "без деталей"}"
-                                        addIssue("Корзина", message)
+                                        val message = uiText(
+                                            ru = "Не удалось переместить файл в Корзину: ${result.message ?: "без деталей"}",
+                                            en = "Could not move file to Trash: ${result.message ?: "no details"}",
+                                        )
+                                        addIssue(uiText("Корзина", "Trash"), message)
                                         message
                                     }
                                 }
                             } catch (exception: Throwable) {
                                 selectedFileTrashAwaitingConfirmation = false
-                                val message = "Не удалось переместить файл в Корзину: ${exception.message ?: "без деталей"}"
-                                addIssue("Корзина", message)
+                                val message = uiText(
+                                    ru = "Не удалось переместить файл в Корзину: ${exception.message ?: "без деталей"}",
+                                    en = "Could not move file to Trash: ${exception.message ?: "no details"}",
+                                )
+                                addIssue(uiText("Корзина", "Trash"), message)
                                 message
                             } finally {
                                 selectedFileTrashInProgress = false
@@ -1006,13 +1073,16 @@ fun App(
                         }
                     } else {
                         selectedFileTrashAwaitingConfirmation = true
-                        selectedFileTrashMessage = "Будет перемещен в Корзину только выбранный файл: ${file.fileName}"
+                        selectedFileTrashMessage = uiText(
+                            ru = "Будет перемещен в Корзину только выбранный файл: ${file.fileName}",
+                            en = "Only the selected file will be moved to Trash: ${file.fileName}",
+                        )
                     }
                 }
             },
             onCancelMoveSelectedFileToTrashClick = {
                 selectedFileTrashAwaitingConfirmation = false
-                selectedFileTrashMessage = "Перенос выбранного файла отменен."
+                selectedFileTrashMessage = uiText("Перенос выбранного файла отменен.", "Moving selected file canceled.")
             },
             onPreviousFileClick = {
                 if (canNavigateSelectedFile) {
@@ -1026,250 +1096,6 @@ fun App(
             },
             onFileSelected = { selectedFile = it },
         )
-    }
-}
-
-private fun PhotoLibraryError.toUserMessage(): String {
-    return when (this) {
-        PhotoLibraryError.InvalidSourceFolder -> "Исходная папка не выбрана."
-        is PhotoLibraryError.SourceFolderNotFound -> "Исходная папка не найдена: $path"
-        is PhotoLibraryError.SourceFolderIsNotDirectory -> "Выбранный путь не является папкой: $path"
-        PhotoLibraryError.ImportPlanIsEmpty -> "Нет плана импорта. Сначала выполни сканирование."
-        PhotoLibraryError.UnsupportedImportMode -> "Этот режим импорта пока не поддерживается."
-        is PhotoLibraryError.FileSystem -> "Не удалось выполнить файловую операцию: $message"
-        is PhotoLibraryError.Unknown -> "Неизвестная ошибка: ${message ?: "без деталей"}"
-    }
-}
-
-private fun ImportMediaFilesResult.withUnsupportedQuarantine(
-    result: AppResult<UnsupportedFileQuarantineResult>?,
-    fallbackFailedFiles: Int,
-): ImportMediaFilesResult {
-    return when (result) {
-        null -> this
-        is AppResult.Success -> copy(
-            quarantinedUnsupportedFiles = result.data.movedFiles,
-            failedUnsupportedFiles = result.data.failedFiles,
-        )
-        is AppResult.Error -> copy(failedUnsupportedFiles = failedUnsupportedFiles + fallbackFailedFiles)
-    }
-}
-
-private fun openLibrarySubfolder(
-    destinationFolder: String?,
-    subfolder: String,
-    title: String,
-    fileRevealHandler: FileRevealHandler,
-    addIssue: (String, String) -> Unit,
-) {
-    val path = destinationFolder?.trim()?.trimEnd('/')?.let { "$it/$subfolder" }
-    if (path == null) {
-        addIssue(title, "Папка библиотеки не выбрана.")
-        return
-    }
-
-    if (!fileRevealHandler.open(path)) {
-        addIssue(title, "Не удалось открыть папку: $path")
-    }
-}
-
-private fun String.toUnsupportedFolderName(): String {
-    return if (this == "без расширения") "no-extension" else this
-}
-
-private suspend fun refreshLibraryFiles(
-    destinationFolder: String?,
-    photoSourceScanner: PhotoSourceScanner,
-    onProgress: (LibraryRefreshProgress) -> Unit,
-): List<PlannedMediaFile> {
-    val libraryFolder = destinationFolder?.trim()?.trimEnd('/')?.let { "$it/Library" }
-        ?: return emptyList()
-
-    return refreshPlannedFiles(libraryFolder, photoSourceScanner, LibraryRefreshSection.Library, onProgress)
-}
-
-/**
- * Rebuilds the lightweight library index by scanning the organized library,
- * duplicate quarantine, and unsupported quarantine folders.
- */
-private suspend fun refreshLibraryIndexSnapshot(
-    destinationFolder: String?,
-    photoSourceScanner: PhotoSourceScanner,
-    libraryIndexStorage: LibraryIndexStorage,
-    onProgress: (LibraryRefreshProgress) -> Unit,
-): LibraryIndexSnapshot {
-    val destination = destinationFolder?.trim()?.trimEnd('/').orEmpty()
-    val snapshot = LibraryIndexSnapshot(
-        destinationFolder = destination,
-        libraryFiles = refreshLibraryFiles(destination, photoSourceScanner, onProgress),
-        duplicateFiles = refreshDuplicateFiles(destination, photoSourceScanner, onProgress),
-        unsupportedFiles = refreshUnsupportedFiles(destination, photoSourceScanner, onProgress),
-        updatedAtEpochMillis = Clock.System.now().toEpochMilliseconds(),
-    )
-    onProgress(LibraryRefreshProgress(section = LibraryRefreshSection.Saving))
-    libraryIndexStorage.save(snapshot)
-    return snapshot
-}
-
-private suspend fun refreshDuplicateFiles(
-    destinationFolder: String?,
-    photoSourceScanner: PhotoSourceScanner,
-    onProgress: (LibraryRefreshProgress) -> Unit,
-): List<PlannedMediaFile> {
-    val duplicatesFolder = destinationFolder?.trim()?.trimEnd('/')?.let { "$it/Duplicates" }
-        ?: return emptyList()
-
-    return refreshPlannedFiles(duplicatesFolder, photoSourceScanner, LibraryRefreshSection.Duplicates, onProgress)
-}
-
-private suspend fun refreshUnsupportedFiles(
-    destinationFolder: String?,
-    photoSourceScanner: PhotoSourceScanner,
-    onProgress: (LibraryRefreshProgress) -> Unit,
-): List<PlannedMediaFile> {
-    val unsupportedFolder = destinationFolder?.trim()?.trimEnd('/')?.let { "$it/Unsupported" }
-        ?: return emptyList()
-
-    return refreshAllFiles(unsupportedFolder, photoSourceScanner, LibraryRefreshSection.Unsupported, onProgress)
-}
-
-/**
- * Scans a folder as supported media and maps the result into UI/library items.
- */
-private suspend fun refreshPlannedFiles(
-    folder: String,
-    photoSourceScanner: PhotoSourceScanner,
-    section: LibraryRefreshSection,
-    onProgress: (LibraryRefreshProgress) -> Unit,
-): List<PlannedMediaFile> {
-    return when (
-        val result = withContext(Dispatchers.Default) {
-            photoSourceScanner.scanFolder(
-                path = folder,
-                onProgress = { progress ->
-                    onProgress(progress.toLibraryRefreshProgress(section))
-                },
-                readContentHash = false,
-            )
         }
-    ) {
-        is AppResult.Success -> result.data.mediaFiles.map { mediaFile ->
-            PlannedMediaFile(
-                sourcePath = mediaFile.path,
-                fileName = mediaFile.fileName,
-                targetRelativePath = mediaFile.path,
-                sizeBytes = mediaFile.sizeBytes,
-                contentHash = mediaFile.contentHash,
-                capturedAtEpochMillis = mediaFile.capturedAtEpochMillis,
-                modifiedAtEpochMillis = mediaFile.modifiedAtEpochMillis,
-            )
-        }
-
-        is AppResult.Error -> emptyList()
     }
-}
-
-private suspend fun refreshAllFiles(
-    folder: String,
-    photoSourceScanner: PhotoSourceScanner,
-    section: LibraryRefreshSection,
-    onProgress: (LibraryRefreshProgress) -> Unit,
-): List<PlannedMediaFile> {
-    return when (
-        val result = withContext(Dispatchers.Default) {
-            photoSourceScanner.scanFolder(
-                path = folder,
-                onProgress = { progress ->
-                    onProgress(progress.toLibraryRefreshProgress(section))
-                },
-                readContentHash = false,
-            )
-        }
-    ) {
-        is AppResult.Success -> {
-            val mediaFiles = result.data.mediaFiles.map { mediaFile ->
-                PlannedMediaFile(
-                    sourcePath = mediaFile.path,
-                    fileName = mediaFile.fileName,
-                    targetRelativePath = mediaFile.path,
-                    sizeBytes = mediaFile.sizeBytes,
-                    contentHash = mediaFile.contentHash,
-                    capturedAtEpochMillis = mediaFile.capturedAtEpochMillis,
-                    modifiedAtEpochMillis = mediaFile.modifiedAtEpochMillis,
-                )
-            }
-            val unsupportedFiles = result.data.unsupportedFiles.map { unsupportedFile ->
-                PlannedMediaFile(
-                    sourcePath = unsupportedFile.path,
-                    fileName = unsupportedFile.fileName,
-                    targetRelativePath = unsupportedFile.path,
-                    sizeBytes = unsupportedFile.sizeBytes,
-                    modifiedAtEpochMillis = unsupportedFile.modifiedAtEpochMillis,
-                )
-            }
-            mediaFiles + unsupportedFiles
-        }
-
-        is AppResult.Error -> emptyList()
-    }
-}
-
-private fun com.anvar.photolibraryorganizer.domain.model.ScanSourceFolderProgress.toLibraryRefreshProgress(
-    section: LibraryRefreshSection,
-): LibraryRefreshProgress {
-    return LibraryRefreshProgress(
-        section = section,
-        scannedFiles = scannedFiles,
-        mediaFiles = mediaFiles,
-        unsupportedFiles = unsupportedFiles,
-    )
-}
-
-private fun List<PlannedMediaFile>.duplicateQuarantineCandidates(): List<PlannedMediaFile> {
-    return asSequence()
-        .filter { it.contentHash != null }
-        .groupBy { it.contentHash }
-        .values
-        .filter { it.size > 1 }
-        .flatMap { files -> files.sortedBy { it.targetRelativePath }.drop(1) }
-}
-
-/**
- * Returns the active ordered file list used by inspector navigation and the
- * large preview overlay.
- */
-private fun navigationFilesForSection(
-    selectedSection: AppSection,
-    scanUiState: ScanUiState,
-    libraryFiles: List<PlannedMediaFile>,
-    duplicateFiles: List<PlannedMediaFile>,
-    unsupportedFiles: List<PlannedMediaFile>,
-): List<PlannedMediaFile> {
-    return when (selectedSection) {
-        AppSection.Import -> (scanUiState as? ScanUiState.Success)?.plannedFiles.orEmpty()
-        AppSection.AllPhotos,
-        AppSection.Years,
-        AppSection.Months -> libraryFiles
-
-        AppSection.WithoutDate -> libraryFiles.filter { it.libraryDateGroup() == null }
-        AppSection.Duplicates -> buildDuplicateReviewGroups(
-            libraryFiles = libraryFiles,
-            duplicateFiles = duplicateFiles,
-        ).flatMap { group -> group.libraryFiles + group.duplicateFiles }
-        AppSection.Unsupported -> unsupportedFiles
-        AppSection.Errors,
-        AppSection.About -> emptyList()
-    }
-}
-
-private fun List<PlannedMediaFile>.nextFrom(
-    selectedIndex: Int,
-    step: Int,
-): PlannedMediaFile {
-    val nextIndex = (selectedIndex + step).floorMod(size)
-    return this[nextIndex]
-}
-
-private fun Int.floorMod(size: Int): Int {
-    return ((this % size) + size) % size
 }

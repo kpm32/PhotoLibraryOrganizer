@@ -126,9 +126,9 @@ private fun MediaGridTile(
 
 private fun PlannedMediaFile.previewPlaceholder(): String {
     return when (detectMediaFileType(fileName)?.category) {
-        MediaFileCategory.Image -> "Фото"
-        MediaFileCategory.Video -> "Видео"
-        null -> "Файл"
+        MediaFileCategory.Image -> uiText("Фото", "Photo")
+        MediaFileCategory.Video -> uiText("Видео", "Video")
+        null -> uiText("Файл", "File")
     }
 }
 
@@ -146,7 +146,7 @@ private fun PlannedMediaFile.shortLibraryCaption(): String {
 
 private val ImportTargetStatus.label: String
     get() = when (this) {
-        ImportTargetStatus.NotChecked -> "Цель не проверена"
-        ImportTargetStatus.Ready -> "Готово к импорту"
-        ImportTargetStatus.AlreadyExists -> "Уже есть в библиотеке"
+        ImportTargetStatus.NotChecked -> uiText("Цель не проверена", "Target not checked")
+        ImportTargetStatus.Ready -> uiText("Готово к импорту", "Ready to import")
+        ImportTargetStatus.AlreadyExists -> uiText("Уже есть в библиотеке", "Already in library")
     }

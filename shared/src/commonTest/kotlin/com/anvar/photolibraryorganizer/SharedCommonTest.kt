@@ -58,7 +58,7 @@ class SharedCommonTest {
 
     @Test
     fun scanOnlyIsDefaultSafeMode() {
-        assertEquals("Только сканировать", ImportMode.ScanOnly.title)
+        assertEquals(ImportMode.ScanOnly, ImportMode.entries.first())
     }
 
     @Test

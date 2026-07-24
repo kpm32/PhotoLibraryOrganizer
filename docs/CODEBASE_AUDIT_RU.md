@@ -9,7 +9,7 @@
 
 Проект можно показывать как сильный preview/MVP desktop-приложения: основная пользовательская задача решена, кодовая база имеет понятные Clean Architecture границы, опасные файловые операции сделаны консервативно, есть тесты на ключевую доменную и filesystem-логику, README/CHANGELOG/release docs в целом соответствуют продукту.
 
-До заявления "стабильная публичная версия" проекту еще нужны: ручная приемка на реальных тестовых архивах, английская локализация, новый release notes под фактический текущий `develop`, уменьшение `App.kt` через state holder/reducer/ViewModel слой, подписанный и notarized macOS build.
+До заявления "стабильная публичная версия" проекту еще нужны: ручная приемка на реальных тестовых архивах, новый release notes под фактический текущий `develop`, дальнейшее уменьшение `App.kt` через event/controller слой, подписанный и notarized macOS build.
 
 ## Что проверено командами
 
@@ -45,7 +45,7 @@ desktopApp/build/compose/binaries/main/dmg/PhotoLibraryOrganizer-1.0.8.dmg
 - Одиночный перенос выбранного файла в Trash через отдельный domain use case.
 - Локальный TSV-индекс библиотеки для быстрого старта.
 - Защита от гонки сохранения индекса через уникальные временные файлы.
-- Dark/light theme, русские UI-тексты, собственная macOS иконка.
+- Dark/light theme, собственная macOS иконка, RU/EN локализация UI: русский для русской системной локали, английский fallback для остальных языков.
 - QuickLook fallback для video thumbnails.
 - README, CHANGELOG, release notes, release test plan, professional finish checklist.
 - KDoc на ключевых domain contracts, use cases, filesystem adapters и крупных UI entry points.
@@ -89,9 +89,9 @@ UI слой находится в `shared/src/commonMain/.../photolibraryorganiz
 
 Содержит Compose UI, state, handlers, preview dependencies, JVM presentation adapters.
 
-Оценка: UI функционален и уже разделен на панели (`ImportPanel`, `WorkspacePanel`, `InspectorPanel`, `MediaGrid`, `DuplicateReviewPanel`). Но `App.kt` остается слишком большим composition root/state machine файлом.
+Оценка: UI функционален и уже разделен на панели (`ImportPanel`, `WorkspacePanel`, `InspectorPanel`, `MediaGrid`, `DuplicateReviewPanel`). В `App.kt` уже вынесены mutable state holder, refresh/index helpers, navigation helpers и часть сообщений, но файл все еще остается крупным composition root/event orchestration файлом.
 
-Главный архитектурный долг: вынести orchestration state из `App.kt` в state holder/reducer/ViewModel-like слой и покрыть переходы состояния тестами.
+Главный архитектурный долг: продолжить вынос event orchestration из `App.kt` в platform-neutral controller/reducer слой и покрыть переходы состояния тестами.
 
 ## Используемые паттерны
 
@@ -102,7 +102,9 @@ UI слой находится в `shared/src/commonMain/.../photolibraryorganiz
 - Adapter pattern: JVM filesystem и macOS-specific реализации за интерфейсами.
 - Strategy pattern: `TrashFileMover` выбирает macOS Finder или Java Desktop fallback.
 - Composition Root: `desktopApp/main.kt` собирает реальные зависимости.
-- UI State pattern: `ScanUiState`, `ImportUiState`, `ImagePreviewUiState`.
+- UI State pattern: `ScanUiState`, `ImportUiState`, `ImagePreviewUiState`, `PhotoLibraryAppState`.
+- Localization boundary: Compose Multiplatform resources для стабильных labels и platform locale helper для динамических сообщений.
+- Language-neutral domain: import availability возвращает типизированные причины, а не русские UI-строки.
 
 ## Тесты
 
@@ -167,11 +169,11 @@ UI слой находится в `shared/src/commonMain/.../photolibraryorganiz
 
 Причины: русская-only UI, unsigned/unnotarized DMG, нет полной ручной приемки текущего `develop`, нет CI. Показывать можно как preview/open-source MVP.
 
-### P2: `App.kt` слишком большой
+### P2: `App.kt` все еще слишком большой
 
-Файл выполняет сразу несколько ролей: composition root, state holder, event handler, reducer-like logic, side-effect coordinator. Это работает, но плохо масштабируется.
+Часть ответственности уже вынесена: state holder, refresh/index helpers, navigation helpers, file action helpers, user-message mapping. Осталась крупная event orchestration часть внутри root composition.
 
-Рекомендация: ввести `AppState`, `AppEvent`, `AppReducer`/`AppController` или ViewModel-like state holder.
+Рекомендация: следующим шагом ввести `AppEvent` и platform-neutral `AppController`/reducer для обработчиков действий.
 
 ### P2: release docs должны соответствовать текущему `develop`
 
@@ -183,9 +185,9 @@ UI слой находится в `shared/src/commonMain/.../photolibraryorganiz
 
 Уже исправлено: duplicate quarantine теперь сохраняет cancellation.
 
-### P3: локализация
+### P3: локализация закрыта для основного UI, но ресурсы можно углублять
 
-Пользовательские строки пока в основном в Compose-коде. Для двух языков их нужно вынести в ресурсы локализации.
+Основные пользовательские строки панелей, статусов, ошибок, навигации, About и действий имеют RU/EN варианты. Стабильные labels вынесены в Compose Multiplatform resources, динамические сообщения идут через platform locale helper. Domain use case возвращает типизированную причину, а не текст. Следующий уровень качества: постепенно переносить больше динамических строк из `uiText` в ресурсы, если потребуется runtime-переключатель языка.
 
 ### P3: package targets шире фактической поддержки
 

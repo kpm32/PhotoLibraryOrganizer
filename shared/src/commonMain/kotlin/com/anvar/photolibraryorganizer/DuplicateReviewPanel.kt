@@ -101,21 +101,25 @@ internal fun DuplicateReviewPanel(
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         DuplicateBucket(
-                            title = "Оставляем в библиотеке",
+                            title = uiText("Оставляем в библиотеке", "Kept in Library"),
                             files = activeGroup.libraryFiles,
-                            emptyText = "Оригинал в библиотеке не найден.",
+                            emptyText = uiText("Оригинал в библиотеке не найден.", "Original was not found in the library."),
                             imagePreviewLoader = imagePreviewLoader,
                             selectedFile = selectedFile,
                             onFileSelected = onFileSelected,
                             modifier = Modifier.weight(1f),
                         )
                         DuplicateBucket(
-                            title = if (quarantineMode) "В папке дублей" else "Кандидаты к переносу",
+                            title = if (quarantineMode) {
+                                uiText("В папке дублей", "In Duplicates Folder")
+                            } else {
+                                uiText("Кандидаты к переносу", "Move Candidates")
+                            },
                             files = activeGroup.duplicateFiles,
                             emptyText = if (quarantineMode) {
-                                "В карантине нет файлов этой группы."
+                                uiText("В карантине нет файлов этой группы.", "No files from this group are in quarantine.")
                             } else {
-                                "Кандидатов к переносу нет."
+                                uiText("Кандидатов к переносу нет.", "There are no move candidates.")
                             },
                             imagePreviewLoader = imagePreviewLoader,
                             selectedFile = selectedFile,
@@ -259,7 +263,10 @@ internal fun buildDuplicateReviewGroups(
                 val hash = entry.key
                 DuplicateReviewGroup(
                     id = hash,
-                    title = "Группа ${index + 1}",
+                    title = uiText(
+                        ru = "Группа ${index + 1}",
+                        en = "Group ${index + 1}",
+                    ),
                     hashLabel = hash.take(12),
                     libraryFiles = libraryFiles
                         .filter { it.contentHash == hash }
@@ -280,7 +287,10 @@ internal fun buildDuplicateReviewGroups(
                 val hash = sortedFiles.firstNotNullOfOrNull { it.contentHash }.orEmpty()
                 DuplicateReviewGroup(
                     id = hash.ifBlank { "duplicate-$index" },
-                    title = "Дубликат ${index + 1}",
+                    title = uiText(
+                        ru = "Дубликат ${index + 1}",
+                        en = "Duplicate ${index + 1}",
+                    ),
                     hashLabel = hash.take(12),
                     libraryFiles = sortedFiles.take(1),
                     duplicateFiles = sortedFiles.drop(1),
@@ -292,5 +302,6 @@ internal fun buildDuplicateReviewGroups(
 private fun PlannedMediaFile.quarantineGroupName(): String {
     val pathParts = targetRelativePath.replace('\\', '/').split('/')
     val duplicatesIndex = pathParts.indexOfLast { it == "Duplicates" }
-    return pathParts.getOrNull(duplicatesIndex + 1)?.takeIf { it.isNotBlank() } ?: "Без группы"
+    return pathParts.getOrNull(duplicatesIndex + 1)?.takeIf { it.isNotBlank() }
+        ?: uiText("Без группы", "No Group")
 }

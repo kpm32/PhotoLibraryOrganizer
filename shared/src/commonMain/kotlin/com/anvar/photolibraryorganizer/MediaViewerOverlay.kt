@@ -75,16 +75,16 @@ internal fun MediaViewerOverlay(
                     onClick = onPreviousFileClick,
                     enabled = canNavigate,
                 ) {
-                    Text("Назад")
+                    Text(uiText("Назад", "Back"))
                 }
                 OutlinedButton(
                     onClick = onNextFileClick,
                     enabled = canNavigate,
                 ) {
-                    Text("Вперед")
+                    Text(uiText("Вперед", "Forward"))
                 }
                 TextButton(onClick = onCloseClick) {
-                    Text("Закрыть")
+                    Text(uiText("Закрыть", "Close"))
                 }
             }
             Box(
@@ -95,9 +95,9 @@ internal fun MediaViewerOverlay(
                 contentAlignment = Alignment.Center,
             ) {
                 when (imagePreviewUiState) {
-                    ImagePreviewUiState.Empty -> ViewerPlaceholder("Фото не выбрано")
-                    ImagePreviewUiState.Loading -> ViewerPlaceholder("Загружаю превью...")
-                    ImagePreviewUiState.Unsupported -> ViewerPlaceholder("Превью пока недоступно")
+                    ImagePreviewUiState.Empty -> ViewerPlaceholder(uiText("Фото не выбрано", "No photo selected"))
+                    ImagePreviewUiState.Loading -> ViewerPlaceholder(uiText("Загружаю превью...", "Loading preview..."))
+                    ImagePreviewUiState.Unsupported -> ViewerPlaceholder(uiText("Превью пока недоступно", "Preview is not available yet"))
                     is ImagePreviewUiState.Success -> {
                         Image(
                             bitmap = imagePreviewUiState.image,
@@ -122,10 +122,10 @@ internal fun MediaViewerOverlay(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Button(onClick = onOpenFileClick) {
-                    Text("Открыть")
+                    Text(uiText("Открыть", "Open"))
                 }
                 OutlinedButton(onClick = onRevealFileClick) {
-                    Text("В папке")
+                    Text(uiText("В папке", "In Folder"))
                 }
             }
         }
@@ -143,8 +143,11 @@ private fun ViewerPlaceholder(text: String) {
 
 private fun viewerCounterLabel(selectedFileIndex: Int, navigationFileCount: Int): String {
     return if (selectedFileIndex >= 0 && navigationFileCount > 0) {
-        "${selectedFileIndex + 1} из $navigationFileCount"
+        uiText(
+            ru = "${selectedFileIndex + 1} из $navigationFileCount",
+            en = "${selectedFileIndex + 1} of $navigationFileCount",
+        )
     } else {
-        "Файл выбран"
+        uiText("Файл выбран", "File selected")
     }
 }

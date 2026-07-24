@@ -48,7 +48,7 @@ internal fun ErrorsPanel(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "Журнал ошибок",
+                    text = uiText("Журнал ошибок", "Error Log"),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                 )
@@ -56,12 +56,12 @@ internal fun ErrorsPanel(
                     onClick = onClearIssuesClick,
                     enabled = issues.isNotEmpty(),
                 ) {
-                    Text("Очистить")
+                    Text(uiText("Очистить", "Clear"))
                 }
             }
             HorizontalDivider()
             if (issues.isEmpty()) {
-                EmptyListText("Ошибок пока нет.")
+                EmptyListText(uiText("Ошибок пока нет.", "No errors yet."))
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),

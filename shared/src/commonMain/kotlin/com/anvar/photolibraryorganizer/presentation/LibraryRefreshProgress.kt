@@ -8,10 +8,11 @@ data class LibraryRefreshProgress(
 )
 
 enum class LibraryRefreshSection(
-    val title: String,
+    val ruTitle: String,
+    val enTitle: String,
 ) {
-    Library("Библиотека"),
-    Duplicates("Дубли"),
-    Unsupported("Пропущенные"),
-    Saving("Сохранение индекса"),
+    Library("Библиотека", "Library"),
+    Duplicates("Дубли", "Duplicates"),
+    Unsupported("Пропущенные", "Skipped"),
+    Saving("Сохранение индекса", "Saving index"),
 }
