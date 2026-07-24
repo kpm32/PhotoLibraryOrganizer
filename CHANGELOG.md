@@ -28,6 +28,8 @@
 - Extracted library folder selection, settings persistence, cached index loading, and manual library refresh orchestration into `PhotoLibraryLibraryActions` with tests.
 - Extracted scan/import orchestration into `PhotoLibraryScanImportActions`, keeping the root app composable focused on wiring.
 - Extracted duplicate, skipped-file, empty-folder, and selected-file Trash cleanup orchestration into `PhotoLibraryCleanupActions`.
+- Split cleanup orchestration further into duplicate, skipped-file, empty-folder, and selected-file Trash workflow classes behind the cleanup facade.
+- Added selected-file Trash action tests for confirmation flow, visible-state removal, and import-section source protection.
 - Split state, file action, and library action tests into focused test classes instead of keeping everything in one broad shared test.
 - Replaced domain import availability messages with typed reasons, keeping domain code language-neutral while presentation localizes the text.
 
