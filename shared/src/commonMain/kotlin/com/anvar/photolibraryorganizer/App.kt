@@ -5,7 +5,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.tooling.preview.Preview
@@ -26,12 +25,6 @@ import com.anvar.photolibraryorganizer.domain.repository.ImportPlanTargetResolve
 import com.anvar.photolibraryorganizer.domain.repository.PhotoSourceScanner
 import com.anvar.photolibraryorganizer.domain.repository.UnsupportedFileQuarantineRepository
 import com.anvar.photolibraryorganizer.domain.repository.StorageSpaceProvider
-import com.anvar.photolibraryorganizer.domain.usecase.BuildMediaFilePlanUseCase
-import com.anvar.photolibraryorganizer.domain.usecase.CheckImportStorageSpaceUseCase
-import com.anvar.photolibraryorganizer.domain.usecase.ImportMediaFilesUseCase
-import com.anvar.photolibraryorganizer.domain.usecase.MoveSelectedFileToTrashUseCase
-import com.anvar.photolibraryorganizer.domain.usecase.ResolveImportAvailabilityUseCase
-import com.anvar.photolibraryorganizer.domain.usecase.ScanSourceFolderUseCase
 import com.anvar.photolibraryorganizer.presentation.FolderPicker
 import com.anvar.photolibraryorganizer.presentation.AppSettings
 import com.anvar.photolibraryorganizer.presentation.AppSettingsStorage
@@ -39,7 +32,6 @@ import com.anvar.photolibraryorganizer.presentation.AppSection
 import com.anvar.photolibraryorganizer.presentation.CachingImagePreviewLoader
 import com.anvar.photolibraryorganizer.presentation.FileRevealHandler
 import com.anvar.photolibraryorganizer.presentation.ImagePreviewLoader
-import com.anvar.photolibraryorganizer.presentation.ImagePreviewUiState
 import com.anvar.photolibraryorganizer.presentation.ImportHistoryStorage
 import com.anvar.photolibraryorganizer.presentation.ImportReport
 import com.anvar.photolibraryorganizer.presentation.ImportUiState
@@ -97,20 +89,12 @@ fun App(
         val coroutineScope = rememberCoroutineScope()
         with(appState) {
 
-        val scanSourceFolderUseCase = remember(photoSourceScanner) {
-            ScanSourceFolderUseCase(photoSourceScanner)
-        }
-        val importMediaFilesUseCase = remember(mediaFileImporter) {
-            ImportMediaFilesUseCase(mediaFileImporter)
-        }
-        val checkImportStorageSpaceUseCase = remember(storageSpaceProvider) {
-            CheckImportStorageSpaceUseCase(storageSpaceProvider)
-        }
-        val buildMediaFilePlanUseCase = remember { BuildMediaFilePlanUseCase() }
-        val resolveImportAvailabilityUseCase = remember { ResolveImportAvailabilityUseCase() }
-        val moveSelectedFileToTrashUseCase = remember(fileTrashRepository) {
-            MoveSelectedFileToTrashUseCase(fileTrashRepository)
-        }
+        val useCases = rememberPhotoLibraryUseCases(
+            photoSourceScanner = photoSourceScanner,
+            mediaFileImporter = mediaFileImporter,
+            storageSpaceProvider = storageSpaceProvider,
+            fileTrashRepository = fileTrashRepository,
+        )
         val cachedImagePreviewLoader = remember(imagePreviewLoader) {
             CachingImagePreviewLoader(imagePreviewLoader)
         }
@@ -137,26 +121,16 @@ fun App(
             applyLibraryIndexSnapshot(snapshot, selectFirstFile)
         }
 
-        LaunchedEffect(Unit) {
-            val settings = appSettingsStorage.loadSettings()
-            importHistory = importHistoryStorage.loadHistory()
-            sourceFolder = settings.sourceFolder
-            destinationFolder = settings.destinationFolder
-            importRules = settings.importRules
-            loadLibraryIndexIfAvailable(settings.destinationFolder)
-        }
-
-        LaunchedEffect(selectedFile) {
-            val file = selectedFile
-            imagePreviewUiState = if (file == null) {
-                ImagePreviewUiState.Empty
-            } else {
-                imagePreviewUiState = ImagePreviewUiState.Loading
-                cachedImagePreviewLoader.loadImage(file.sourcePath)?.let { image ->
-                    ImagePreviewUiState.Success(image)
-                } ?: ImagePreviewUiState.Unsupported
-            }
-        }
+        RestorePersistedAppStateEffect(
+            appState = appState,
+            appSettingsStorage = appSettingsStorage,
+            importHistoryStorage = importHistoryStorage,
+            loadLibraryIndexIfAvailable = ::loadLibraryIndexIfAvailable,
+        )
+        SelectedFilePreviewEffect(
+            appState = appState,
+            imagePreviewLoader = cachedImagePreviewLoader,
+        )
 
         val plan = PhotoLibraryPlan(
             sourceFolder = sourceFolder,
@@ -198,7 +172,7 @@ fun App(
             selectedFileTrashAwaitingConfirmation = selectedFileTrashAwaitingConfirmation,
             selectedFileTrashMessage = selectedFileTrashMessage,
             selectedFileTrashInProgress = selectedFileTrashInProgress,
-            importAvailability = resolveImportAvailabilityUseCase(
+            importAvailability = useCases.resolveImportAvailability(
                 importMode = importMode,
                 plannedFiles = (scanUiState as? ScanUiState.Success)?.plannedFiles.orEmpty(),
             ),
@@ -280,7 +254,7 @@ fun App(
                     try {
                         when (
                             val result = withContext(Dispatchers.Default) {
-                                scanSourceFolderUseCase(sourceFolder) { progress ->
+                                useCases.scanSourceFolder(sourceFolder) { progress ->
                                     coroutineScope.launch {
                                         if (scanRequestToken == currentScanToken && scanUiState is ScanUiState.Loading) {
                                             scanUiState = ScanUiState.Loading(progress)
@@ -291,7 +265,7 @@ fun App(
                         ) {
                             is AppResult.Success -> {
                                 if (scanRequestToken != currentScanToken) return@launch
-                                val plannedFiles = buildMediaFilePlanUseCase(
+                                val plannedFiles = useCases.buildMediaFilePlan(
                                     destinationFolder = destinationFolder,
                                     mediaFiles = result.data.mediaFiles,
                                     importRules = plan.importRules,
@@ -359,7 +333,7 @@ fun App(
                             }
                             val space = if (importMode == ImportMode.Copy) {
                                 withContext(Dispatchers.IO) {
-                                    checkImportStorageSpaceUseCase(targetFolder, plannedFiles)
+                                    useCases.checkImportStorageSpace(targetFolder, plannedFiles)
                                 }
                             } else {
                                 null
@@ -428,7 +402,7 @@ fun App(
                     }
                     if (importMode == ImportMode.Copy) {
                         when (val space = withContext(Dispatchers.IO) {
-                            checkImportStorageSpaceUseCase(destinationFolder.orEmpty(), plannedFiles)
+                            useCases.checkImportStorageSpace(destinationFolder.orEmpty(), plannedFiles)
                         }) {
                             is ImportStorageSpace.Insufficient -> {
                                 importUiState = ImportUiState.Error(
@@ -461,7 +435,7 @@ fun App(
                     try {
                         when (
                             val result = withContext(Dispatchers.Default) {
-                                importMediaFilesUseCase(importMode, plannedFiles) { progress ->
+                                useCases.importMediaFiles(importMode, plannedFiles) { progress ->
                                     coroutineScope.launch {
                                         if (importUiState is ImportUiState.Loading) {
                                             lastImportProgress = progress
@@ -938,7 +912,7 @@ fun App(
                             selectedFileTrashMessage = uiText("Перемещаю выбранный файл в Корзину...", "Moving selected file to Trash...")
                             selectedFileTrashMessage = try {
                                 val result = withContext(Dispatchers.Default) {
-                                    moveSelectedFileToTrashUseCase(
+                                    useCases.moveSelectedFileToTrash(
                                         selectedFile = file,
                                         isSourceFileActionAllowed = selectedSection != AppSection.Import,
                                     )
