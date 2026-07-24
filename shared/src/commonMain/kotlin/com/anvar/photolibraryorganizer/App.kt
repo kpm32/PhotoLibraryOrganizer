@@ -16,7 +16,6 @@ import com.anvar.photolibraryorganizer.domain.model.ImportTargetStatus
 import com.anvar.photolibraryorganizer.domain.model.ImportOrganizationRules
 import com.anvar.photolibraryorganizer.domain.model.ImportMediaFilesProgress
 import com.anvar.photolibraryorganizer.domain.model.ImportStorageSpace
-import com.anvar.photolibraryorganizer.domain.model.LibraryIndexSnapshot
 import com.anvar.photolibraryorganizer.domain.model.MoveSelectedFileToTrashResult
 import com.anvar.photolibraryorganizer.domain.repository.DuplicateQuarantineRepository
 import com.anvar.photolibraryorganizer.domain.repository.EmptyFolderCleanupRepository
@@ -116,22 +115,6 @@ fun App(
             CachingImagePreviewLoader(imagePreviewLoader)
         }
 
-        fun applyLibraryIndexSnapshot(
-            snapshot: LibraryIndexSnapshot,
-            selectFirstFile: Boolean,
-        ) {
-            libraryFiles = snapshot.libraryFiles
-            duplicateFiles = snapshot.duplicateFiles
-            unsupportedFiles = snapshot.unsupportedFiles
-            selectedFile = if (selectFirstFile) {
-                libraryFiles.firstOrNull()
-            } else {
-                selectedFile?.takeIf { selected ->
-                    (libraryFiles + duplicateFiles + unsupportedFiles).any { it.sourcePath == selected.sourcePath }
-                } ?: libraryFiles.firstOrNull()
-            }
-        }
-
         suspend fun loadLibraryIndexIfAvailable(
             destination: String?,
             selectFirstFile: Boolean = true,
@@ -193,18 +176,6 @@ fun App(
         } ?: -1
         val canNavigateSelectedFile = navigationFiles.size > 1 && selectedFileIndex >= 0
 
-        fun removeFileFromVisibleState(path: String) {
-            libraryFiles = libraryFiles.filterNot { it.sourcePath == path }
-            duplicateFiles = duplicateFiles.filterNot { it.sourcePath == path }
-            unsupportedFiles = unsupportedFiles.filterNot { it.sourcePath == path }
-            selectedFile = navigationFiles.filterNot { it.sourcePath == path }.firstOrNull()
-            imagePreviewUiState = if (selectedFile == null) {
-                ImagePreviewUiState.Empty
-            } else {
-                imagePreviewUiState
-            }
-        }
-
         PhotoLibraryOrganizerApp(
             plan = plan,
             scanUiState = scanUiState,
@@ -247,28 +218,7 @@ fun App(
                         )
                     }
                 }
-                scanUiState = ScanUiState.Idle
-                importUiState = ImportUiState.Idle
-                lastImportReport = null
-                emptyFolderCleanupMessage = null
-                emptyFolderCleanupAwaitingConfirmation = false
-                duplicateActionMessage = null
-                duplicateDeleteAwaitingConfirmation = false
-                duplicateActionInProgress = false
-                unsupportedActionMessage = null
-                unsupportedDeleteAwaitingConfirmation = false
-                unsupportedActionInProgress = false
-                selectedFileTrashAwaitingConfirmation = false
-                selectedFileTrashMessage = null
-                selectedFileTrashInProgress = false
-                refreshLibraryJob?.cancel()
-                isLibraryRefreshing = false
-                libraryRefreshProgress = null
-                selectedFile = null
-                libraryFiles = emptyList()
-                duplicateFiles = emptyList()
-                unsupportedFiles = emptyList()
-                imagePreviewUiState = ImagePreviewUiState.Empty
+                resetAfterFolderSelection(clearLibraryFiles = true)
             },
             onDestinationFolderClick = {
                 folderPicker.chooseFolder(uiText("Выбери папку библиотеки", "Choose Library Folder"))?.let {
@@ -283,24 +233,7 @@ fun App(
                         )
                     }
                 }
-                scanUiState = ScanUiState.Idle
-                importUiState = ImportUiState.Idle
-                lastImportReport = null
-                emptyFolderCleanupMessage = null
-                emptyFolderCleanupAwaitingConfirmation = false
-                duplicateActionMessage = null
-                duplicateDeleteAwaitingConfirmation = false
-                duplicateActionInProgress = false
-                unsupportedActionMessage = null
-                unsupportedDeleteAwaitingConfirmation = false
-                unsupportedActionInProgress = false
-                selectedFileTrashAwaitingConfirmation = false
-                selectedFileTrashMessage = null
-                selectedFileTrashInProgress = false
-                refreshLibraryJob?.cancel()
-                isLibraryRefreshing = false
-                libraryRefreshProgress = null
-                selectedFile = null
+                resetAfterFolderSelection(clearLibraryFiles = false)
                 coroutineScope.launch {
                     if (!loadLibraryIndexIfAvailable(destinationFolder)) {
                         libraryFiles = emptyList()
@@ -308,7 +241,6 @@ fun App(
                         unsupportedFiles = emptyList()
                     }
                 }
-                imagePreviewUiState = ImagePreviewUiState.Empty
             },
             onImportModeSelected = {
                 importMode = it
@@ -1014,7 +946,10 @@ fun App(
                                 selectedFileTrashAwaitingConfirmation = false
                                 when (result) {
                                     is MoveSelectedFileToTrashResult.Moved -> {
-                                        removeFileFromVisibleState(result.path)
+                                        appState.removeFileFromVisibleState(
+                                            path = result.path,
+                                            preferredSelectionFiles = navigationFiles,
+                                        )
                                         coroutineScope.launch {
                                             try {
                                                 refreshLibraryIndexFromDisk(selectFirstFile = false)

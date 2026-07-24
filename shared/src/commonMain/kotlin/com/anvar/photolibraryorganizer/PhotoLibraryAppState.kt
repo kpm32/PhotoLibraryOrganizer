@@ -9,6 +9,7 @@ import androidx.compose.runtime.setValue
 import com.anvar.photolibraryorganizer.domain.ImportMode
 import com.anvar.photolibraryorganizer.domain.model.ImportMediaFilesProgress
 import com.anvar.photolibraryorganizer.domain.model.ImportOrganizationRules
+import com.anvar.photolibraryorganizer.domain.model.LibraryIndexSnapshot
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
 import com.anvar.photolibraryorganizer.presentation.AppIssue
 import com.anvar.photolibraryorganizer.presentation.AppSection
@@ -70,6 +71,87 @@ internal class PhotoLibraryAppState {
 
     fun clearIssues() {
         issues = emptyList()
+    }
+
+    /**
+     * Applies a persisted or freshly scanned library index to the visible
+     * workspace and keeps the selected file valid.
+     */
+    fun applyLibraryIndexSnapshot(
+        snapshot: LibraryIndexSnapshot,
+        selectFirstFile: Boolean,
+    ) {
+        libraryFiles = snapshot.libraryFiles
+        duplicateFiles = snapshot.duplicateFiles
+        unsupportedFiles = snapshot.unsupportedFiles
+        selectedFile = if (selectFirstFile) {
+            libraryFiles.firstOrNull()
+        } else {
+            selectedFile?.takeIf { selected ->
+                allVisibleFiles().any { it.sourcePath == selected.sourcePath }
+            } ?: libraryFiles.firstOrNull()
+        }
+    }
+
+    /**
+     * Clears transient scan/import/action state after a folder selection changes.
+     *
+     * Destination changes may keep or reload the library index, while source
+     * changes clear the current library view because the old scan context is no
+     * longer meaningful.
+     */
+    fun resetAfterFolderSelection(clearLibraryFiles: Boolean) {
+        scanUiState = ScanUiState.Idle
+        importUiState = ImportUiState.Idle
+        lastImportReport = null
+        emptyFolderCleanupMessage = null
+        emptyFolderCleanupAwaitingConfirmation = false
+        duplicateActionMessage = null
+        duplicateDeleteAwaitingConfirmation = false
+        duplicateActionInProgress = false
+        unsupportedActionMessage = null
+        unsupportedDeleteAwaitingConfirmation = false
+        unsupportedActionInProgress = false
+        selectedFileTrashAwaitingConfirmation = false
+        selectedFileTrashMessage = null
+        selectedFileTrashInProgress = false
+        refreshLibraryJob?.cancel()
+        refreshLibraryJob = null
+        isLibraryRefreshing = false
+        libraryRefreshProgress = null
+        selectedFile = null
+        imagePreviewUiState = ImagePreviewUiState.Empty
+        if (clearLibraryFiles) {
+            libraryFiles = emptyList()
+            duplicateFiles = emptyList()
+            unsupportedFiles = emptyList()
+        }
+    }
+
+    /**
+     * Removes a file from all visible collections after a successful Trash
+     * operation and advances selection to the next available file.
+     */
+    fun removeFileFromVisibleState(
+        path: String,
+        preferredSelectionFiles: List<PlannedMediaFile> = allVisibleFiles(),
+    ) {
+        libraryFiles = libraryFiles.filterNot { it.sourcePath == path }
+        duplicateFiles = duplicateFiles.filterNot { it.sourcePath == path }
+        unsupportedFiles = unsupportedFiles.filterNot { it.sourcePath == path }
+        selectedFile = preferredSelectionFiles
+            .filterNot { it.sourcePath == path }
+            .firstOrNull()
+            ?: allVisibleFiles().firstOrNull()
+        imagePreviewUiState = if (selectedFile == null) {
+            ImagePreviewUiState.Empty
+        } else {
+            imagePreviewUiState
+        }
+    }
+
+    private fun allVisibleFiles(): List<PlannedMediaFile> {
+        return libraryFiles + duplicateFiles + unsupportedFiles
     }
 }
 

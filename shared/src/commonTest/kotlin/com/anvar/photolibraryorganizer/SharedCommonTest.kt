@@ -10,6 +10,7 @@ import com.anvar.photolibraryorganizer.domain.model.ImportMediaFilesResult
 import com.anvar.photolibraryorganizer.domain.model.ImportMediaFilesProgress
 import com.anvar.photolibraryorganizer.domain.model.ImportStorageSpace
 import com.anvar.photolibraryorganizer.domain.model.ImportTargetStatus
+import com.anvar.photolibraryorganizer.domain.model.LibraryIndexSnapshot
 import com.anvar.photolibraryorganizer.domain.model.MediaFileCategory
 import com.anvar.photolibraryorganizer.domain.model.PlannedMediaFile
 import com.anvar.photolibraryorganizer.domain.model.ScanSourceFolderResult
@@ -407,12 +408,60 @@ class SharedCommonTest {
         assertEquals(0, success.data.failedFiles)
     }
 
+    @Test
+    fun appStateKeepsSelectionWhenApplyingUpdatedLibraryIndex() {
+        val selected = fakePlannedMediaFile().copy(sourcePath = "/library/selected.jpg")
+        val other = fakePlannedMediaFile().copy(sourcePath = "/library/other.jpg")
+        val state = PhotoLibraryAppState().apply {
+            selectedFile = selected
+        }
+
+        state.applyLibraryIndexSnapshot(
+            snapshot = fakeLibraryIndexSnapshot(libraryFiles = listOf(other, selected)),
+            selectFirstFile = false,
+        )
+
+        assertEquals(selected, state.selectedFile)
+    }
+
+    @Test
+    fun appStateRemovesFileAndSelectsNextPreferredFile() {
+        val removed = fakePlannedMediaFile().copy(sourcePath = "/library/removed.jpg")
+        val next = fakePlannedMediaFile().copy(sourcePath = "/library/next.jpg")
+        val state = PhotoLibraryAppState().apply {
+            libraryFiles = listOf(removed, next)
+            selectedFile = removed
+        }
+
+        state.removeFileFromVisibleState(
+            path = removed.sourcePath,
+            preferredSelectionFiles = listOf(removed, next),
+        )
+
+        assertEquals(listOf(next), state.libraryFiles)
+        assertEquals(next, state.selectedFile)
+    }
+
     private fun fakePlannedMediaFile(): PlannedMediaFile {
         return PlannedMediaFile(
             sourcePath = "/source/IMG_0001.JPG",
             fileName = "IMG_0001.JPG",
             targetRelativePath = "/library/Library/2025/2025-01/IMG_0001.JPG",
             sizeBytes = 1024,
+        )
+    }
+
+    private fun fakeLibraryIndexSnapshot(
+        libraryFiles: List<PlannedMediaFile> = emptyList(),
+        duplicateFiles: List<PlannedMediaFile> = emptyList(),
+        unsupportedFiles: List<PlannedMediaFile> = emptyList(),
+    ): LibraryIndexSnapshot {
+        return LibraryIndexSnapshot(
+            destinationFolder = "/library",
+            libraryFiles = libraryFiles,
+            duplicateFiles = duplicateFiles,
+            unsupportedFiles = unsupportedFiles,
+            updatedAtEpochMillis = 0,
         )
     }
 
