@@ -26,7 +26,6 @@ import com.anvar.photolibraryorganizer.domain.repository.PhotoSourceScanner
 import com.anvar.photolibraryorganizer.domain.repository.UnsupportedFileQuarantineRepository
 import com.anvar.photolibraryorganizer.domain.repository.StorageSpaceProvider
 import com.anvar.photolibraryorganizer.presentation.FolderPicker
-import com.anvar.photolibraryorganizer.presentation.AppSettings
 import com.anvar.photolibraryorganizer.presentation.AppSettingsStorage
 import com.anvar.photolibraryorganizer.presentation.AppSection
 import com.anvar.photolibraryorganizer.presentation.CachingImagePreviewLoader
@@ -35,7 +34,6 @@ import com.anvar.photolibraryorganizer.presentation.ImagePreviewLoader
 import com.anvar.photolibraryorganizer.presentation.ImportHistoryStorage
 import com.anvar.photolibraryorganizer.presentation.ImportReport
 import com.anvar.photolibraryorganizer.presentation.ImportUiState
-import com.anvar.photolibraryorganizer.presentation.LibraryRefreshProgress
 import com.anvar.photolibraryorganizer.presentation.PreviewDuplicateQuarantineRepository
 import com.anvar.photolibraryorganizer.presentation.PreviewEmptyFolderCleanupRepository
 import com.anvar.photolibraryorganizer.presentation.PreviewAppSettingsStorage
@@ -104,34 +102,28 @@ fun App(
                 addIssue = ::addIssue,
             )
         }
-
-        suspend fun loadLibraryIndexIfAvailable(
-            destination: String?,
-            selectFirstFile: Boolean = true,
-        ): Boolean {
-            val snapshot = libraryIndexStorage.load(destination) ?: return false
-            applyLibraryIndexSnapshot(snapshot, selectFirstFile)
-            return true
-        }
-
-        suspend fun refreshLibraryIndexFromDisk(
-            selectFirstFile: Boolean = true,
-            onProgress: (LibraryRefreshProgress) -> Unit = {},
+        val libraryActions = remember(
+            photoSourceScanner,
+            libraryIndexStorage,
+            appSettingsStorage,
+            folderPicker,
+            coroutineScope,
         ) {
-            val snapshot = refreshLibraryIndexSnapshot(
-                destinationFolder = destinationFolder,
+            PhotoLibraryLibraryActions(
+                appState = appState,
                 photoSourceScanner = photoSourceScanner,
                 libraryIndexStorage = libraryIndexStorage,
-                onProgress = onProgress,
+                appSettingsStorage = appSettingsStorage,
+                folderPicker = folderPicker,
+                coroutineScope = coroutineScope,
             )
-            applyLibraryIndexSnapshot(snapshot, selectFirstFile)
         }
 
         RestorePersistedAppStateEffect(
             appState = appState,
             appSettingsStorage = appSettingsStorage,
             importHistoryStorage = importHistoryStorage,
-            loadLibraryIndexIfAvailable = ::loadLibraryIndexIfAvailable,
+            loadLibraryIndexIfAvailable = libraryActions::loadLibraryIndexIfAvailable,
         )
         SelectedFilePreviewEffect(
             appState = appState,
@@ -186,41 +178,10 @@ fun App(
             libraryRefreshProgress = libraryRefreshProgress,
             issues = issues,
             onSourceFolderClick = {
-                folderPicker.chooseFolder(uiText("Выбери исходную папку", "Choose Source Folder"))?.let {
-                    sourceFolder = it
-                    coroutineScope.launch {
-                        appSettingsStorage.saveSettings(
-                            AppSettings(
-                                sourceFolder = sourceFolder,
-                                destinationFolder = destinationFolder,
-                                importRules = importRules,
-                            ),
-                        )
-                    }
-                }
-                resetAfterFolderSelection(clearLibraryFiles = true)
+                libraryActions.chooseSourceFolder()
             },
             onDestinationFolderClick = {
-                folderPicker.chooseFolder(uiText("Выбери папку библиотеки", "Choose Library Folder"))?.let {
-                    destinationFolder = it
-                    coroutineScope.launch {
-                        appSettingsStorage.saveSettings(
-                            AppSettings(
-                                sourceFolder = sourceFolder,
-                                destinationFolder = destinationFolder,
-                                importRules = importRules,
-                            ),
-                        )
-                    }
-                }
-                resetAfterFolderSelection(clearLibraryFiles = false)
-                coroutineScope.launch {
-                    if (!loadLibraryIndexIfAvailable(destinationFolder)) {
-                        libraryFiles = emptyList()
-                        duplicateFiles = emptyList()
-                        unsupportedFiles = emptyList()
-                    }
-                }
+                libraryActions.chooseDestinationFolder()
             },
             onImportModeSelected = {
                 importMode = it
@@ -231,15 +192,7 @@ fun App(
                 scanUiState = ScanUiState.Idle
                 importUiState = ImportUiState.Idle
                 lastImportReport = null
-                coroutineScope.launch {
-                    appSettingsStorage.saveSettings(
-                        AppSettings(
-                            sourceFolder = sourceFolder,
-                            destinationFolder = destinationFolder,
-                            importRules = selectedImportRules,
-                        ),
-                    )
-                }
+                libraryActions.saveCurrentSettings()
             },
             onScanClick = {
                 val currentScanToken = scanRequestToken + 1
@@ -483,7 +436,7 @@ fun App(
                                 emptyFolderCleanupAwaitingConfirmation = false
                                 importHistoryStorage.appendReport(report)
                                 importHistory = importHistoryStorage.loadHistory()
-                                refreshLibraryIndexFromDisk(selectFirstFile = false)
+                                libraryActions.refreshLibraryIndexFromDisk(selectFirstFile = false)
                                 if (finalImportResult.failedFiles > 0 || finalImportResult.failedUnsupportedFiles > 0) {
                                     addIssue(
                                         title = uiText("Импорт", "Import"),
@@ -504,7 +457,7 @@ fun App(
                         }
                     } catch (exception: CancellationException) {
                         importUiState = ImportUiState.Canceled(lastImportProgress)
-                        refreshLibraryIndexFromDisk(selectFirstFile = false)
+                        libraryActions.refreshLibraryIndexFromDisk(selectFirstFile = false)
                     } catch (exception: Throwable) {
                         val message = uiText(
                             ru = "Импорт прервался: ${exception.message ?: "без деталей"}",
@@ -521,35 +474,14 @@ fun App(
                 importJob?.cancel()
                 importUiState = ImportUiState.Canceled(lastImportProgress)
                 coroutineScope.launch {
-                    refreshLibraryIndexFromDisk(selectFirstFile = false)
+                    libraryActions.refreshLibraryIndexFromDisk(selectFirstFile = false)
                 }
             },
             onRefreshLibraryClick = {
-                if (!isLibraryRefreshing) {
-                    refreshLibraryJob = coroutineScope.launch {
-                        isLibraryRefreshing = true
-                        libraryRefreshProgress = null
-                        try {
-                            refreshLibraryIndexFromDisk { progress ->
-                                coroutineScope.launch {
-                                    if (isLibraryRefreshing) {
-                                        libraryRefreshProgress = progress
-                                    }
-                                }
-                            }
-                        } catch (exception: CancellationException) {
-                            libraryRefreshProgress = null
-                        } finally {
-                            isLibraryRefreshing = false
-                            refreshLibraryJob = null
-                        }
-                    }
-                }
+                libraryActions.startLibraryRefresh()
             },
             onCancelRefreshLibraryClick = {
-                refreshLibraryJob?.cancel()
-                isLibraryRefreshing = false
-                libraryRefreshProgress = null
+                libraryActions.cancelLibraryRefresh()
             },
             onMoveDuplicatesClick = {
                 if (!duplicateActionInProgress) {
@@ -574,7 +506,7 @@ fun App(
                                     }
                                 ) {
                                     is AppResult.Success -> {
-                                        refreshLibraryIndexFromDisk()
+                                        libraryActions.refreshLibraryIndexFromDisk()
                                         if (result.data.failedFiles > 0) {
                                             addIssue(
                                                 title = uiText("Дубликаты", "Duplicates"),
@@ -658,7 +590,7 @@ fun App(
                                 ) {
                                     is AppResult.Success -> {
                                         duplicateDeleteAwaitingConfirmation = false
-                                        refreshLibraryIndexFromDisk()
+                                        libraryActions.refreshLibraryIndexFromDisk()
                                         if (result.data.failedFiles > 0) {
                                             addIssue(
                                                 title = uiText("Дубликаты", "Duplicates"),
@@ -744,7 +676,7 @@ fun App(
                                 ) {
                                     is AppResult.Success -> {
                                         unsupportedDeleteAwaitingConfirmation = false
-                                        refreshLibraryIndexFromDisk(selectFirstFile = false)
+                                        libraryActions.refreshLibraryIndexFromDisk(selectFirstFile = false)
                                         if (result.data.failedFiles > 0) {
                                             addIssue(
                                                 title = uiText("Неподдерживаемые", "Unsupported"),
@@ -894,7 +826,7 @@ fun App(
                                         )
                                         coroutineScope.launch {
                                             try {
-                                                refreshLibraryIndexFromDisk(selectFirstFile = false)
+                                                libraryActions.refreshLibraryIndexFromDisk(selectFirstFile = false)
                                             } catch (exception: Throwable) {
                                                 // The file is already in Trash. A refresh failure should not turn a successful
                                                 // delete into a blocking system dialog.

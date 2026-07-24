@@ -128,6 +128,12 @@ internal class PhotoLibraryAppState {
         }
     }
 
+    fun clearLibraryFileCollections() {
+        libraryFiles = emptyList()
+        duplicateFiles = emptyList()
+        unsupportedFiles = emptyList()
+    }
+
     /**
      * Removes a file from all visible collections after a successful Trash
      * operation and advances selection to the next available file.

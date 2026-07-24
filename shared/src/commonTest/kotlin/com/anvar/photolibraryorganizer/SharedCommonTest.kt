@@ -18,6 +18,7 @@ import com.anvar.photolibraryorganizer.domain.model.ScanSourceFolderSummary
 import com.anvar.photolibraryorganizer.domain.model.ScannedMediaFile
 import com.anvar.photolibraryorganizer.domain.model.ScanSourceFolderProgress
 import com.anvar.photolibraryorganizer.domain.model.detectMediaFileType
+import com.anvar.photolibraryorganizer.domain.repository.LibraryIndexStorage
 import com.anvar.photolibraryorganizer.domain.repository.MediaFileImporter
 import com.anvar.photolibraryorganizer.domain.repository.PhotoSourceScanner
 import com.anvar.photolibraryorganizer.domain.repository.StorageSpaceProvider
@@ -26,7 +27,13 @@ import com.anvar.photolibraryorganizer.domain.usecase.CheckImportStorageSpaceUse
 import com.anvar.photolibraryorganizer.domain.usecase.ImportMediaFilesUseCase
 import com.anvar.photolibraryorganizer.domain.usecase.ResolveImportAvailabilityUseCase
 import com.anvar.photolibraryorganizer.domain.usecase.ScanSourceFolderUseCase
+import com.anvar.photolibraryorganizer.presentation.AppSettings
+import com.anvar.photolibraryorganizer.presentation.AppSettingsStorage
 import com.anvar.photolibraryorganizer.presentation.FileRevealHandler
+import com.anvar.photolibraryorganizer.presentation.FolderPicker
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertIs
@@ -474,12 +481,75 @@ class SharedCommonTest {
         assertTrue(issues.first().second.contains("/library/missing.jpg"))
     }
 
+    @Test
+    fun libraryActionsLoadIndexAppliesSnapshot() = runTest {
+        val indexedFile = fakePlannedMediaFile().copy(sourcePath = "/library/indexed.jpg")
+        val state = PhotoLibraryAppState()
+        val actions = fakeLibraryActions(
+            state = state,
+            coroutineScope = this,
+            libraryIndexStorage = FakeLibraryIndexStorage(
+                snapshot = fakeLibraryIndexSnapshot(libraryFiles = listOf(indexedFile)),
+            ),
+        )
+
+        val loaded = actions.loadLibraryIndexIfAvailable("/library")
+
+        assertTrue(loaded)
+        assertEquals(listOf(indexedFile), state.libraryFiles)
+        assertEquals(indexedFile, state.selectedFile)
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun libraryActionsChooseDestinationSavesSettingsAndLoadsIndex() = runTest {
+        val indexedFile = fakePlannedMediaFile().copy(sourcePath = "/library/from-index.jpg")
+        val state = PhotoLibraryAppState().apply {
+            sourceFolder = "/source"
+        }
+        val settingsStorage = FakeAppSettingsStorage()
+        val actions = fakeLibraryActions(
+            state = state,
+            coroutineScope = this,
+            appSettingsStorage = settingsStorage,
+            folderPicker = FakeFolderPicker("/library"),
+            libraryIndexStorage = FakeLibraryIndexStorage(
+                snapshot = fakeLibraryIndexSnapshot(libraryFiles = listOf(indexedFile)),
+            ),
+        )
+
+        actions.chooseDestinationFolder()
+        advanceUntilIdle()
+
+        assertEquals("/library", state.destinationFolder)
+        assertEquals("/library", settingsStorage.lastSavedSettings?.destinationFolder)
+        assertEquals(listOf(indexedFile), state.libraryFiles)
+    }
+
     private fun fakePlannedMediaFile(): PlannedMediaFile {
         return PlannedMediaFile(
             sourcePath = "/source/IMG_0001.JPG",
             fileName = "IMG_0001.JPG",
             targetRelativePath = "/library/Library/2025/2025-01/IMG_0001.JPG",
             sizeBytes = 1024,
+        )
+    }
+
+    private fun fakeLibraryActions(
+        state: PhotoLibraryAppState = PhotoLibraryAppState(),
+        coroutineScope: CoroutineScope,
+        photoSourceScanner: PhotoSourceScanner = FakePhotoSourceScanner(),
+        libraryIndexStorage: LibraryIndexStorage = FakeLibraryIndexStorage(),
+        appSettingsStorage: AppSettingsStorage = FakeAppSettingsStorage(),
+        folderPicker: FolderPicker = FakeFolderPicker(null),
+    ): PhotoLibraryLibraryActions {
+        return PhotoLibraryLibraryActions(
+            appState = state,
+            photoSourceScanner = photoSourceScanner,
+            libraryIndexStorage = libraryIndexStorage,
+            appSettingsStorage = appSettingsStorage,
+            folderPicker = folderPicker,
+            coroutineScope = coroutineScope,
         )
     }
 
@@ -498,6 +568,38 @@ class SharedCommonTest {
         override fun reveal(path: String): Boolean {
             lastRevealedPath = path
             return revealResult
+        }
+    }
+
+    private class FakeFolderPicker(
+        private val folder: String?,
+    ) : FolderPicker {
+        override fun chooseFolder(title: String): String? = folder
+    }
+
+    private class FakeAppSettingsStorage : AppSettingsStorage {
+        var lastSavedSettings: AppSettings? = null
+
+        override suspend fun loadSettings(): AppSettings = AppSettings()
+
+        override suspend fun saveSettings(settings: AppSettings) {
+            lastSavedSettings = settings
+        }
+    }
+
+    private class FakeLibraryIndexStorage(
+        private val snapshot: LibraryIndexSnapshot? = null,
+    ) : LibraryIndexStorage {
+        var lastLoadedDestination: String? = null
+        var lastSavedSnapshot: LibraryIndexSnapshot? = null
+
+        override suspend fun load(destinationFolder: String?): LibraryIndexSnapshot? {
+            lastLoadedDestination = destinationFolder
+            return snapshot
+        }
+
+        override suspend fun save(snapshot: LibraryIndexSnapshot) {
+            lastSavedSnapshot = snapshot
         }
     }
 
