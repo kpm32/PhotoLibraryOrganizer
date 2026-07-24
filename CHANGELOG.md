@@ -26,6 +26,9 @@
 - Added a `PhotoLibraryUseCases` bundle and extracted startup/preview side effects from the root app composable.
 - Extracted simple OS file/folder open actions into `PhotoLibraryFileActions` and covered failure mapping with tests.
 - Extracted library folder selection, settings persistence, cached index loading, and manual library refresh orchestration into `PhotoLibraryLibraryActions` with tests.
+- Extracted scan/import orchestration into `PhotoLibraryScanImportActions`, keeping the root app composable focused on wiring.
+- Extracted duplicate, skipped-file, empty-folder, and selected-file Trash cleanup orchestration into `PhotoLibraryCleanupActions`.
+- Split state, file action, and library action tests into focused test classes instead of keeping everything in one broad shared test.
 - Replaced domain import availability messages with typed reasons, keeping domain code language-neutral while presentation localizes the text.
 
 ## 1.0.0-preview.8 - 2026-07-17

@@ -124,6 +124,14 @@ docs/PROFESSIONAL_FINISH_CHECKLIST.md
 - kotlinx-datetime
 - Clean Architecture style boundaries
 
+## Architecture Notes
+
+- `domain` contains business models, repository contracts, and use cases without UI text or platform UI dependencies.
+- `data` contains JVM/macOS filesystem adapters for scanning, importing, indexing, previews, and Trash operations.
+- `presentation` contains UI-facing models, localization helpers, preview adapters, and settings/history storage.
+- The Compose root wires dependencies only; app state transitions and long-running workflows are split into focused action/state classes.
+- Tests are grouped by responsibility: domain use cases, app state, file actions, and library actions.
+
 ## Project Status
 
 Preview desktop app. The main workflow is usable for local archive cleanup, but public releases should still be treated as preview builds until more real-world archives are tested. The app is currently macOS-focused. The interface follows the system language: Russian for Russian systems, English for other languages.
