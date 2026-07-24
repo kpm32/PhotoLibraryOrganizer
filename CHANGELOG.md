@@ -24,6 +24,7 @@
 - Removed UI labels from domain enums and removed unused Android lifecycle dependencies.
 - Moved library index application, folder-change reset, and selected-file removal transitions into the platform-neutral app state holder with tests.
 - Added a `PhotoLibraryUseCases` bundle and extracted startup/preview side effects from the root app composable.
+- Extracted simple OS file/folder open actions into `PhotoLibraryFileActions` and covered failure mapping with tests.
 - Replaced domain import availability messages with typed reasons, keeping domain code language-neutral while presentation localizes the text.
 
 ## 1.0.0-preview.8 - 2026-07-17

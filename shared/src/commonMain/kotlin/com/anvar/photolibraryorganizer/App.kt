@@ -98,6 +98,12 @@ fun App(
         val cachedImagePreviewLoader = remember(imagePreviewLoader) {
             CachingImagePreviewLoader(imagePreviewLoader)
         }
+        val fileActions = remember(fileRevealHandler) {
+            PhotoLibraryFileActions(
+                fileRevealHandler = fileRevealHandler,
+                addIssue = ::addIssue,
+            )
+        }
 
         suspend fun loadLibraryIndexIfAvailable(
             destination: String?,
@@ -832,40 +838,16 @@ fun App(
                 }
             },
             onOpenLibraryFolderClick = {
-                openLibrarySubfolder(
-                    destinationFolder = destinationFolder,
-                    subfolder = "Library",
-                    title = uiText("Библиотека", "Library"),
-                    fileRevealHandler = fileRevealHandler,
-                    addIssue = ::addIssue,
-                )
+                fileActions.openLibraryFolder(destinationFolder)
             },
             onOpenUnsupportedFolderClick = {
-                openLibrarySubfolder(
-                    destinationFolder = destinationFolder,
-                    subfolder = "Unsupported",
-                    title = uiText("Пропущенные", "Skipped"),
-                    fileRevealHandler = fileRevealHandler,
-                    addIssue = ::addIssue,
-                )
+                fileActions.openUnsupportedFolder(destinationFolder)
             },
             onOpenUnsupportedTypeFolderClick = { type ->
-                openLibrarySubfolder(
-                    destinationFolder = destinationFolder,
-                    subfolder = "Unsupported/${type.toUnsupportedFolderName()}",
-                    title = uiText("Неподдерживаемые", "Unsupported"),
-                    fileRevealHandler = fileRevealHandler,
-                    addIssue = ::addIssue,
-                )
+                fileActions.openUnsupportedTypeFolder(destinationFolder, type)
             },
             onOpenDuplicatesFolderClick = {
-                openLibrarySubfolder(
-                    destinationFolder = destinationFolder,
-                    subfolder = "Duplicates",
-                    title = uiText("Дубли", "Duplicates"),
-                    fileRevealHandler = fileRevealHandler,
-                    addIssue = ::addIssue,
-                )
+                fileActions.openDuplicatesFolder(destinationFolder)
             },
             onClearIssuesClick = { clearIssues() },
             onSectionSelected = { selectedSection = it },
@@ -874,24 +856,10 @@ fun App(
             navigationFileCount = navigationFiles.size,
             imagePreviewUiState = imagePreviewUiState,
             onOpenFileClick = {
-                selectedFile?.sourcePath?.let { path ->
-                    if (!fileRevealHandler.open(path)) {
-                        addIssue(
-                            uiText("Просмотр", "Preview"),
-                            uiText("Не удалось открыть файл: $path", "Could not open file: $path"),
-                        )
-                    }
-                }
+                fileActions.openSelectedFile(selectedFile)
             },
             onRevealFileClick = {
-                selectedFile?.sourcePath?.let { path ->
-                    if (!fileRevealHandler.reveal(path)) {
-                        addIssue(
-                            uiText("Просмотр", "Preview"),
-                            uiText("Не удалось показать файл в папке: $path", "Could not reveal file in folder: $path"),
-                        )
-                    }
-                }
+                fileActions.revealSelectedFile(selectedFile)
             },
             onRequestMoveSelectedFileToTrashClick = {
                 if (!selectedFileTrashInProgress) {
